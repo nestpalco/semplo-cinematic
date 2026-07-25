@@ -1,0 +1,62 @@
+{
+  "gastronomy-general": {
+    "cover": {
+      "our": "assets/catalogs/gastronomy-general.jpg",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-GASTRONOMY-EQUIPMENT_Page_01-6.jpg",
+      "bytes": 65642
+    },
+    "pdf": {
+      "our": "/catalogs/gastronomy-general.pdf",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-GASTRONOMY-EQUIPMENT-1.pdf",
+      "bytes": 11562961
+    }
+  },
+  "gastronomy-restaurant": {
+    "cover": {
+      "our": "assets/catalogs/gastronomy-restaurant.jpg",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-GASTRONOMY-EQUIPMENT-RESTAURANT.jpg",
+      "bytes": 72693
+    },
+    "pdf": {
+      "our": "/catalogs/gastronomy-restaurant.pdf",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-gastronomy-equipment-Catalogue-Restaurant.pdf",
+      "bytes": 12741950
+    }
+  },
+  "gastronomy-exclusive": {
+    "cover": {
+      "our": "assets/catalogs/gastronomy-exclusive.jpg",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-GASTRONOMY-EQUIPMENT-EXCLUSIVE.jpg",
+      "bytes": 71519
+    },
+    "pdf": {
+      "our": "/catalogs/gastronomy-exclusive.pdf",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-Gastronomy-Equipment-EXCLUSIVE.pdf",
+      "bytes": 2419738
+    }
+  },
+  "furniture-chairs": {
+    "cover": {
+      "our": "assets/catalogs/furniture-chairs.jpg",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-chairs-1.jpg",
+      "bytes": 55065
+    },
+    "pdf": {
+      "our": "/catalogs/furniture-chairs.pdf",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-Furniture-CHAIRS.pdf",
+      "bytes": 13976737
+    }
+  },
+  "furniture-general": {
+    "cover": {
+      "our": "assets/catalogs/furniture-general.jpg",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/GENERAL-CATALOGUE-CHAIRS.jpg",
+      "bytes": 66599
+    },
+    "pdf": {
+      "our": "/catalogs/furniture-general.pdf",
+      "source": "https://semplodesign.com/wp-content/uploads/2023/07/SEMPLO-Furniture-GENERAL-CATALOGUE-CHAIRS.pdf",
+      "bytes": 292853624
+    }
+  }
+}

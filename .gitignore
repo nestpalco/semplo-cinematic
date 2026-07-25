@@ -1,0 +1,36 @@
+# ── dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ── build output ─────────────────────────────────────────────────────────────
+dist/
+
+# ── test artifacts ───────────────────────────────────────────────────────────
+test-results/
+playwright-report/
+e2e/screens/
+e2e/.cache/
+
+# ── regenerated optimized media ──────────────────────────────────────────────
+# These are rebuilt on every deploy by `npm run assets` (the `prebuild` hook)
+# from the raw sources committed under assets/. Committing the raw sources (not
+# these outputs) keeps the repo lean and avoids stale duplicates.
+#   assets/videos/    → public/videos/     (optimize-videos.mjs, ffmpeg)
+#   assets/panoramas/ → public/panoramas/  (optimize-panoramas.mjs, sharp)
+#   assets/projects/  → public/projects/   (optimize-projects.mjs, sharp)
+public/videos/
+public/panoramas/
+public/projects/
+
+# NOTE: public/catalogs/ (Ghostscript-compressed PDFs) and public/studio/ are
+# NOT produced by the build, so they ARE committed. src/videos.manifest.json is
+# a bundled import, so it is committed too (guarantees `vite build` never lacks
+# it even if the asset step is skipped).
+
+# ── heavy raw originals (not needed for the build; ~280 MB single file) ───────
+assets/catalogs/pdf-originals/
+
+# ── local tooling / OS ───────────────────────────────────────────────────────
+.claude/
+.DS_Store
+*.log
+npm-debug.log*

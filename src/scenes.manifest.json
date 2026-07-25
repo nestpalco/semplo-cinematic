@@ -1,0 +1,78 @@
+{
+  "arrival": {
+    "width": 1080,
+    "height": 1080,
+    "aspect": 1,
+    "variants": [
+      {
+        "w": 900,
+        "file": "arrival-900.webp",
+        "bytes": 70356
+      },
+      {
+        "w": 1080,
+        "file": "arrival-1080.webp",
+        "bytes": 96378
+      }
+    ],
+    "lqip": "data:image/webp;base64,UklGRs4AAABXRUJQVlA4IMIAAADQBQCdASoYABgAPu1eqk4ppKOiMBgMATAdiWoAnTKAAan8bVnyCsDF/C1KNwrsdC+6mwamJhZwAP65F8mnZ72XXzVfDW6wVQqwZQpkalXH+uKV0xvuVUHWrXV5AoL4t/UeKyVYu9bi99kejS7vmXHIXFc5YXXm9/N0ZzkJG9jKQ+a/W23gp6vqVPv2VWjZVL8UE7huj+1ROhL8gziltRyy21cpdsDTgRpbvHQURyinE69lFZ2uREZ7+WEHR2li6yAAAA==",
+    "color": "#185898"
+  },
+  "kitchen": {
+    "width": 1080,
+    "height": 1080,
+    "aspect": 1,
+    "variants": [
+      {
+        "w": 900,
+        "file": "kitchen-900.webp",
+        "bytes": 38392
+      },
+      {
+        "w": 1080,
+        "file": "kitchen-1080.webp",
+        "bytes": 51444
+      }
+    ],
+    "lqip": "data:image/webp;base64,UklGRqIAAABXRUJQVlA4IJYAAAAQBQCdASoYABgAPu1eqE6ppKOiMBgMATAdiWMArDKAAaoBzhzBgh5w19ueXy8GZDUAAP6upgkYu54n5UqUcVC+y14tiPNr9/bnZxyYJu1hNcc2CEn+HPt2GOlQexP0HdFd6VhQ4vlmpcn9qAAHWCAyPNgvm5Zksh4WiVkNdQ6Q19mWjkAqeCatAQX009UBAOllKm+MwAA=",
+    "color": "#c8b8b8"
+  },
+  "living": {
+    "width": 1080,
+    "height": 1080,
+    "aspect": 1,
+    "variants": [
+      {
+        "w": 900,
+        "file": "living-900.webp",
+        "bytes": 74698
+      },
+      {
+        "w": 1080,
+        "file": "living-1080.webp",
+        "bytes": 97674
+      }
+    ],
+    "lqip": "data:image/webp;base64,UklGRtgAAABXRUJQVlA4IMwAAABQBQCdASoYABgAPu1sqlGppaOiqAqpMB2JZQC2yYxicEydfrHGKZKqYzyGExFQHO78YXAA/cpJUYEpv3hQEFROpMCcH/trTyuNP9xPD2hxJWmY5Uw/LJsygWP4pE317E43lRaXasN1Y3DYYC7bBWt8UAXmJ8AHtFqej77f2s0l70uNM6vXx/xzXe95dEOuVj8JVrQaK/89599BrAg/PaXu7fxR/eesWO+6bjK4XoDAhBeswHSvNpgval+SO3kmv+mO5k9lJsDENoQAAAA=",
+    "color": "#a89888"
+  },
+  "retreat": {
+    "width": 1080,
+    "height": 1080,
+    "aspect": 1,
+    "variants": [
+      {
+        "w": 900,
+        "file": "retreat-900.webp",
+        "bytes": 83332
+      },
+      {
+        "w": 1080,
+        "file": "retreat-1080.webp",
+        "bytes": 107858
+      }
+    ],
+    "lqip": "data:image/webp;base64,UklGRvoAAABXRUJQVlA4IO4AAACwBQCdASoYABgAPu1qqVAppiOiqA1RMB2JYwC2ydz5gnJjFSsP9P980c1tCRvxS4oc1CzeFYAA+8s11lGAfASZ2M2Wf3H7x3P/puN/eop3clbixD5mBQdoYn9gj25AEpyn7chgXzVQ5n1LYjkaqoeEdRfDcgQruvdpoI3ywaUKsN/c2t4Wcv9NPR8nx62V+JxqwSJL2RbOPp8RF1Pv0Ad9YBT8X91huOpiI0honrPaBHXHuxTHoXqrFOnyYf1XsIC6hHFH7gSBZ4vqggQl1/C7sD+1xn0xgKzYhq1UwN8FznMdPYeDaMCM/NagrRAA",
+    "color": "#584838"
+  }
+}

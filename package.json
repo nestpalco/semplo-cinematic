@@ -1,0 +1,30 @@
+{
+  "name": "semplo-hero-cinematic",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "assets": "node scripts/optimize-videos.mjs && node scripts/optimize-panoramas.mjs && node scripts/optimize-projects.mjs",
+    "optimize:panoramas": "node scripts/optimize-panoramas.mjs",
+    "optimize:projects": "node scripts/optimize-projects.mjs",
+    "predev": "npm run assets",
+    "dev": "vite",
+    "optimize:videos": "node scripts/optimize-videos.mjs",
+    "optimize:scenes": "node scripts/optimize-scenes.mjs",
+    "prebuild": "npm run assets",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "vite build && playwright test"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "@ffprobe-installer/ffprobe": "^2.1.2",
+    "@playwright/test": "^1.62.0",
+    "sharp": "^0.33.5",
+    "vite": "^5.4.10"
+  }
+}

@@ -1,0 +1,693 @@
+import { hero, ambients, projects, interludes, strips, catalogs, ui, motion } from './sections.config.js'
+import manifest from './videos.manifest.json'
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * SEMPLO — calm, photography-first page. ONE signature moment, native scroll.
+ *
+ *   HERO      — one full-bleed video. Plays ONCE on load, then holds its final
+ *               frame. No pin, no scrub. Subtle replay on click. Serif headline
+ *               + sub + CTA + a scroll cue overlaid.
+ *   AMBIENT   — quiet full-width "living photograph" loops between content.
+ *               Autoplay muted, loop, play/pause on visibility, gentle parallax.
+ *   PROJECTS  — the centerpiece editorial gallery. Large imagery, refined hover,
+ *               opens a detail overlay with an edge-to-edge photo sequence.
+ *
+ *   Fallbacks kept intact:
+ *     reduced-motion → posters only, no video load, no reveals, no parallax.
+ *     mobile         → light autoplay (720 variants) or posters; native scroll.
+ *     no-JS          → the <noscript> poster gallery in index.html.
+ *   Everyone gets NATIVE scroll — nothing is pinned or scroll-jacked.
+ *
+ *   Core engine is vanilla (IntersectionObserver + CSS). Two LAZY chunks add
+ *   polish on top, both skipped/deferred so the main bundle stays lean:
+ *     ./motion.js — GSAP + ScrollTrigger + SplitText reveals, parallax,
+ *                   Ken Burns. Imported only when motion-ok. No pins ever.
+ *     ./pano.js   — Three.js 360° viewer. Imported only when a project
+ *                   overlay WITH a panorama opens (all modes — drag works
+ *                   under reduced-motion too; only auto-yaw is disabled).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* ?forcemotion — demo override. OS accessibility settings (e.g. Windows
+ * "Animation effects" off) make the browser report prefers-reduced-motion:
+ * reduce, which fully disables the motion layer. When presenting to a client,
+ * append ?forcemotion to guarantee the full experience regardless of the
+ * presenting machine's OS setting. */
+const forceMotion = new URLSearchParams(location.search).has('forcemotion')
+const osReduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+const prefersReduced = osReduced && !forceMotion
+const isMobile =
+  matchMedia('(max-width: 820px)').matches || matchMedia('(pointer: coarse)').matches
+
+console.info(
+  `[semplo] mode: ${prefersReduced ? 'REDUCED (no reveals/parallax/Ken Burns)' : 'MOTION'}` +
+    ` — OS prefers-reduced-motion: ${osReduced ? 'reduce' : 'no-preference'}` +
+    (forceMotion ? ' — overridden by ?forcemotion' : '') +
+    (osReduced && !forceMotion ? ' — append ?forcemotion to override for demos' : '')
+)
+
+document.body.classList.add(prefersReduced ? 'reduced' : 'motion')
+if (isMobile) document.body.classList.add('is-mobile')
+if (prefersReduced) document.documentElement.style.scrollBehavior = 'auto'
+
+/* Desktop + motion-ok: PATTERN B applies — scroll drives the scrub-flagged
+ * videos (hero pinned, ambient strips position-linked) via motion.js. */
+const scrubDesktop = !prefersReduced && !isMobile
+
+/* ── polish motion layer — its own lazy chunk, motion-ok visitors only.
+ *    prime() hides the hero copy (ideally behind the loader) so the intro can
+ *    reveal it; if the chunk fails, nothing was hidden — content just shows,
+ *    and scrub-mode videos fall back to the calm autoplay behaviour. */
+let motionMod = null
+const motionReady = prefersReduced
+  ? Promise.resolve()
+  : import('./motion.js')
+      .then((m) => {
+        motionMod = m
+        m.prime()
+      })
+      .catch(() => {
+        motionlessFallback() // scrub videos must still move: play them forward
+      })
+
+/* ── 1. Bilingual UI ──────────────────────────────────────────────────────── */
+let lang = 'bg'
+const dig = (p) => p.split('.').reduce((o, k) => (o ? o[k] : undefined), ui)
+function applyLang(next) {
+  lang = next
+  const idx = lang === 'bg' ? 0 : 1
+  document.documentElement.lang = lang
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const v = dig(el.dataset.i18n)
+    if (Array.isArray(v)) el.textContent = v[idx]
+  })
+  document.querySelectorAll('[data-bg][data-en]').forEach((el) => {
+    el.textContent = lang === 'bg' ? el.dataset.bg : el.dataset.en
+  })
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
+    const v = dig(el.dataset.i18nAria)
+    if (Array.isArray(v)) el.setAttribute('aria-label', v[idx])
+  })
+  document.querySelectorAll('.lang__btn').forEach((b) => {
+    const on = b.dataset.lang === lang
+    b.classList.toggle('is-active', on)
+    b.setAttribute('aria-pressed', String(on))
+  })
+  // motion layer listens: scrub-linked SplitText titles must re-split new text
+  document.dispatchEvent(new Event('semplo:lang'))
+}
+document
+  .querySelectorAll('.lang__btn')
+  .forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)))
+
+/* ── 2. Templates ─────────────────────────────────────────────────────────── */
+const posterFor = (m) => `/videos/${isMobile && m.posterMobile ? m.posterMobile : m.poster}`
+
+function heroHTML() {
+  const m = manifest[hero.id]
+  // Scrub mode starts on frame 0 (the empty room) → poster must match frame 0.
+  // Everywhere else the poster stays the LAST frame (the furnished payoff).
+  const poster =
+    scrubDesktop && hero.scrubVideo && m.posterFirst ? `/videos/${m.posterFirst}` : posterFor(m)
+  return `
+    <section class="hero" data-hero data-id="${hero.id}" data-dark>
+      <div class="hero__media">
+        <img class="hero__poster" src="${poster}" alt="" aria-hidden="true" />
+        <video class="hero__video" data-hero-video muted playsinline preload="none"
+               disablepictureinpicture poster="${poster}"></video>
+      </div>
+      <button class="hero__replay" type="button" data-replay hidden
+              data-i18n-aria="replay" aria-label="Replay">
+        <span class="hero__replay-icon" aria-hidden="true">↺</span>
+      </button>
+      <div class="hero__inner">
+        <h1 class="hero__title" data-bg="${hero.bg}" data-en="${hero.en}">${hero.bg}</h1>
+        <p class="hero__sub" data-bg="${hero.subBg}" data-en="${hero.subEn}">${hero.subBg}</p>
+        <p class="hero__cred" data-bg="${hero.credBg}" data-en="${hero.credEn}">${hero.credBg}</p>
+        <a class="hero__cta" href="${hero.ctaHref}" data-bg="${hero.ctaBg}" data-en="${hero.ctaEn}">${hero.ctaBg}</a>
+      </div>
+      <div class="hero__scroll" data-hint aria-hidden="true">
+        <span data-i18n="scrollHint">Скрол</span><span class="hero__scroll-line"></span>
+      </div>
+    </section>`
+}
+
+function ambientHTML(a) {
+  const m = manifest[a.id]
+  const poster = posterFor(m)
+  const hasText = !!a.lineBg
+  const cap = hasText
+    ? `<figcaption class="ambient__cap">
+         <span class="ambient__eyebrow" data-bg="${a.eyebrowBg}" data-en="${a.eyebrowEn}">${a.eyebrowBg}</span>
+         <span class="ambient__line" data-bg="${a.lineBg}" data-en="${a.lineEn}">${a.lineBg}</span>
+       </figcaption>`
+    : ''
+  return `
+    <section class="ambient" data-ambient data-id="${a.id}" data-dark
+             aria-hidden="${hasText ? 'false' : 'true'}">
+      <div class="ambient__media" data-parallax>
+        <img class="ambient__poster" src="${poster}" alt="" aria-hidden="true" />
+        <video class="ambient__video" data-ambient-video muted playsinline loop preload="none"
+               disablepictureinpicture poster="${poster}"></video>
+      </div>
+      ${cap}
+    </section>`
+}
+
+function interludeHTML(t) {
+  // PATTERN A: `bgFx` names the animated background variant behind the type
+  // (blueprint linework / material texture / soft geometry). The layer markup
+  // is injected by motion.js — reduced-motion never gets a layer at all.
+  const alive = t.bgFx ? ` data-alive="${t.bgFx}"` : ''
+  const id = t.anchor ? ` id="${t.anchor}"` : '' // nav anchor target
+  // Optional "about" extras (studio): a second paragraph, a stat, and an image.
+  const body2 = t.bodyBg2
+    ? `<p class="interlude__body interlude__body2" data-bg="${t.bodyBg2}" data-en="${t.bodyEn2}">${t.bodyBg2}</p>`
+    : ''
+  const stat = t.stat
+    ? `<div class="studio__stat">
+         <span class="studio__num">${t.stat.num}</span>
+         <span class="studio__stat-label" data-bg="${t.stat.labelBg}" data-en="${t.stat.labelEn}">${t.stat.labelBg}</span>
+       </div>`
+    : ''
+  const figure = t.image
+    ? `<figure class="studio__media">
+         <img src="${isMobile && t.image.srcMobile ? t.image.srcMobile : t.image.src}"
+              alt="${t.image.altEn}" loading="lazy" decoding="async" />
+       </figure>`
+    : ''
+  const rich = t.image || t.stat || t.bodyBg2 // expanded "about" layout
+  const lead = `
+        <p class="interlude__eyebrow" data-bg="${t.eyebrowBg}" data-en="${t.eyebrowEn}">${t.eyebrowBg}</p>
+        <h2 class="interlude__title" data-bg="${t.bg}" data-en="${t.en}">${t.bg}</h2>
+        <p class="interlude__body" data-bg="${t.bodyBg}" data-en="${t.bodyEn}">${t.bodyBg}</p>
+        ${body2}${stat}`
+  const inner = rich
+    ? `<div class="interlude__inner studio__grid">
+         <div class="studio__lead">${lead}</div>
+         ${figure}
+       </div>`
+    : `<div class="interlude__inner">${lead}</div>`
+  return `
+    <section class="interlude${rich ? ' studio' : ''}" data-interlude${alive}${id}>
+      ${inner}
+    </section>`
+}
+
+function projectsHTML() {
+  // PATTERN C: every card is a uniform BIG cover holding a horizontal film
+  // strip of its first frames. Scroll advances the strip rightward (motion.js);
+  // without the motion layer the strip simply shows frame 1 (overflow hidden).
+  const K = motion.stripFrames
+  const cards = projects
+    .map((p, i) => {
+      const frames = (p.frames || [p.cover]).slice(0, K)
+      const imgs = frames
+        .map(
+          (src, k) =>
+            `<img src="${k === 0 && isMobile && p.coverMobile ? p.coverMobile : src}" alt=""
+                  loading="${k === 0 && i === 0 ? 'eager' : 'lazy'}" decoding="async" />`
+        )
+        .join('')
+      return `
+      <button class="project" type="button" data-project="${i}" aria-haspopup="dialog">
+        <span class="project__media">
+          <span class="project__strip" data-strip>${imgs}</span>
+          <span class="project__view" aria-hidden="true" data-i18n="projects.view">${ui.projects.view[0]}</span>
+        </span>
+        <span class="project__meta">
+          <span class="project__title" data-bg="${p.titleBg}" data-en="${p.titleEn}">${p.titleBg}</span>
+          <span class="project__sub" data-bg="${p.metaBg}" data-en="${p.metaEn}">${p.metaBg}</span>
+        </span>
+      </button>`
+    })
+    .join('')
+  return `
+    <section class="projects" id="work">
+      <header class="projects__head" data-interlude>
+        <div class="interlude__inner">
+          <p class="projects__eyebrow" data-i18n="projects.eyebrow">Избрани проекти</p>
+          <h2 class="projects__title" data-i18n="projects.title">Завършени интериори.</h2>
+        </div>
+      </header>
+      <div class="gallery">${cards}</div>
+    </section>`
+}
+
+/* ── 3. Compose the page from config (single source of truth) ─────────────── */
+const root = document.querySelector('[data-sections]')
+root.innerHTML =
+  heroHTML() +
+  interludeHTML(interludes[0]) +
+  ambientHTML(ambients[0]) +
+  projectsHTML() +
+  (interludes[1] ? interludeHTML(interludes[1]) : '') +
+  (ambients[1] ? ambientHTML(ambients[1]) : '') +
+  (interludes[2] ? interludeHTML(interludes[2]) : '') +
+  (ambients[2] ? ambientHTML(ambients[2]) : '') +
+  ambients.slice(3).map(ambientHTML).join('') // any extra ambient slots append here
+
+/* Catalogues grid — cards injected from config (bilingual), each a download
+ * link to its migrated PDF in /public/catalogs/. Typographic cover in-palette. */
+{
+  const grid = document.querySelector('[data-catgrid]')
+  if (grid) {
+    grid.innerHTML = catalogs
+      .map(
+        (c) => `
+      <a class="catcard" href="/catalogs/${c.id}.pdf" download
+         aria-label="${c.titleEn} — PDF, ${c.size}">
+        <span class="catcard__cover">
+          <span class="catcard__doc">PDF</span>
+          <span class="catcard__cat" data-bg="${c.catBg}" data-en="${c.catEn}">${c.catBg}</span>
+          <span class="catcard__title" data-bg="${c.titleBg}" data-en="${c.titleEn}">${c.titleBg}</span>
+        </span>
+        <span class="catcard__foot">
+          <span class="catcard__dl" data-i18n="catalogs.download">${ui.catalogs.download[0]}</span>
+          <span class="catcard__size">${c.size}</span>
+        </span>
+      </a>`
+      )
+      .join('')
+  }
+}
+
+/* PATTERN C horizontal strips (portfolio) — containers live in index.html;
+ * tracks are filled from config so photos stay one-list-per-strip. */
+document.querySelectorAll('[data-hstrip]').forEach((el) => {
+  const list = strips[el.dataset.hstrip]
+  if (!list) return
+  el.innerHTML = `<div class="hstrip__track" data-hstrip-track>${list
+    .map((src) => `<img src="${src}" alt="" loading="lazy" decoding="async" />`)
+    .join('')}</div>`
+})
+
+applyLang('bg')
+
+/* ── Pin-aware smooth anchor scrolling ─────────────────────────────────────
+ * Raw #hash jumps land wrong once sections are pinned (pin-spacers shift real
+ * scroll positions, and a jump can land inside a spacer = blank). Instead we
+ * read the target's LIVE position at click time (getBoundingClientRect + scrollY
+ * is always correct, whatever the pin state) and offset by the fixed nav. Works
+ * in every language (targets are stable ids, not text). */
+const NAV_H = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 76
+let navSettling = false // an anchor scroll is in flight → keep the nav shown until it stops
+let navSettleHardT = 0
+function scrollToId(id) {
+  // an anchor jump scrolls DOWN → don't let hide-on-scroll pull the nav away.
+  // Held shown until the scroll (and any pin/layout settle) actually stops; a
+  // hard cap guarantees the hold can never get stuck (e.g. anchoring in place).
+  navSettling = true
+  document.body.classList.remove('nav-hidden')
+  clearTimeout(navSettleHardT)
+  navSettleHardT = setTimeout(() => { navSettling = false }, 4000)
+  // Once the motion chunk is loaded, its ScrollToPlugin scroll is pin-aware and
+  // refresh-safe. Before that (or reduced-motion, where motion never loads)
+  // there are no pins, so a plain live-position scroll is correct.
+  if (motionMod && motionMod.scrollToTarget) {
+    motionMod.scrollToTarget(id)
+    return true
+  }
+  const target = id === 'top' ? document.body : document.getElementById(id)
+  if (!target) return false
+  const top = id === 'top' ? 0 : target.getBoundingClientRect().top + window.scrollY - NAV_H + 1
+  window.scrollTo({ top: Math.max(0, top), behavior: prefersReduced ? 'auto' : 'smooth' })
+  return true
+}
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  a.addEventListener('click', (e) => {
+    const href = a.getAttribute('href')
+    if (!href || href.length < 2) return
+    const id = href.slice(1)
+    if (id === 'top' || document.getElementById(id)) {
+      e.preventDefault()
+      scrollToId(id)
+      history.replaceState(null, '', href)
+    }
+  })
+})
+
+/* ── Compact-nav hamburger (mobile, ≤620px) — opens the links as a dropdown.
+ * The language toggle stays in the bar (always reachable); this panel just
+ * holds the nav links. Closes on link choice, ESC, or scroll. ── */
+{
+  const burger = document.querySelector('[data-burger]')
+  if (burger) {
+    const setOpen = (open) => {
+      document.body.classList.toggle('nav-open', open)
+      burger.setAttribute('aria-expanded', String(open))
+    }
+    burger.addEventListener('click', () => setOpen(!document.body.classList.contains('nav-open')))
+    document.querySelectorAll('.nav__links a').forEach((a) =>
+      a.addEventListener('click', () => setOpen(false))
+    )
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setOpen(false)
+    })
+    window.addEventListener(
+      'scroll',
+      () => {
+        if (document.body.classList.contains('nav-open')) setOpen(false)
+      },
+      { passive: true }
+    )
+  }
+}
+
+/* ── 4. Reveal once the hero poster has decoded (no flash) ────────────────── */
+let revealed = false
+function revealPage() {
+  if (revealed) return
+  revealed = true
+  document.body.classList.remove('not-ready')
+  document.body.classList.add('is-ready')
+  motionReady.then(() => motionMod?.start()) // hero intro + scroll reveals
+}
+{
+  const p = root.querySelector('.hero__poster')
+  if (p && p.complete) revealPage()
+  else if (p) {
+    p.addEventListener('load', revealPage, { once: true })
+    p.addEventListener('error', revealPage, { once: true })
+  }
+  setTimeout(revealPage, 3500) // safety — never trap the user on the loader
+}
+
+/* ── 5. Lazy-loader for every video slot (hero + ambients) ────────────────── */
+function slotSrc(id) {
+  const m = manifest[id]
+  return `/videos/${isMobile ? m.mobile : m.desktop}`
+}
+function startLoad(video) {
+  if (video.dataset.loaded) return
+  video.dataset.loaded = '1'
+  video.preload = 'auto'
+  video.src = slotSrc(video.closest('[data-id]').dataset.id)
+  video.load()
+}
+if (!prefersReduced) {
+  const marginPct = Math.round(motion.preloadMargin * 100)
+  const lazyIO = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return
+        const v = e.target.querySelector('[data-hero-video],[data-ambient-video]')
+        if (v) startLoad(v)
+        lazyIO.unobserve(e.target)
+      })
+    },
+    { rootMargin: `${marginPct}% 0px ${marginPct}% 0px` }
+  )
+  root.querySelectorAll('[data-hero],[data-ambient]').forEach((s) => lazyIO.observe(s))
+}
+
+/* ── 6. HERO video ─────────────────────────────────────────────────────────
+ *    Desktop motion-ok (scrubDesktop): PATTERN B — motion.js pins the hero and
+ *    maps scroll → currentTime (scrolling furnishes the room). No autoplay.
+ *    Mobile motion-ok: the calm play-once → hold + replay behaviour.
+ *    Reduced: poster (finished room) only. */
+let heroPlayOnce = () => {}
+if (!prefersReduced) {
+  const heroSec = root.querySelector('[data-hero]')
+  const video = heroSec.querySelector('[data-hero-video]')
+  const replay = heroSec.querySelector('[data-replay]')
+
+  const playOnce = () => {
+    const pr = video.play()
+    if (pr && pr.catch) pr.catch(() => {}) // blocked autoplay → poster (final frame) holds
+  }
+  video.addEventListener(
+    'loadeddata',
+    () => {
+      heroSec.classList.add('is-playable')
+      if (!scrubDesktop) playOnce() // scrub mode: motion.js owns playback position
+    },
+    { once: true }
+  )
+  heroPlayOnce = playOnce // fallback hook if the motion chunk fails to load
+  video.addEventListener('ended', () => {
+    heroSec.classList.add('is-ended') // holds the last frame; reveals the replay affordance
+    replay.hidden = false
+  })
+  const doReplay = () => {
+    heroSec.classList.remove('is-ended')
+    replay.hidden = true
+    try {
+      video.currentTime = 0
+    } catch {}
+    playOnce()
+  }
+  replay.addEventListener('click', (e) => {
+    e.stopPropagation()
+    doReplay()
+  })
+  // clicking the held final frame also replays (tasteful, discoverable)
+  heroSec.querySelector('.hero__media').addEventListener('click', () => {
+    if (heroSec.classList.contains('is-ended')) doReplay()
+  })
+  startLoad(video) // the hero is the one clip we fetch eagerly — it IS the moment
+}
+
+/* ── 7. AMBIENT strips ─────────────────────────────────────────────────────
+ *    scrubVideo slots on desktop = PATTERN B (motion.js scrubs them; loading
+ *    still handled by the lazy IO in §5, well before entry). Everything else
+ *    (mobile, reduced-off ambient3) keeps autoplay-while-visible. */
+const isScrubSlot = (sec) =>
+  scrubDesktop && [hero, ...ambients].some((s) => s.scrubVideo && s.id === sec.dataset.id)
+function enableAmbientAutoplay(includeScrubSlots) {
+  const io = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        const v = e.target.querySelector('[data-ambient-video]')
+        if (!v) return
+        if (e.isIntersecting) {
+          startLoad(v)
+          v.classList.add('is-playable')
+          const pr = v.play()
+          if (pr && pr.catch) pr.catch(() => {})
+        } else {
+          v.pause()
+        }
+      })
+    },
+    { threshold: motion.playThreshold }
+  )
+  root.querySelectorAll('[data-ambient]').forEach((s) => {
+    if (includeScrubSlots || !isScrubSlot(s)) io.observe(s)
+  })
+}
+if (!prefersReduced) enableAmbientAutoplay(false)
+
+/* If the motion chunk never arrives, scrub-mode videos must not sit frozen:
+ * hero plays once (its calm behaviour), scrub ambients join the autoplay IO. */
+function motionlessFallback() {
+  heroPlayOnce()
+  enableAmbientAutoplay(true)
+}
+
+/* ── 8/9. Parallax + scroll reveals now live in the lazy motion layer
+ *    (src/motion.js). Reduced-motion never loads it → content is simply
+ *    visible, nothing drifts. ── */
+
+/* ── 10a. Nav theme + hide-on-scroll ───────────────────────────────────────
+ * THEME (all modes): body.nav-ink ⇔ no [data-dark] section (hero / ambient
+ *   strip) sits under the nav band → ink text + paper frosted bar; otherwise
+ *   white text + scrim over media. Section-position based (not blend modes —
+ *   they invert unreliably over composited <video> layers).
+ * HIDE (motion only): once the hero is scrolled past, the nav slides up on a
+ *   downward scroll and returns on any upward scroll. Always shown over the
+ *   hero and at the very top; disabled under reduced-motion. */
+{
+  const darkEls = [...root.querySelectorAll('[data-dark]')]
+  const heroEl = root.querySelector('[data-hero]')
+  const mid = NAV_H / 2
+  let pending = false
+  let lastY = window.scrollY
+  let settleT = 0
+  const update = () => {
+    pending = false
+    const y = window.scrollY
+    const overMedia = darkEls.some((el) => {
+      const r = el.getBoundingClientRect()
+      return r.top < mid && r.bottom > mid
+    })
+    document.body.classList.toggle('nav-ink', !overMedia)
+
+    if (!prefersReduced) {
+      const heroBottom = heroEl ? heroEl.getBoundingClientRect().bottom : 0
+      const pastHero = heroBottom <= NAV_H + 4
+      if (navSettling) {
+        // anchor scroll in flight: keep shown; end the hold once scroll has been
+        // quiet for 1200ms (long enough to bridge the hero-pin stall that briefly
+        // freezes the programmatic scroll), re-baselined for the next user scroll.
+        document.body.classList.remove('nav-hidden')
+        clearTimeout(settleT)
+        settleT = setTimeout(() => { navSettling = false; lastY = window.scrollY }, 1200)
+      } else if (!pastHero) {
+        document.body.classList.remove('nav-hidden') // over / through the hero
+      } else if (y > lastY + 8) {
+        document.body.classList.add('nav-hidden') // meaningful downward scroll → hide
+      } else if (y < lastY - 4) {
+        document.body.classList.remove('nav-hidden') // any upward scroll → show
+      }
+    }
+    lastY = y
+  }
+  const onScroll = () => {
+    if (!pending) {
+      pending = true
+      requestAnimationFrame(update)
+    }
+  }
+  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('resize', onScroll)
+  update()
+}
+
+/* ── 10b. Hide the hero scroll cue after the first scroll ─────────────────── */
+{
+  const hint = root.querySelector('[data-hint]')
+  if (hint) {
+    const onScroll = () => {
+      if (window.scrollY > 12) {
+        hint.classList.add('is-hidden')
+        window.removeEventListener('scroll', onScroll)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+  }
+}
+
+/* ── 11. PROJECTS — detail overlay (edge-to-edge photo sequence) ──────────── */
+{
+  const overlay = document.createElement('div')
+  overlay.className = 'pdetail'
+  overlay.hidden = true
+  overlay.setAttribute('role', 'dialog')
+  overlay.setAttribute('aria-modal', 'true')
+  overlay.innerHTML = `
+    <button class="pdetail__close" type="button" data-pdetail-close
+            data-i18n-aria="projects.close" aria-label="Close">
+      <span aria-hidden="true">✕</span>
+    </button>
+    <div class="pdetail__scroll" data-pdetail-scroll tabindex="-1">
+      <header class="pdetail__head">
+        <p class="pdetail__meta" data-pdetail-meta></p>
+        <h2 class="pdetail__title" data-pdetail-title></h2>
+        <p class="pdetail__blurb" data-pdetail-blurb></p>
+      </header>
+      <div class="pdetail__seq" data-pdetail-seq></div>
+    </div>`
+  document.body.appendChild(overlay)
+
+  const elClose = overlay.querySelector('[data-pdetail-close]')
+  const elScroll = overlay.querySelector('[data-pdetail-scroll]')
+  const elMeta = overlay.querySelector('[data-pdetail-meta]')
+  const elTitle = overlay.querySelector('[data-pdetail-title]')
+  const elBlurb = overlay.querySelector('[data-pdetail-blurb]')
+  const elSeq = overlay.querySelector('[data-pdetail-seq]')
+  let lastFocus = null
+  let pano = null // live 360° viewer instance for the open project
+  let overlayCleanup = null // motion-layer teardown for the open project
+  let openToken = 0 // guards async pano setup against a fast close/reopen
+
+  /* The 360° viewer: Three.js + the texture load ONLY here — never on the
+   * main page. Works in every mode; auto-yaw is off under reduced-motion. */
+  async function setupPano(p, token) {
+    const stageEl = overlay.querySelector('[data-pano-stage]')
+    if (!stageEl) return
+    try {
+      const { createPano } = await import('./pano.js')
+      if (token !== openToken || overlay.hidden) return // closed while loading
+      pano = createPano(stageEl, {
+        src: `/panoramas/${p.panorama}-${isMobile ? 2048 : 4096}.webp`,
+        scroller: elScroll,
+        scrollYawDeg: motion.panoScrollYaw,
+        autoYaw: !prefersReduced,
+      })
+    } catch {} // viewer is an enhancement — the photo sequence still stands
+  }
+
+  function openProject(i) {
+    const p = projects[i]
+    if (!p) return
+    const t = (bg, en) => (lang === 'bg' ? bg : en)
+    const token = ++openToken
+    elMeta.textContent = t(p.metaBg, p.metaEn)
+    elTitle.textContent = t(p.titleBg, p.titleEn)
+    elBlurb.textContent = t(p.blurbBg, p.blurbEn) || ''
+    elTitle.dataset.bg = p.titleBg; elTitle.dataset.en = p.titleEn
+    elMeta.dataset.bg = p.metaBg; elMeta.dataset.en = p.metaEn
+    elBlurb.dataset.bg = p.blurbBg || ''; elBlurb.dataset.en = p.blurbEn || ''
+
+    const frames = (p.frames || [p.cover]).map(
+      (src) =>
+        `<figure class="pdetail__frame"><img src="${src}" alt="" loading="lazy" decoding="async" /></figure>`
+    )
+    // 360° block sits after the lead photo (title → photo → look around → rest)
+    const panoBlock = p.panorama
+      ? `<div class="pdetail__pano">
+           <div class="pdetail__pano-stage" data-pano-stage></div>
+           <span class="pdetail__pano-badge" data-i18n="pano.badge">${ui.pano.badge[lang === 'bg' ? 0 : 1]}</span>
+           <p class="pdetail__pano-hint" data-i18n="pano.hint">${ui.pano.hint[lang === 'bg' ? 0 : 1]}</p>
+         </div>`
+      : ''
+    elSeq.innerHTML = frames[0] + panoBlock + frames.slice(1).join('')
+
+    overlay.setAttribute('aria-label', t(p.titleBg, p.titleEn))
+    lastFocus = document.activeElement
+    overlay.hidden = false
+    document.body.classList.add('is-locked')
+    requestAnimationFrame(() => {
+      overlay.classList.add('is-open')
+      elScroll.scrollTop = 0
+      elClose.focus()
+      if (motionMod) overlayCleanup = motionMod.overlayMotion(elScroll)
+    })
+    if (p.panorama) setupPano(p, token)
+    document.addEventListener('keydown', onKey)
+  }
+  function closeProject() {
+    openToken++ // invalidate any in-flight pano setup
+    overlay.classList.remove('is-open')
+    document.body.classList.remove('is-locked')
+    document.removeEventListener('keydown', onKey)
+    const inst = pano
+    const cleanup = overlayCleanup
+    pano = null
+    overlayCleanup = null
+    let finished = false
+    const done = () => {
+      if (finished) return // transitionend AND the timeout both call this
+      finished = true
+      overlay.hidden = true
+      overlay.removeEventListener('transitionend', done)
+      inst?.destroy() // dispose GL context, texture, listeners
+      cleanup?.() // revert overlay ScrollTriggers
+      if (lastFocus && lastFocus.focus) lastFocus.focus()
+    }
+    overlay.addEventListener('transitionend', done)
+    setTimeout(done, 450) // fallback if no transition fires
+  }
+  function onKey(e) {
+    if (e.key === 'Escape') return closeProject()
+    if (e.key === 'Tab') {
+      // minimal focus trap: only close + scroll region are focusable
+      const f = [elClose, elScroll]
+      const first = f[0]
+      const last = f[f.length - 1]
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus()
+      }
+    }
+  }
+
+  root.querySelectorAll('[data-project]').forEach((btn) =>
+    btn.addEventListener('click', () => openProject(+btn.dataset.project))
+  )
+  elClose.addEventListener('click', closeProject)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeProject()
+  })
+}

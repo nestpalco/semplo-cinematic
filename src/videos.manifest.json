@@ -1,0 +1,83 @@
+{
+  "hero": {
+    "role": "hero",
+    "scrub": true,
+    "desktop": "hero-1440.mp4",
+    "mobile": "hero-720.mp4",
+    "poster": "hero-poster.webp",
+    "posterMobile": "hero-poster-720.webp",
+    "posterFirst": "hero-poster-first.webp",
+    "posterFrame": "last",
+    "width": 1440,
+    "height": 810,
+    "aspect": 1.7778,
+    "duration": 10.033,
+    "fps": 30,
+    "bytes": {
+      "desktop": 4363971,
+      "mobile": 211472,
+      "poster": 57748,
+      "posterMobile": 21490
+    }
+  },
+  "ambient1": {
+    "role": "ambient",
+    "scrub": true,
+    "desktop": "ambient1-1280.mp4",
+    "mobile": "ambient1-720.mp4",
+    "poster": "ambient1-poster.webp",
+    "posterMobile": "ambient1-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 720,
+    "aspect": 1.7778,
+    "duration": 5,
+    "fps": 30,
+    "bytes": {
+      "desktop": 2150397,
+      "mobile": 406159,
+      "poster": 80492,
+      "posterMobile": 36516
+    }
+  },
+  "ambient2": {
+    "role": "ambient",
+    "scrub": true,
+    "desktop": "ambient2-1280.mp4",
+    "mobile": "ambient2-720.mp4",
+    "poster": "ambient2-poster.webp",
+    "posterMobile": "ambient2-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 1176,
+    "aspect": 1.0884,
+    "duration": 5.042,
+    "fps": 24,
+    "bytes": {
+      "desktop": 2054392,
+      "mobile": 115500,
+      "poster": 33940,
+      "posterMobile": 16042
+    }
+  },
+  "ambient3": {
+    "role": "ambient",
+    "scrub": false,
+    "desktop": "ambient3-1280.mp4",
+    "mobile": "ambient3-720.mp4",
+    "poster": "ambient3-poster.webp",
+    "posterMobile": "ambient3-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 662,
+    "aspect": 1.9335,
+    "duration": 6.042,
+    "fps": 24,
+    "bytes": {
+      "desktop": 591385,
+      "mobile": 143320,
+      "poster": 19712,
+      "posterMobile": 9710
+    }
+  }
+}

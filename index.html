@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="bg">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Semplo — Интериорно студио · Interior Studio</title>
+    <meta
+      name="description"
+      content="Semplo — интериорно студио за спокойни, премиум пространства. Избрани проекти, завършени интериори. A calm, photography-first interior studio — selected work, finished interiors."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f3f1ec'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' fill='%23a6760a' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..500&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HomeAndConstructionBusiness",
+        "name": "Semplo",
+        "description": "Интериорно студио — дизайн, строителство, внос на строителни материали и мебели по поръчка.",
+        "telephone": "+359 889 747 773",
+        "email": "office@semplohome.com",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "бул. „Околовръстен път“ 130",
+          "addressLocality": "София",
+          "addressCountry": "BG"
+        },
+        "sameAs": [
+          "https://www.facebook.com/semplodesign.bulgaria",
+          "https://www.instagram.com/semplo.design",
+          "https://semplohome.com/"
+        ]
+      }
+    </script>
+  </head>
+  <body class="not-ready">
+    <!-- soft scrim behind the nav — guarantees white nav text stays legible over
+         ANY video frame (incl. near-white rooms). Hidden over light sections. -->
+    <div class="nav-scrim" data-nav-scrim aria-hidden="true"></div>
+
+    <!-- ───────────────── Top nav ───────────────── -->
+    <header class="nav" data-nav>
+      <a class="nav__brand" href="#top">
+        <span class="nav__logo" data-i18n="brand">Semplo</span>
+        <span class="nav__tag" data-i18n="tagline">Интериорно студио</span>
+      </a>
+      <nav class="nav__links" id="nav-links" aria-label="Primary">
+        <a href="#work" data-i18n="nav.work">Проекти</a>
+        <a href="#catalogs" data-i18n="nav.catalogs">Каталози</a>
+        <a href="#studio" data-i18n="nav.studio">Студио</a>
+        <a href="#contact" data-i18n="nav.contact">Контакт</a>
+        <a href="https://semplohome.com/" target="_blank" rel="noopener" class="nav__ext" data-i18n="nav.shop">Магазин</a>
+      </nav>
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" class="lang__btn is-active" data-lang="bg" aria-pressed="true">BG</button>
+        <span class="lang__sep">·</span>
+        <button type="button" class="lang__btn" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <!-- compact-nav toggle (shown ≤620px; opens the links as a dropdown panel) -->
+      <button class="nav__burger" data-burger type="button" aria-label="Меню"
+              aria-expanded="false" aria-controls="nav-links">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <main id="top">
+      <!-- ─── Hero + ambient strips + projects gallery are injected here by main.js ─── -->
+      <div data-sections></div>
+
+      <!-- ──────────── Каталози — internal catalogues section ────────────
+           Cards injected from the `catalogs` config by main.js; PDFs served
+           from /public/catalogs/. Nothing links to the retired old site. -->
+      <section class="interlude catalogs" id="catalogs" data-interlude data-alive="blueprint">
+        <div class="interlude__inner">
+          <p class="interlude__eyebrow" data-i18n="catalogs.eyebrow">Каталози</p>
+          <h2 class="interlude__title" data-i18n="catalogs.title">Мебели и оборудване по каталог.</h2>
+          <p class="interlude__body" data-i18n="catalogs.text">
+            Изтеглете нашите каталози за мебели по поръчка и професионално оборудване за гастрономия.
+          </p>
+        </div>
+        <div class="catgrid" data-catgrid></div>
+      </section>
+
+      <!-- ──────────── Portfolio + Contact (layout aligned with #catalogs) ──────────── -->
+      <section class="cta" id="contact" data-alive="geometry">
+        <div class="interlude__inner">
+          <p class="cta__eyebrow" data-i18n="cta.eyebrow">Портфолио</p>
+          <h2 class="cta__title" data-i18n="cta.title">Да създадем вашето пространство.</h2>
+          <p class="cta__text" data-i18n="cta.text">
+            Подбрана селекция от завършени интериори — от градски апартаменти до къщи край морето.
+            Разкажете ни за вашия проект.
+          </p>
+        </div>
+        <!-- PATTERN C: the four project covers drift by as a strip -->
+        <div class="hstrip" data-hstrip="portfolio" aria-hidden="true"></div>
+        <!-- own clear moment: generous space above the button (see .cta__act) -->
+        <div class="interlude__inner cta__act">
+          <a class="cta__btn" href="mailto:office@semplohome.com" data-i18n="cta.button">Свържете се с нас</a>
+          <p class="cta__contacts">
+            <a href="tel:+359889747773">+359 889 747 773</a>
+            <span aria-hidden="true">·</span>
+            <a href="mailto:office@semplohome.com">office@semplohome.com</a>
+            <span aria-hidden="true">·</span>
+            <span data-i18n="contact.addr">бул. „Околовръстен път“ 130, София</span>
+          </p>
+        </div>
+        <!-- PATTERN D: full-bleed Google Maps band (no API key), muted to the palette -->
+        <div class="cta__map">
+          <iframe
+            src="https://www.google.com/maps?q=%D0%B1%D1%83%D0%BB.%20%E2%80%9E%D0%9E%D0%BA%D0%BE%D0%BB%D0%BE%D0%B2%D1%80%D1%8A%D1%81%D1%82%D0%B5%D0%BD%20%D0%BF%D1%8A%D1%82%E2%80%9C%20130%2C%20%D0%A1%D0%BE%D1%84%D0%B8%D1%8F&output=embed&hl=bg"
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+            title="Semplo — бул. „Околовръстен път“ 130, София"
+          ></iframe>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <!-- LEFT: social icons only -->
+        <div class="foot__col foot__social">
+          <a href="https://www.facebook.com/semplodesign.bulgaria" target="_blank" rel="noopener" aria-label="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M14 9h3l.4-3H14V4.3c0-.9.3-1.5 1.6-1.5H17V.1C16.7.1 15.7 0 14.6 0 12.2 0 10.6 1.4 10.6 4v2H8v3h2.6v8H14V9z"/>
+            </svg>
+          </a>
+          <a href="https://www.instagram.com/semplo.design" target="_blank" rel="noopener" aria-label="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path fill="currentColor" d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .4 1.4.9.5.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.4 1-.9 1.4-.4.5-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.4-1.4-.9-.5-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.4-1 .9-1.4.4-.5.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 3.2A6.6 6.6 0 1 0 12 18.6 6.6 6.6 0 0 0 12 5.4zm0 10.9A4.3 4.3 0 1 1 12 7.7a4.3 4.3 0 0 1 0 8.6zm6.8-11.2a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+            </svg>
+          </a>
+        </div>
+        <!-- CENTER: wordmark + rights -->
+        <div class="foot__col foot__center">
+          <span class="foot__brand">Semplo</span>
+          <span data-i18n="foot.rights">© 2026 Semplo — Интериорно студио · Всички права запазени</span>
+        </div>
+        <!-- RIGHT: address + phone + email -->
+        <div class="foot__col foot__contact">
+          <span data-i18n="contact.addr">бул. „Околовръстен път“ 130, София</span>
+          <a href="tel:+359889747773">+359 889 747 773</a>
+          <a href="mailto:office@semplohome.com">office@semplohome.com</a>
+        </div>
+      </footer>
+
+      <!-- No-JS fallback: a plain poster gallery — the finished hero room + projects. -->
+      <noscript>
+        <div class="nojs-gallery">
+          <figure>
+            <img src="/videos/hero-poster.webp" alt="Semplo — a finished, furnished interior in soft daylight" />
+            <figcaption><b>Semplo</b> · Interiors that settle around the light</figcaption>
+          </figure>
+          <figure>
+            <img src="/projects/g1-01-1600.webp" alt="Semplo — living area with marble media wall and copper lighting" />
+            <figcaption><b>Дневна зона</b> · The Living Area</figcaption>
+          </figure>
+          <figure>
+            <img src="/projects/g5-01-1600.webp" alt="Semplo — dining table on a brass base beside the kitchen" />
+            <figcaption><b>Трапезария и кухня</b> · Dining &amp; Kitchen</figcaption>
+          </figure>
+          <figure>
+            <img src="/projects/g14-01-1600.webp" alt="Semplo — attic bedroom in oak with smoked-glass wardrobes" />
+            <figcaption><b>Спалня под покрива</b> · The Attic Bedroom</figcaption>
+          </figure>
+          <figure>
+            <img src="/projects/g20-01-1600.webp" alt="Semplo — home office in dark wood and black marble" />
+            <figcaption><b>Домашен кабинет</b> · The Home Office</figcaption>
+          </figure>
+        </div>
+      </noscript>
+    </main>
+
+    <div class="loader" data-loader aria-hidden="true"><span class="loader__mark">Semplo</span></div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
