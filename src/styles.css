@@ -1,13 +1,54 @@
-/* ───────────────────────── Semplo — design tokens ───────────────────────── */
+/* ───────────────────────── Semplo — design tokens ─────────────────────────
+ * LIGHT / DARK THEMING
+ * Every colour a section, the nav, the footer, the overlay, the catalogues grid
+ * or the map paints with resolves to a token below. The dark theme is ONE
+ * override block on [data-theme='dark'] — nothing else in this file (and no JS
+ * beyond setting that attribute) needs to know a theme exists.
+ *
+ * Two token families, and the split matters:
+ *   FLIPPING  — page surfaces and text: greige, paper, the ink ramp, gold, line.
+ *   CONSTANT  — anything painted OVER video or photography (--on-media*,
+ *               --media-bg, the media scrims). A photograph looks the same in
+ *               both themes, so its overlay text must not flip; flipping it
+ *               would put dark type on dark footage.
+ *
+ * CONTRAST (both themes verified ≥ 4.5:1 for text — see e2e "contrast" test):
+ *   --gold is the BRAND accent, used for hairlines/washes/focus (needs 3:1 as a
+ *   UI colour). --gold-ink is the same accent tuned for TEXT (needs 4.5:1) —
+ *   small gold eyebrows at 0.62-0.76rem cannot use the brand value in light mode.
+ * ------------------------------------------------------------------------- */
 :root {
-  --greige: #f3f1ec;
-  --paper: #faf8f4;
-  --ink: #1c1a17;
-  --ink-soft: #4a443c;
-  --ink-faint: #8d8475;
-  --gold: #a6760a;
-  --gold-soft: #c79a3e;
+  color-scheme: light;
+
+  /* ── surfaces + text (flip) ── */
+  --greige: #f3f1ec; /* page base */
+  --paper: #faf8f4; /* raised surface: cards, projects band, overlay */
+  --ink: #1c1a17; /* primary text / display type */
+  --ink-soft: #4a443c; /* body copy */
+  --ink-faint: #6f675a; /* meta text (was #8d8475 — only 3.27:1, failed AA) */
+  --gold: #a6760a; /* brand accent: hairlines, washes, focus ring */
+  --gold-ink: #8a6208; /* brand accent as TEXT (4.86:1 on greige) */
+  --gold-soft: #c79a3e; /* accent over dark media */
   --line: rgba(28, 26, 23, 0.12);
+  --gold-line: rgba(166, 118, 10, 0.35);
+  --gold-line-hover: rgba(166, 118, 10, 0.4);
+  --gold-wash: rgba(166, 118, 10, 0.06);
+  --gold-wash-strong: rgba(166, 118, 10, 0.07);
+  --wash-neutral: rgba(74, 68, 60, 0.06);
+  --shadow-card: 0 18px 40px -24px rgba(28, 26, 23, 0.4);
+  --shadow-soft: 0 30px 60px -40px rgba(28, 26, 23, 0.5);
+  --nav-bar-bg: rgba(250, 248, 244, 0.85); /* frosted nav bar, past the hero */
+  --panel-bg: rgba(250, 248, 244, 0.97); /* mobile nav dropdown */
+  --chip-bg: rgba(250, 248, 244, 0.7); /* overlay close button */
+  --map-filter: grayscale(1) contrast(0.92) sepia(0.14) brightness(1.03);
+
+  /* ── over-media constants (never flip) ── */
+  --on-media: #faf8f4; /* text/chrome over video or photography */
+  --on-media-ink: #1c1a17; /* text on a cream chip that sits over media */
+  --on-media-line: rgba(250, 248, 244, 0.55);
+  --on-media-faint: rgba(250, 248, 244, 0.66);
+  --on-media-body: rgba(250, 248, 244, 0.92);
+  --media-bg: #14120f; /* letterbox behind a clip before it paints */
 
   --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -15,6 +56,47 @@
   --nav-h: 76px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --gut: clamp(1.25rem, 5vw, 5rem);
+}
+
+/* ── DARK: near-black warm ground, cream type, brighter brass.
+      Gold lifts to #d8a648 — 8.5:1 on the base, which is where the accent
+      finally gets to read as brass rather than mud. ── */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --greige: #121110;
+  --paper: #1b1917;
+  --ink: #f2eee6;
+  --ink-soft: #c5bdae;
+  --ink-faint: #a09788;
+  --gold: #d8a648;
+  --gold-ink: #d8a648; /* already 8.5:1 — text and brand can share here */
+  --gold-soft: #e5bd72;
+  --line: rgba(242, 238, 230, 0.14);
+  --gold-line: rgba(216, 166, 72, 0.38);
+  --gold-line-hover: rgba(216, 166, 72, 0.5);
+  --gold-wash: rgba(216, 166, 72, 0.07);
+  --gold-wash-strong: rgba(216, 166, 72, 0.08);
+  --wash-neutral: rgba(197, 189, 174, 0.05);
+  --shadow-card: 0 18px 40px -24px rgba(0, 0, 0, 0.75);
+  --shadow-soft: 0 30px 60px -40px rgba(0, 0, 0, 0.8);
+  --nav-bar-bg: rgba(18, 17, 16, 0.82);
+  --panel-bg: rgba(18, 17, 16, 0.97);
+  --chip-bg: rgba(20, 19, 17, 0.72);
+  /* the Google embed has no dark mode — invert it, then re-rotate the hues so
+     it lands back in the palette instead of going blue */
+  --map-filter: grayscale(1) invert(0.9) contrast(0.92) brightness(0.92) sepia(0.12);
+}
+
+/* Cross-fade the swap. main.js adds .theme-anim for ~400ms around a toggle
+   (never under reduced motion), so surfaces glide instead of snapping —
+   transient, and limited to colour properties so it cannot fight a transform. */
+html.theme-anim,
+html.theme-anim *,
+html.theme-anim *::before,
+html.theme-anim *::after {
+  transition: background-color 0.32s var(--ease), border-color 0.32s var(--ease),
+    color 0.32s var(--ease), fill 0.32s var(--ease) !important;
 }
 
 *,
@@ -108,7 +190,7 @@ body.nav-ink .nav-scrim {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0 var(--gut);
-  color: var(--paper);
+  color: var(--on-media); /* over the hero/ambient footage — constant in both themes */
   /* subtle edge definition only — the scrim does the real legibility work */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   transition: color 0.35s var(--ease), text-shadow 0.35s var(--ease),
@@ -122,7 +204,7 @@ body.nav-ink .nav-scrim {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: rgba(250, 248, 244, 0.85); /* --paper, slightly translucent */
+  background: var(--nav-bar-bg);
   -webkit-backdrop-filter: blur(12px) saturate(1.05);
   backdrop-filter: blur(12px) saturate(1.05);
   border-bottom: 1px solid var(--line);
@@ -201,7 +283,9 @@ body.reduced .nav {
   letter-spacing: inherit;
   padding: 0.2rem 0.1rem;
   cursor: pointer;
-  opacity: 0.55;
+  /* 0.72, not the old 0.55: the inactive language still has to clear AA as text
+     (0.55 composited to only 3.37:1 against the frosted bar). */
+  opacity: 0.72;
   transition: opacity 0.3s var(--ease);
 }
 .lang__btn.is-active {
@@ -210,8 +294,52 @@ body.reduced .nav {
   text-underline-offset: 4px;
 }
 .lang__sep {
-  opacity: 0.5;
+  opacity: 0.7;
 }
+
+/* ── Light / Dark switch — sits beside BG·EN, same quiet chrome language.
+      An ICON toggle rather than a "Светлина / Тъмен" word pair: the words run
+      ~16 characters, which at 390px would crowd the bar it shares with the
+      language toggle and the burger. The bilingual wording lives in the
+      aria-label + tooltip instead (main.js keeps it in sync with the language),
+      so screen readers and hover both announce it properly in BG and EN.
+      The icon shown is the theme you would GET, not the current one. ── */
+.themetog {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 0 0 0.9rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.82;
+  transition: opacity 0.3s var(--ease), border-color 0.3s var(--ease),
+    background 0.3s var(--ease);
+}
+.themetog:hover {
+  opacity: 1;
+  border-color: var(--line);
+}
+body.nav-ink .themetog:hover {
+  background: var(--gold-wash);
+}
+/* NB: deliberately no `display` here. A `.themetog svg` rule (0,1,1) would
+   out-rank the bare `.themetog__sun` class (0,1,0) below and paint BOTH icons —
+   which is exactly what happened before the e2e icon assertion caught it. The
+   swap rules are class-doubled so they always win. */
+.themetog svg {
+  width: 17px;
+  height: 17px;
+}
+/* show the moon in light mode (click → dark) and the sun in dark mode */
+.themetog .themetog__moon { display: block; }
+.themetog .themetog__sun { display: none; }
+:root[data-theme='dark'] .themetog .themetog__moon { display: none; }
+:root[data-theme='dark'] .themetog .themetog__sun { display: block; }
 
 main {
   position: relative;
@@ -226,7 +354,7 @@ main {
   height: 100svh;
   min-height: 560px;
   overflow: hidden;
-  background: var(--ink);
+  background: var(--media-bg); /* never --ink: that inverts to cream in dark */
 }
 .hero__media {
   position: absolute;
@@ -276,7 +404,7 @@ main {
   bottom: clamp(6.5rem, 12vh, 8rem);
   z-index: 4;
   max-width: min(94%, 960px);
-  color: var(--paper);
+  color: var(--on-media);
 }
 .hero__title {
   margin: 0;
@@ -293,7 +421,7 @@ main {
   margin: 1.3rem 0 0;
   font-size: clamp(1rem, 1.7vw, 1.25rem);
   letter-spacing: 0.01em;
-  color: rgba(250, 248, 244, 0.92);
+  color: var(--on-media-body);
   max-width: 46ch;
   text-shadow: 0 1px 20px rgba(0, 0, 0, 0.35);
 }
@@ -303,7 +431,7 @@ main {
   margin: 0.9rem 0 0;
   font-size: clamp(0.72rem, 1.05vw, 0.84rem);
   letter-spacing: 0.05em;
-  color: rgba(250, 248, 244, 0.66);
+  color: var(--on-media-faint);
   text-shadow: 0 1px 16px rgba(0, 0, 0, 0.35);
 }
 .hero__cta {
@@ -312,9 +440,9 @@ main {
   gap: 0.6rem;
   margin-top: 1.7rem;
   padding: 0.9rem 1.8rem;
-  border: 1px solid rgba(250, 248, 244, 0.55);
+  border: 1px solid var(--on-media-line);
   border-radius: 100px;
-  color: var(--paper);
+  color: var(--on-media);
   font-size: 0.82rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -325,9 +453,9 @@ main {
   transition: transform 0.4s var(--ease);
 }
 .hero__cta:hover {
-  background: var(--paper);
-  color: var(--ink);
-  border-color: var(--paper);
+  background: var(--on-media);
+  color: var(--on-media-ink);
+  border-color: var(--on-media);
 }
 .hero__cta:hover::after { transform: translateX(4px); }
 
@@ -344,7 +472,7 @@ main {
   border-radius: 50%;
   border: 1px solid rgba(250, 248, 244, 0.5);
   background: rgba(18, 16, 13, 0.28);
-  color: var(--paper);
+  color: var(--on-media);
   cursor: pointer;
   opacity: 0;
   backdrop-filter: blur(4px);
@@ -367,7 +495,7 @@ main {
   align-items: center;
   gap: 0.5rem;
   max-width: calc(100vw - 2 * var(--gut)); /* never widen past the viewport */
-  color: var(--paper);
+  color: var(--on-media);
   font-size: 0.66rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -380,7 +508,7 @@ main {
 .hero__scroll-line {
   width: 1px;
   height: 40px;
-  background: linear-gradient(var(--paper), transparent);
+  background: linear-gradient(var(--on-media), transparent);
   animation: drip 1.9s ease-in-out infinite;
   transform-origin: top;
 }
@@ -407,7 +535,7 @@ main {
   position: relative;
   height: clamp(420px, 74svh, 760px);
   overflow: hidden;
-  background: var(--ink);
+  background: var(--media-bg);
 }
 .ambient__media {
   position: absolute;
@@ -435,7 +563,7 @@ main {
   left: var(--gut);
   bottom: clamp(2rem, 7vh, 4.5rem);
   z-index: 3;
-  color: var(--paper);
+  color: var(--on-media);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -474,7 +602,9 @@ main {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  color: var(--ink); /* stroke colour for the SVG variants */
+  /* stroke colour for the SVG variants — flips with the theme, so the linework
+     stays a whisper ABOVE the ground in both (cream on near-black in dark). */
+  color: var(--ink);
 }
 .alive-bg svg {
   position: absolute;
@@ -497,8 +627,8 @@ main {
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(48% 42% at 24% 36%, rgba(166, 118, 10, 0.07), transparent 70%),
-    radial-gradient(40% 46% at 78% 64%, rgba(74, 68, 60, 0.06), transparent 70%);
+    radial-gradient(48% 42% at 24% 36%, var(--gold-wash-strong), transparent 70%),
+    radial-gradient(40% 46% at 78% 64%, var(--wash-neutral), transparent 70%);
 }
 /* sections that host a layer clip it (the sway would otherwise poke a
    horizontal scrollbar) and keep their content above it */
@@ -556,8 +686,8 @@ main {
 .catcard:hover,
 .catcard:focus-visible {
   transform: translateY(-4px);
-  border-color: rgba(166, 118, 10, 0.4);
-  box-shadow: 0 18px 40px -24px rgba(28, 26, 23, 0.4);
+  border-color: var(--gold-line-hover);
+  box-shadow: var(--shadow-card);
 }
 /* typographic "cover" — catalogue name set in the house serif, gold hairline */
 .catcard__cover {
@@ -569,7 +699,7 @@ main {
   justify-content: flex-end;
   gap: 0.7rem;
   background:
-    radial-gradient(120% 90% at 15% 0%, rgba(166, 118, 10, 0.06), transparent 60%),
+    radial-gradient(120% 90% at 15% 0%, var(--gold-wash), transparent 60%),
     var(--greige);
   border-bottom: 1px solid var(--line);
 }
@@ -579,8 +709,8 @@ main {
   right: clamp(1rem, 2vw, 1.4rem);
   font-size: 0.62rem;
   letter-spacing: 0.22em;
-  color: var(--gold);
-  border: 1px solid rgba(166, 118, 10, 0.35);
+  color: var(--gold-ink);
+  border: 1px solid var(--gold-line);
   border-radius: 100px;
   padding: 0.25rem 0.6rem;
 }
@@ -647,7 +777,7 @@ main {
   font-size: 0.76rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .interlude__title {
   margin: 0;
@@ -705,7 +835,7 @@ main {
   border-radius: 4px;
   overflow: hidden;
   border: 1px solid var(--line);
-  box-shadow: 0 30px 60px -40px rgba(28, 26, 23, 0.5);
+  box-shadow: var(--shadow-soft);
 }
 .studio__media img {
   display: block;
@@ -801,6 +931,15 @@ main {
   height: 100%;
   object-fit: cover;
 }
+/* ── MOBILE strips: STEPPED advance (motion.js adds .is-stepped and writes
+      --frame). On touch the strip moves a WHOLE frame at a time and CSS glides
+      it, instead of GSAP writing a transform every scroll pixel — see the
+      mobileCard() note in motion.js for why. Desktop never gets this rule, so
+      its per-pixel scrub is untouched. ── */
+.project.is-stepped .project__strip {
+  transform: translateX(calc(var(--frame, 0) * -100%));
+  transition: transform 0.62s var(--ease);
+}
 /* caption chip — slides up over the photo on hover */
 .project__view {
   position: absolute;
@@ -809,9 +948,10 @@ main {
   z-index: 2;
   padding: 0.5rem 1.05rem;
   border-radius: 100px;
+  /* a cream chip on a photograph — constant in both themes */
   background: rgba(250, 248, 244, 0.82);
   backdrop-filter: blur(6px);
-  color: var(--ink);
+  color: var(--on-media-ink);
   font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -878,7 +1018,7 @@ main {
   height: 46px;
   border-radius: 50%;
   border: 1px solid var(--line);
-  background: rgba(250, 248, 244, 0.7);
+  background: var(--chip-bg);
   backdrop-filter: blur(6px);
   color: var(--ink);
   font-size: 1rem;
@@ -896,7 +1036,7 @@ main {
   font-size: 0.76rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .pdetail__title {
   margin: 0;
@@ -933,7 +1073,7 @@ main {
 .pdetail__pano {
   position: relative;
   height: clamp(420px, 72svh, 780px);
-  background: var(--ink);
+  background: var(--media-bg);
   overflow: hidden;
 }
 .pdetail__pano-stage {
@@ -981,7 +1121,7 @@ main {
   border-radius: 100px;
   background: rgba(18, 16, 13, 0.42);
   backdrop-filter: blur(5px);
-  color: var(--paper);
+  color: var(--on-media);
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1015,7 +1155,7 @@ main {
   position: absolute;
   left: var(--gut);
   bottom: clamp(2rem, 8vh, 5rem);
-  color: var(--paper);
+  color: var(--on-media);
   font-family: var(--serif);
   font-size: clamp(1.6rem, 4.5vw, 3rem);
   text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
@@ -1036,7 +1176,7 @@ main {
   font-size: 0.76rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 .cta__title {
   margin: 0;
@@ -1087,7 +1227,7 @@ main {
   transition: color 0.3s var(--ease);
 }
 .cta__contacts a:hover {
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 /* catalogues stub button inherits .cta__btn look, just needs breathing room */
 .interlude__btn {
@@ -1116,7 +1256,7 @@ main {
   width: 100%;
   height: clamp(320px, 46vh, 560px);
   border: 0;
-  filter: grayscale(1) contrast(0.92) sepia(0.14) brightness(1.03);
+  filter: var(--map-filter);
 }
 
 /* ──────────────────────────── Footer (3 columns) ──────────────────────────── */
@@ -1185,7 +1325,7 @@ main {
   transition: color 0.3s var(--ease);
 }
 .foot__contact a:hover {
-  color: var(--gold);
+  color: var(--gold-ink);
 }
 @media (max-width: 720px) {
   .foot {
@@ -1257,13 +1397,14 @@ body.nav-open .nav__burger span:nth-child(3) { transform: translateY(-6px) rotat
     inset: var(--nav-h) 0 auto 0;
     flex-direction: column;
     gap: 0;
-    background: rgba(250, 248, 244, 0.97);
+    background: var(--panel-bg);
     -webkit-backdrop-filter: blur(14px);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid var(--line);
     padding: 0.5rem var(--gut) 1.4rem;
     font-size: 0.9rem;
-    /* the mobile panel is always ink text on paper, regardless of nav theme */
+    /* the panel always uses the theme surface/text pair, never the
+       over-media cream, regardless of which nav state is showing */
     color: var(--ink);
     text-shadow: none;
     transform: translateY(-12px);

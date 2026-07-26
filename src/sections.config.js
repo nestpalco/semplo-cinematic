@@ -229,6 +229,13 @@ export const ui = {
   scrollHint: ['Скролнете, за да видите', 'Scroll to see it furnished'],
   loading: ['Зареждане', 'Loading'],
   replay: ['Пусни отново', 'Replay'],
+  // Light / dark switch. The nav shows an icon (a word pair would crowd the
+  // 390px bar), so these are the accessible names — the action, not the state:
+  // in light mode the button offers "Тъмен режим", and vice versa.
+  theme: {
+    toDark: ['Тъмен режим', 'Dark mode'],
+    toLight: ['Светъл режим', 'Light mode'],
+  },
   projects: {
     eyebrow: ['Избрани проекти', 'Selected work'],
     title: ['Завършени интериори.', 'Finished interiors.'],
@@ -300,7 +307,10 @@ export const motion = {
 
   // 360° viewer: degrees of gentle scroll-linked yaw as the block passes through
   // the overlay viewport (0 in reduced-motion — drag always works).
-  panoScrollYaw: 70,
+  // 61, not 70: this is the one scroll-linked effect whose window is fixed by
+  // the overlay viewport, so the global 15% slow-down (SPEED.distance in
+  // motion.js) has to come off the TRAVEL instead — 70 / 1.15 ≈ 61.
+  panoScrollYaw: 61,
 
   // ── PATTERN B: scroll-scrubbed video (desktop, motion-ok only) ──────────
   scrub: {

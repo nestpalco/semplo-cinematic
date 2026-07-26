@@ -21,8 +21,9 @@ gsap.registerPlugin(ScrollTrigger, SplitText, ScrollToPlugin)
  *     PATTERN C  pinCard   the card's film strip advances rightward.
  *
  *   On MOBILE / reduced-motion: NO pins, native scroll unchanged — the same
- *   effects run position-linked (nativeStatement / nativeAmbient), videos
- *   autoplay (main.js), card strips stay static.
+ *   effects run position-linked (nativeStatement / nativeAmbient) and videos
+ *   autoplay (main.js). The card film strips DO advance on mobile, but stepped a
+ *   whole frame at a time rather than scrubbed per pixel — see mobileCard().
  *
  *   Titles reveal via maskReveal (SplitText that auto-reverts on complete), so
  *   between reveals the title is plain text and the bilingual textContent swap
@@ -36,10 +37,35 @@ const isMobile =
 const fine = matchMedia('(pointer: fine)').matches
 const EPS = motion.scrub.seekEpsilon
 
+/* ── MOTION TEMPO (fine-tune here) ──────────────────────────────────────────
+ * Three dials, all "1 = as authored, >1 = slower":
+ *   reveal   — once-only reveal/tween DURATIONS ×this.
+ *   scrub    — scrub catch-up SMOOTHING ×this; bigger = the effect glides
+ *              toward the scroll position more gradually.
+ *   distance — how much SCROLL a scroll-linked effect needs to finish. This is
+ *              the dial that genuinely slows a scroll effect down: the effect
+ *              itself is unchanged, it just takes 15% more scrolling to play
+ *              out. Feeds the pin lengths AND every native scroll window.
+ *
+ * Everything is currently 15% slower than the previous tuning: reveal and scrub
+ * were 1.1 (→ 1.1 × 1.15 = 1.265), and distance is the new dial at 1.15.
+ *
+ * DRIFT is the inverse, for the handful of effects whose scroll window is fixed
+ * by the viewport and therefore CANNOT be widened (the ambient-strip and
+ * statement parallaxes travel across one full pass by definition). There,
+ * "15% slower" has to come off the TRAVEL instead — same idea, other lever.
+ * The 360° viewer's scroll-yaw is the same case; it lives in
+ * sections.config.js as motion.panoScrollYaw. */
+const SPEED = { reveal: 1.265, scrub: 1.265, distance: 1.15 }
+const DRIFT = +(1 / SPEED.distance).toFixed(4)
+
 /* Pin lengths in viewport-heights — deliberately TIGHT so the page doesn't get
- * exhausting. The effect fills EFFECT_END of the pin, then it holds briefly and
- * releases. Retune here. */
-const PIN = { hero: 1.6, text: 1.0, video: 1.2, card: 0.9, strip: 1.1 }
+ * exhausting; SPEED.distance stretches them. The effect fills EFFECT_END of the
+ * pin, then it holds briefly and releases. Retune the BASE values. */
+const PIN_BASE = { hero: 1.6, text: 1.0, video: 1.2, card: 0.9, strip: 1.1 }
+const PIN = Object.fromEntries(
+  Object.entries(PIN_BASE).map(([k, v]) => [k, +(v * SPEED.distance).toFixed(3)])
+)
 const EFFECT_END = 0.85
 
 /* Which effect families PIN (desktop). Flip a flag to false to un-pin that
@@ -48,31 +74,38 @@ const EFFECT_END = 0.85
  * moment. Recommended first un-pins if the page feels long: card, then text. */
 const PIN_ENABLED = { text: false, card: false }
 
-/* ── MOTION TEMPO (fine-tune here) ──────────────────────────────────────────
- * reveal : once-only reveal/tween DURATIONS ×this (1.1 = 10% slower)
- * scrub  : scrub catch-up SMOOTHING ×this — bigger = the effect glides toward
- *          the scroll position more gradually (applied to every scroll-linked
- *          effect: video scrubs, parallax, strips, titles). (1.1 = 10% more
- *          gradual.)
- * The project card-strip speed is set separately by RANGE.card* + the media
- * height (styles.css .project__media) — see the card note below. */
-const SPEED = { reveal: 1.1, scrub: 1.1 }
 const SMOOTH = +(motion.scrub.smooth * SPEED.scrub).toFixed(3) // scrub catch-up (s)
 const REVEAL_DUR = +(R.duration * SPEED.reveal).toFixed(3)
 const REVEAL_STAG = +(R.stagger * SPEED.reveal).toFixed(3)
 const MASK_DUR = +(1.0 * SPEED.reveal).toFixed(3)
 
-/* Native (mobile / unpinned) trigger ranges — begin in view, end before leaving. */
+/* ── Native (mobile / unpinned) trigger ranges — begin in view, end before
+ * leaving. Every scroll-linked window here is widened by SPEED.distance.
+ *   • Windows that are a pure viewport fraction (the card strips: both ends are
+ *     measured off the card's TOP) scale exactly in percent — see topPct().
+ *   • Windows that also depend on the element's own height (the photo rows) get
+ *     a COMPUTED '+=' end instead, so the 15% is exact there too rather than
+ *     approximate — see spanEnd(). */
+const topPct = (v) => `top ${+v.toFixed(2)}%`
+const CARD_END = 3 // strip finishes with the card's top just under the nav
+const CARD_SPAN = 43 // base vh of scroll the desktop strip advance occupies
+const MCARD_START = 88 // mobile: start as the card's top enters from below
+const MCARD_SPAN_VH = 0.68 // mobile: + the card's own height (see spanEnd)
+const ROW_SPAN_VH = 0.52 // photo rows: 'top 82%' → 'bottom 30%' + own height
 const RANGE = {
   reveal: 'top 80%',
-  rowStart: 'top 82%', rowEnd: 'bottom 30%',
-  // Card film strip — SLOWED ~½ speed (was 'top 30%'→'top 5%' ≈ 214px of scroll;
-  // now 'top 46%'→'top 3%' ≈ 368px, ~1.7× more scroll per frame). To keep the
-  // WHOLE card fully in view across that wider range, the media is shortened to
-  // 46vh (was 58vh) in styles.css so the card (~54vh) has the head/foot room the
-  // longer range needs. Frame 1 still holds through entry; scrub reverses.
-  cardStart: 'top 46%', cardEnd: 'top 3%',
+  rowStart: 'top 82%',
+  // Card film strip — base span 43vh ('top 46%' → 'top 3%'), × distance. To keep
+  // the WHOLE card fully in view across that range the media is capped at 46vh
+  // in styles.css, so the card (~54vh) keeps the head/foot room it needs.
+  // Frame 1 still holds through entry; the scrub reverses.
+  cardStart: topPct(CARD_END + CARD_SPAN * SPEED.distance),
+  cardEnd: topPct(CARD_END),
+  mCardStart: topPct(MCARD_START),
 }
+/* exact '+=' end: a viewport fraction plus the element's own height, scaled. */
+const spanEnd = (el, vhPart) => () =>
+  '+=' + Math.round((vhPart * window.innerHeight + el.offsetHeight) * SPEED.distance)
 
 const REST_SEL =
   '.interlude__eyebrow, .interlude__body, .interlude__btn, .studio__stat, .studio__media,' +
@@ -262,7 +295,8 @@ function pinText(sec) {
   const tl = gsap.timeline()
   speedEls(layer).forEach((el) => {
     const sp = parseFloat(el.dataset.speed) || 1
-    tl.fromTo(el, { y: -46 * sp }, { y: 46 * sp, ease: 'none', duration: 1 }, 0)
+    const t = 46 * sp * DRIFT
+    tl.fromTo(el, { y: -t }, { y: t, ease: 'none', duration: 1 }, 0)
   })
   if (track) {
     track.querySelectorAll('img').forEach((img) => {
@@ -302,8 +336,10 @@ function pinCard(card) {
 function nativeParallax(sec, els) {
   els.forEach((el) => {
     const sp = parseFloat(el.dataset.speed) || 1
-    gsap.fromTo(el, { y: -30 * sp }, {
-      y: 30 * sp, ease: 'none',
+    // one full pass IS the window here, so the 15% slow-down comes off travel
+    const t = 30 * sp * DRIFT
+    gsap.fromTo(el, { y: -t }, {
+      y: t, ease: 'none',
       scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom top', scrub: SMOOTH },
     })
   })
@@ -312,12 +348,16 @@ function nativeHstrip(track) {
   track.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', lazyRefresh, { once: true })
   })
+  const host = track.closest('[data-hstrip]')
   gsap.fromTo(track, { x: 0 }, {
     x: () => -Math.max(0, track.scrollWidth - track.parentElement.clientWidth),
     ease: 'none',
     scrollTrigger: {
-      trigger: track.closest('[data-hstrip]'),
-      start: RANGE.rowStart, end: RANGE.rowEnd, scrub: SMOOTH, invalidateOnRefresh: true,
+      trigger: host,
+      start: RANGE.rowStart,
+      end: spanEnd(host, ROW_SPAN_VH), // was 'bottom 30%' — now exact + slowed
+      scrub: SMOOTH,
+      invalidateOnRefresh: true,
     },
   })
 }
@@ -356,19 +396,69 @@ function nativeCard(card) {
       scrollTrigger: { trigger: card, start: RANGE.cardStart, end: RANGE.cardEnd, scrub: true },
     })
 }
+/* ── MOBILE project cards — STEPPED, scroll-linked film strip ───────────────
+ * The strips were simply dead on mobile: start() never ran any card handler in
+ * the isMobile branch, so every card sat on frame 1.
+ *
+ * They don't just get nativeCard()'s treatment, though. Continuous per-pixel
+ * transform scrubbing is the wrong tool under native touch scrolling: during
+ * momentum and rubber-band the browser coalesces scroll updates, so a strip
+ * driven a fraction of a frame at a time visibly stutters and can land
+ * mid-photo when the finger lifts. So on touch the strip advances a WHOLE FRAME
+ * at a time — ScrollTrigger is used only to report progress (cheap and reliable
+ * on touch, unlike smooth per-pixel output), the progress is bucketed to a
+ * frame index, and CSS transitions the translate (see .project.is-stepped in
+ * styles.css). Each advance therefore glides on the compositor no matter how
+ * chunky the scroll events were, and a card always rests ON a photo.
+ *
+ * Still fully scroll-linked and reversible — scroll back up and it steps back —
+ * with no pin, no scroll-jacking, and no swipe gesture to fight the page scroll.
+ * At most n-1 style writes per card per pass. */
+function mobileCard(card) {
+  gsap.set(card, { autoAlpha: 0, y: 30 })
+  ScrollTrigger.create({
+    trigger: card, start: RANGE.reveal, once: true,
+    onEnter: () => gsap.to(card, { autoAlpha: 1, y: 0, duration: REVEAL_DUR, ease: R.ease }),
+  })
+
+  const strip = card.querySelector('[data-strip]')
+  const n = strip ? strip.children.length : 0
+  if (n < 2) return
+  card.classList.add('is-stepped')
+  let frame = -1
+  const setFrame = (i) => {
+    if (i === frame) return
+    frame = i
+    strip.style.setProperty('--frame', i)
+  }
+  setFrame(0)
+  ScrollTrigger.create({
+    trigger: card,
+    start: RANGE.mCardStart,
+    end: spanEnd(card, MCARD_SPAN_VH),
+    invalidateOnRefresh: true,
+    // n equal buckets across the pass; progress 1 would give n, so clamp
+    onUpdate: (self) => setFrame(Math.min(n - 1, Math.floor(self.progress * n))),
+    onLeave: () => setFrame(n - 1), // rest on the last frame past the card
+    onLeaveBack: () => setFrame(0),
+  })
+}
+
 function nativeAmbient(sec) {
   const cap = sec.querySelector('.ambient__cap')
   if (cap) {
     hide(cap.children)
     ScrollTrigger.create({ trigger: sec, start: RANGE.reveal, once: true, onEnter: () => riseIn(cap.children) })
-    gsap.fromTo(cap, { y: 26 }, {
-      y: -26, ease: 'none',
+    const t = 26 * DRIFT
+    gsap.fromTo(cap, { y: t }, {
+      y: -t, ease: 'none',
       scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom top', scrub: SMOOTH },
     })
   }
   const media = sec.querySelector('[data-parallax]')
-  if (media) gsap.fromTo(media, { y: () => -sec.offsetHeight * motion.parallax }, {
-    y: () => sec.offsetHeight * motion.parallax, ease: 'none',
+  const px = motion.parallax * DRIFT // fixed window → slow it by travel
+  if (media) gsap.fromTo(media, { y: () => -sec.offsetHeight * px }, {
+    y: () => sec.offsetHeight * px, ease: 'none',
     scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom top', scrub: SMOOTH, invalidateOnRefresh: true },
   })
 }
@@ -458,6 +548,8 @@ export async function start() {
     }
     document.querySelectorAll('.interlude, .cta, .projects__head').forEach(nativeStatement)
     document.querySelectorAll('[data-ambient]').forEach(nativeAmbient)
+    // PATTERN C project cards — stepped strip advance (see mobileCard)
+    document.querySelectorAll('.project').forEach(mobileCard)
   } else {
     /* DESKTOP — pin every effect section. */
     pinHero()
@@ -528,9 +620,10 @@ export function overlayMotion(scrollEl) {
     const head = scrollEl.querySelectorAll('.pdetail__head > *')
     hide(head)
     riseIn(head, { delay: 0.15 })
+    const fp = +(5 * DRIFT).toFixed(3) // fixed window → slow it by travel
     scrollEl.querySelectorAll('.pdetail__frame img').forEach((img) => {
-      gsap.fromTo(img, { yPercent: -5, scale: 1.12 }, {
-        yPercent: 5, scale: 1.12, ease: 'none',
+      gsap.fromTo(img, { yPercent: -fp, scale: 1.12 }, {
+        yPercent: fp, scale: 1.12, ease: 'none',
         scrollTrigger: {
           scroller: scrollEl, trigger: img.parentElement,
           start: 'top bottom', end: 'bottom top', scrub: SMOOTH, invalidateOnRefresh: true,

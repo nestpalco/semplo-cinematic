@@ -92,12 +92,73 @@ function applyLang(next) {
     b.classList.toggle('is-active', on)
     b.setAttribute('aria-pressed', String(on))
   })
+  syncThemeBtn() // the theme switch's accessible name is bilingual too
   // motion layer listens: scrub-linked SplitText titles must re-split new text
   document.dispatchEvent(new Event('semplo:lang'))
 }
 document
   .querySelectorAll('.lang__btn')
   .forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)))
+
+/* ── 1b. Light / Dark theme ────────────────────────────────────────────────
+ * The whole site is themed by ONE attribute — <html data-theme="light|dark">
+ * — which every colour token in styles.css hangs off, so nav (both its states),
+ * sections, footer, project overlay, catalogues grid and the map all follow
+ * without a single per-component branch here.
+ *
+ * Precedence: a stored choice > the OS preference. The inline boot script in
+ * index.html already resolved that before first paint (no flash); this block
+ * owns the toggle, persistence, and — while the visitor has made no explicit
+ * choice — keeps following later OS changes. */
+const THEME_KEY = 'semplo:theme'
+const darkMQ = matchMedia('(prefers-color-scheme: dark)')
+const themeBtn = document.querySelector('[data-theme-toggle]')
+const themeMeta = document.querySelector('meta[name="theme-color"]')
+let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+let themeAnimT = 0
+
+const storedTheme = () => {
+  try {
+    const v = localStorage.getItem(THEME_KEY)
+    return v === 'light' || v === 'dark' ? v : null
+  } catch {
+    return null // private mode / blocked storage — theming still works, just per-visit
+  }
+}
+
+function syncThemeBtn() {
+  if (!themeBtn) return
+  const idx = lang === 'bg' ? 0 : 1
+  const label = theme === 'dark' ? ui.theme.toLight[idx] : ui.theme.toDark[idx]
+  themeBtn.setAttribute('aria-label', label)
+  themeBtn.title = label
+  themeBtn.setAttribute('aria-pressed', String(theme === 'dark'))
+}
+
+function applyTheme(next, { persist = true } = {}) {
+  theme = next === 'dark' ? 'dark' : 'light'
+  const root = document.documentElement
+  // brief colour-only cross-fade so surfaces glide rather than snap
+  if (!prefersReduced) {
+    root.classList.add('theme-anim')
+    clearTimeout(themeAnimT)
+    themeAnimT = setTimeout(() => root.classList.remove('theme-anim'), 420)
+  }
+  root.dataset.theme = theme
+  if (themeMeta) themeMeta.content = theme === 'dark' ? '#121110' : '#f3f1ec'
+  if (persist) {
+    try {
+      localStorage.setItem(THEME_KEY, theme)
+    } catch {}
+  }
+  syncThemeBtn()
+}
+
+themeBtn?.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'))
+darkMQ.addEventListener('change', (e) => {
+  if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light', { persist: false })
+})
+syncThemeBtn()
 
 /* ── 2. Templates ─────────────────────────────────────────────────────────── */
 const posterFor = (m) => `/videos/${isMobile && m.posterMobile ? m.posterMobile : m.poster}`
