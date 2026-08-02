@@ -260,6 +260,17 @@ export const business = {
    * Trailing slash included — it is the homepage, and every mirrored copy uses
    * the identical string so nothing has to normalise it. */
   url: 'https://semplodesign.com/',
+  /* ── SOCIAL CARD — the one asset on the site that is NOT WebP ─────────────
+   * Path is relative to `url` above (og:image and schema.org `image` both need
+   * an absolute URL, which schema.js builds). Cut from the hero poster to
+   * 1200×630 by scripts/optimize-social.mjs — see that file for why a JPEG:
+   * Facebook and LinkedIn simply do not render a WebP og:image, so the preview
+   * comes up blank in the two places a studio's work actually gets shared.
+   * Every image the PAGE loads stays WebP; only this card changes format.
+   * `width`/`height` are declared to the scrapers so they can lay the card out
+   * before the image has downloaded — keep them in step with CARD in that
+   * script (the e2e suite probes the real file and fails if they disagree). */
+  ogImage: { path: 'social/og-card.jpg', width: 1200, height: 630, type: 'image/jpeg' },
   phone: '+359 877 600 018',
   tel: '+359877600018', // tel: href form (no spaces)
   email: 'office@semplohome.com',

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
+import sharp from 'sharp'
 import { businessLd, publishable } from '../src/schema.js'
 import { business, reviews, catalogs } from '../src/sections.config.js'
 
@@ -1107,6 +1108,10 @@ test('canonical domain is applied consistently and every listed URL exists', asy
       canonicalCount: document.querySelectorAll('link[rel="canonical"]').length,
       ogUrl: meta('og:url'),
       ogImage: meta('og:image'),
+      ogType: meta('og:image:type'),
+      ogW: meta('og:image:width'),
+      ogH: meta('og:image:height'),
+      ogAlt: meta('og:image:alt'),
     }
   })
   expect(head.canonicalCount, 'exactly one canonical').toBe(1)
@@ -1114,9 +1119,31 @@ test('canonical domain is applied consistently and every listed URL exists', asy
   expect(head.ogUrl, 'og:url matches business.url').toBe(SITE)
   // an off-site scraper cannot resolve a root-relative image path
   expect(head.ogImage, 'og:image is absolute on the canonical origin').toBe(
-    `${SITE_ORIGIN}/videos/hero-poster.webp`
+    `${SITE}${business.ogImage.path}`
   )
-  expect((await request.get(local(head.ogImage))).status(), 'og:image is in the deploy').toBe(200)
+  expect(head.ogAlt, 'og:image:alt is set').toBeTruthy()
+  expect(head.ogType).toBe(business.ogImage.type)
+  expect(head.ogW).toBe(String(business.ogImage.width))
+  expect(head.ogH).toBe(String(business.ogImage.height))
+
+  /* ── the social card is a REAL 1200×630 JPEG that is actually deployed ──
+     Not just "the tag is right": the whole point of this asset is that Facebook
+     and LinkedIn refuse WebP, so the bytes on the wire have to be JPEG at the
+     1.91:1 the networks crop large cards to. Probing the fetched image also
+     ties the declared og:image:width/height to reality. */
+  const card = await request.get(local(head.ogImage))
+  expect(card.status(), 'og:image is in the deploy').toBe(200)
+  expect(card.headers()['content-type'], 'served as JPEG').toContain('image/jpeg')
+  const cardMeta = await sharp(await card.body()).metadata()
+  expect(cardMeta.format, 'the bytes really are JPEG, not WebP with a .jpg name').toBe('jpeg')
+  expect(
+    { width: cardMeta.width, height: cardMeta.height },
+    'social cards want 1200×630 (1.91:1)'
+  ).toEqual({ width: business.ogImage.width, height: business.ogImage.height })
+  expect(+(cardMeta.width / cardMeta.height).toFixed(2), 'aspect 1.91:1').toBe(1.9)
+  // Facebook rejects images over 8 MB; anything near that is a mistake here
+  const cardBytes = (await card.body()).length
+  expect(cardBytes, `card is ${(cardBytes / 1024).toFixed(0)} KB`).toBeLessThan(1_000_000)
 
   /* ── JSON-LD, both the runtime build and the static no-JS fallback ── */
   const ld = await page.evaluate(() =>
@@ -1124,7 +1151,9 @@ test('canonical domain is applied consistently and every listed URL exists', asy
   )
   expect(ld.url, 'JSON-LD url').toBe(SITE)
   expect(ld['@id'], 'JSON-LD @id is absolute on the canonical domain').toBe(`${SITE}#business`)
-  expect(ld.image.startsWith(SITE_ORIGIN), `JSON-LD image = ${ld.image}`).toBe(true)
+  // structured-data image: same JPEG card — Google's supported formats for
+  // structured-data images are jpg/png/gif, not WebP
+  expect(ld.image, 'JSON-LD image is the JPEG card').toBe(`${SITE}${business.ogImage.path}`)
   // the canonical domain belongs in `url`; sameAs is for OTHER profiles
   expect(ld.sameAs.some((s) => s.includes('semplodesign.com')), 'own domain not in sameAs').toBe(false)
 
@@ -1135,6 +1164,10 @@ test('canonical domain is applied consistently and every listed URL exists', asy
   )
   expect(fallback['@id'], 'no-JS fallback @id').toBe(`${SITE}#business`)
   expect(fallback.url, 'no-JS fallback url').toBe(SITE)
+  expect(fallback.image, 'no-JS fallback image').toBe(`${SITE}${business.ogImage.path}`)
+  expect(rawHtml, 'og:image is in the served HTML, not injected').toContain(
+    `content="${SITE}${business.ogImage.path}"`
+  )
   expect(rawHtml, 'canonical is in the served HTML, not injected').toContain(
     `<link rel="canonical" href="${SITE}"`
   )

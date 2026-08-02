@@ -60,8 +60,10 @@ export function businessLd(business, reviews, lang = 'bg') {
     },
     geo: { '@type': 'GeoCoordinates', latitude: b.geo.lat, longitude: b.geo.lng },
     hasMap: b.map.link,
-    // absolute, as schema.org requires — same asset the OG card uses
-    image: `${b.url}videos/hero-poster.webp`,
+    // Absolute, as schema.org requires — and the same JPEG card the OG tags
+    // use, not the page's WebP poster: Google's structured-data image guidance
+    // lists jpg/png/gif (not WebP) as the supported formats.
+    image: `${b.url}${b.ogImage.path}`,
     // OTHER profiles for the same business. The canonical domain belongs in
     // `url` above, not here: sameAs is for the shop and the social accounts.
     sameAs: b.social.slice(),
