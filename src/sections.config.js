@@ -59,8 +59,8 @@ export const hero = {
   subEn: 'Spaces with character',
   // quiet credibility line (services + location) — the only above-the-fold
   // statement of WHAT Semplo does and WHERE. Kept subtle so it never competes.
-  credBg: 'Интериор · Строителство · Мебели по поръчка — София',
-  credEn: 'Interior · Construction · Custom furniture — Sofia',
+  credBg: 'Интериор · Сухо строителство · Мебели по поръчка — София',
+  credEn: 'Interior · Drywall construction · Custom furniture — Sofia',
   ctaBg: 'Разгледайте проектите',
   ctaEn: 'View our work',
   ctaHref: '#work',
@@ -215,9 +215,133 @@ export const interludes = [
   },
 ]
 
+/*
+ * ── BUSINESS — the single source of truth for contact + map + schema ──────
+ * Everything here feeds THREE consumers, so a change lands everywhere at once:
+ *   1. the visible contact block + footer (via `ui.contact`, below),
+ *   2. the Google Maps band in the CTA section (`map.embed`),
+ *   3. the LocalBusiness JSON-LD, which main.js rebuilds from this object and
+ *      writes into the [data-ld-business] script tag in index.html.
+ *
+ * index.html keeps a STATIC copy of the same JSON-LD as a no-JS fallback for
+ * crawlers that don't execute scripts — if you edit name / telephone / address
+ * here, mirror it there too (it is the only duplication in the file).
+ *
+ * ── THE MAP EMBED (no API key, real business pin) ─────────────────────────
+ * `?q=<address>` embeds drop a plain ADDRESS pin — the listing's name, hours and
+ * reviews are absent. Their actual Google Business listing is addressed by its
+ * CID, which is the second half of the place FID in the share link:
+ *   https://maps.app.goo.gl/RW5PLieX7xKHSCPx5
+ *     → …/place/SEMPLO/@42.633219,23.3295871,17z/data=…!1s0x40aa83c5305618a5:0x52d0053226e794e2!…
+ *                                                            └── FID ──┘ └───── CID (hex) ─────┘
+ *   0x52d0053226e794e2 = 5967275219225122018  ← `cid` below
+ * `?cid=` renders the LISTING (pin carries the SEMPLO name), which is what the
+ * client asked for. To repoint at another listing: open the share link, follow
+ * it, take the hex after the colon in `!1s…`, convert to decimal.
+ */
+export const business = {
+  name: 'Semplo Concept',
+  legalName: 'Semplo Concept',
+  phone: '+359 877 600 018',
+  tel: '+359877600018', // tel: href form (no spaces)
+  email: 'office@semplohome.com',
+  street: 'бул. „Околовръстен път“ 130',
+  city: 'София',
+  country: 'BG',
+  geo: { lat: 42.6332151, lng: 23.332162 },
+  map: {
+    cid: '5967275219225122018',
+    // the muted full-width band in the CTA section
+    embed:
+      'https://maps.google.com/maps?cid=5967275219225122018&hl=bg&z=17&output=embed',
+    // "Open in Google Maps" — the client's own share link
+    link: 'https://maps.app.goo.gl/RW5PLieX7xKHSCPx5',
+  },
+  social: [
+    'https://www.facebook.com/semplodesign.bulgaria',
+    'https://www.instagram.com/semplo.design',
+    'https://semplohome.com/',
+  ],
+}
+
+/*
+ * ── REVIEWS — Google reviews, copied in by hand ───────────────────────────
+ * Google's Places API is the only programmatic source of review text and it
+ * needs a billed API key, so this section is CONFIG-DRIVEN instead: paste each
+ * real review from the Google listing into `items` below and the section, the
+ * star rows and the Review + AggregateRating JSON-LD all follow.
+ *
+ * ★ TO FILL IN (open business.map.link → "Reviews"):
+ *   1. `rating` / `count` — the listing's headline score and total review count.
+ *      These two power the AggregateRating, so they must match the listing.
+ *      Already set from the live listing as of 2026-08-02 (4.4 ★, 14 reviews) —
+ *      re-check them when you paste the reviews in, since they drift.
+ *   2. one `items` entry per review you want to show (4–6 reads best):
+ *        author  — the reviewer's display name, as Google shows it
+ *        rating  — 1–5, as given
+ *        date    — ISO yyyy-mm-dd (Google shows "2 months ago"; approximate it)
+ *        textBg  — the review verbatim, in the language it was written
+ *        textEn  — your translation (shown when the site is in EN)
+ *        todo    — DELETE this key once the entry holds a real review. Entries
+ *                  that still carry it are dimmed and badged in the UI, and are
+ *                  LEFT OUT of the JSON-LD so no placeholder is ever published
+ *                  as structured data.
+ *   3. delete any placeholder you don't replace.
+ *
+ * Until at least one `todo`-free entry exists, main.js emits NO review schema
+ * at all — deliberate: fake reviews in schema are a manual-action risk.
+ */
+export const reviews = {
+  rating: 4.4, // their live Google rating on 2026-08-02 — re-check before launch
+  count: 14, // their live Google review count on 2026-08-02
+  url: 'https://maps.app.goo.gl/RW5PLieX7xKHSCPx5', // read / leave a review
+  items: [
+    {
+      todo: true, // TODO: replace with a real Google review, then delete this key
+      author: 'Мария Петрова',
+      rating: 5,
+      date: '2026-05-18',
+      textBg:
+        'Работихме със Semplo Concept по цялостния проект на апартамента ни. Изслушаха ни, предложиха решения, за които не бяхме се сетили, и спазиха срока. Резултатът е точно домът, който си представяхме.',
+      textEn:
+        'We worked with Semplo Concept on the complete design of our apartment. They listened, proposed solutions we had never thought of, and kept to the schedule. The result is exactly the home we pictured.',
+    },
+    {
+      todo: true, // TODO: replace with a real Google review, then delete this key
+      author: 'Георги Иванов',
+      rating: 5,
+      date: '2026-03-04',
+      textBg:
+        'Прецизност в детайла и коректност в комуникацията. Мебелите по поръчка са безупречни, а екипът остана на разположение и след приключване на ремонта.',
+      textEn:
+        'Precision in the detail and honesty in the communication. The bespoke furniture is faultless, and the team stayed available well after the works were finished.',
+    },
+    {
+      todo: true, // TODO: replace with a real Google review, then delete this key
+      author: 'Elena Dimitrova',
+      rating: 4, // one 4★ placeholder so the partial star row is visible in the design
+      date: '2025-11-22',
+      textBg:
+        'Довериха ни се с офиса и не сбъркахме. Пространството е спокойно, светло и работи много по-добре от предишното — а бюджетът остана там, където се уговорихме.',
+      textEn:
+        'We trusted them with our office and we were right to. The space is calm, bright and works far better than before — and the budget stayed where we agreed it would.',
+    },
+    {
+      todo: true, // TODO: replace with a real Google review, then delete this key
+      author: 'Николай Стоянов',
+      rating: 5,
+      date: '2025-09-09',
+      textBg:
+        'От идеята до последния детайл — един екип, един стандарт. Рядкост е да срещнеш студио, което държи на качеството толкова, колкото и клиентът.',
+      textEn:
+        'From the first idea to the last detail — one team, one standard. It is rare to find a studio that cares about the quality as much as the client does.',
+    },
+  ],
+}
+
 // UI / chrome copy, bilingual as [bg, en].
 export const ui = {
-  brand: ['Semplo', 'Semplo'],
+  brand: ['Semplo Concept', 'Semplo Concept'],
   tagline: ['Интериорно студио', 'Interior studio'],
   nav: {
     work: ['Проекти', 'Work'],
@@ -246,11 +370,13 @@ export const ui = {
     badge: ['360°', '360°'],
     hint: ['Влачете, за да разгледате', 'Drag to look around'],
   },
-  // Real SEMPLO contact details (semplodesign.com)
+  // Real SEMPLO contact details. Phone/email mirror `business` above (which is
+  // what the JSON-LD reads) — keep the two in step.
   contact: {
-    phone: ['+359 889 747 773', '+359 889 747 773'],
-    email: ['office@semplohome.com', 'office@semplohome.com'],
+    phone: [business.phone, business.phone],
+    email: [business.email, business.email],
     addr: ['бул. „Околовръстен път“ 130, София', '130 Okolovrasten Pat Blvd, Sofia'],
+    map: ['Отвори в Google Maps', 'Open in Google Maps'],
   },
   // Каталози — the internal catalogues section (see the `catalogs` export).
   catalogs: {
@@ -273,10 +399,92 @@ export const ui = {
     ],
     button: ['Свържете се с нас', 'Get in touch'],
   },
+  // ── Отзиви / Reviews (see the `reviews` export) ──
+  reviews: {
+    eyebrow: ['Отзиви', 'Reviews'],
+    title: ['Какво казват клиентите ни.', 'What our clients say.'],
+    // {r} = the rating, {n} = the number of reviews (substituted in main.js)
+    agg: ['{r} от 5 · {n} отзива в Google', '{r} out of 5 · {n} reviews on Google'],
+    link: ['Прочетете всички в Google', 'Read them all on Google'],
+    of: ['{r} от 5 звезди', '{r} out of 5 stars'],
+    todo: ['ПРИМЕРЕН ОТЗИВ', 'PLACEHOLDER'],
+  },
+  // ── Contact form (the modal behind the "Свържете се с нас" button) ──
+  // Field values POSTed to Netlify stay in Bulgarian whatever the UI language,
+  // so the client reads one consistent vocabulary in their dashboard.
+  form: {
+    open: ['Свържете се с нас', 'Get in touch'],
+    title: ['Разкажете ни за проекта', 'Tell us about your project'],
+    intro: [
+      'Отговаряме в рамките на един работен ден. Полетата със звездичка са задължителни.',
+      'We reply within one working day. Fields marked with an asterisk are required.',
+    ],
+    close: ['Затвори', 'Close'],
+    name: ['Име', 'Name'],
+    namePh: ['Име и фамилия', 'First and last name'],
+    email: ['Имейл', 'Email'],
+    emailPh: ['вашият@имейл.com', 'your@email.com'],
+    phone: ['Телефон', 'Phone'],
+    phonePh: ['+359 …', '+359 …'],
+    type: ['Тип проект', 'Project type'],
+    stage: ['Етап', 'Project stage'],
+    size: ['Площ (кв.м)', 'Size (m²)'],
+    sizePh: ['напр. 95', 'e.g. 95'],
+    timeline: ['Кога', 'Timeline'],
+    budget: ['Бюджет', 'Budget'],
+    optional: ['по избор', 'optional'],
+    message: ['Съобщение', 'Message'],
+    messagePh: [
+      'Няколко думи за пространството и какво търсите.',
+      'A few words about the space and what you are looking for.',
+    ],
+    choose: ['Изберете…', 'Choose…'],
+    submit: ['Изпратете запитване', 'Send enquiry'],
+    sending: ['Изпраща се…', 'Sending…'],
+    sentTitle: ['Благодарим!', 'Thank you!'],
+    sentText: [
+      'Получихме запитването ви и ще се свържем с вас в рамките на един работен ден.',
+      'We have your enquiry and will be in touch within one working day.',
+    ],
+    sentClose: ['Затвори', 'Close'],
+    errTitle: ['Нещо се обърка', 'Something went wrong'],
+    errText: [
+      'Запитването не беше изпратено. Опитайте отново или ни пишете директно на',
+      'The enquiry was not sent. Please try again, or email us directly at',
+    ],
+    retry: ['Опитайте отново', 'Try again'],
+    // select options — `value` posted to Netlify is always the Bulgarian label
+    types: {
+      apartment: ['Апартамент', 'Apartment'],
+      house: ['Къща', 'House'],
+      office: ['Офис', 'Office'],
+      restaurant: ['Ресторант', 'Restaurant'],
+      other: ['Друго', 'Other'],
+    },
+    stages: {
+      idea: ['Идея', 'Just an idea'],
+      ready: ['Проект готов', 'Design already done'],
+      works: ['В процес на ремонт', 'Works under way'],
+    },
+    timelines: {
+      asap: ['Възможно най-скоро', 'As soon as possible'],
+      m13: ['1–3 месеца', '1–3 months'],
+      m36: ['3–6 месеца', '3–6 months'],
+      later: ['След 6 месеца', 'In more than 6 months'],
+      exploring: ['Още проучвам', 'Still exploring'],
+    },
+    budgets: {
+      b1: ['до 20 000 €', 'up to €20,000'],
+      b2: ['20 000 – 50 000 €', '€20,000 – €50,000'],
+      b3: ['50 000 – 100 000 €', '€50,000 – €100,000'],
+      b4: ['над 100 000 €', 'over €100,000'],
+      unsure: ['Още не е определен', 'Not decided yet'],
+    },
+  },
   foot: {
     rights: [
-      '© 2026 Semplo — Интериорно студио · Всички права запазени',
-      '© 2026 Semplo — Interior studio · All rights reserved',
+      '© 2026 Semplo Concept — Интериорно студио · Всички права запазени',
+      '© 2026 Semplo Concept — Interior studio · All rights reserved',
     ],
   },
 }

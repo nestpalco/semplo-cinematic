@@ -1,4 +1,16 @@
-import { hero, ambients, projects, interludes, strips, catalogs, ui, motion } from './sections.config.js'
+import {
+  hero,
+  ambients,
+  projects,
+  interludes,
+  strips,
+  catalogs,
+  business,
+  reviews,
+  ui,
+  motion,
+} from './sections.config.js'
+import { businessLd } from './schema.js'
 import manifest from './videos.manifest.json'
 
 /* ──────────────────────────────────────────────────────────────────────────
@@ -86,6 +98,15 @@ function applyLang(next) {
   document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
     const v = dig(el.dataset.i18nAria)
     if (Array.isArray(v)) el.setAttribute('aria-label', v[idx])
+  })
+  // form placeholders (from ui.form) and per-element aria pairs (used by the
+  // review star rows, whose label carries an interpolated rating)
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+    const v = dig(el.dataset.i18nPh)
+    if (Array.isArray(v)) el.placeholder = v[idx]
+  })
+  document.querySelectorAll('[data-aria-bg][data-aria-en]').forEach((el) => {
+    el.setAttribute('aria-label', lang === 'bg' ? el.dataset.ariaBg : el.dataset.ariaEn)
   })
   document.querySelectorAll('.lang__btn').forEach((b) => {
     const on = b.dataset.lang === lang
@@ -341,6 +362,102 @@ document.querySelectorAll('[data-hstrip]').forEach((el) => {
     .map((src) => `<img src="${src}" alt="" loading="lazy" decoding="async" />`)
     .join('')}</div>`
 })
+
+/* ── Contact details: one source of truth ─────────────────────────────────
+ * The visible strings already come from `ui.contact` (which mirrors `business`)
+ * via data-i18n, but hrefs can't. Rewrite every tel:/mailto: from `business` so
+ * a changed number can never leave a stale link behind. */
+{
+  document.querySelectorAll('a[href^="tel:"]').forEach((a) => (a.href = `tel:${business.tel}`))
+  document
+    .querySelectorAll('a[href^="mailto:"]')
+    .forEach((a) => (a.href = `mailto:${business.email}`))
+}
+
+/* ── ОТЗИВИ — review cards from config ────────────────────────────────────
+ * Google's review text is only available through the billed Places API, so the
+ * `reviews` array in sections.config.js is the source and the client pastes
+ * their real reviews into it. Both languages are baked into data-bg/data-en
+ * (including the localised date), so the language toggle swaps them with the
+ * same mechanism as the rest of the page — no re-render, and the scroll reveal
+ * already applied to each card is never disturbed. */
+{
+  const esc = (s) =>
+    String(s ?? '').replace(
+      /[&<>"']/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    )
+  const stars = (rating) =>
+    Array.from({ length: 5 }, (_, i) => `<i${i < Math.round(rating) ? '' : ' data-off'}>★</i>`).join('')
+  const ratingLabel = (rating, i) => ui.reviews.of[i].replace('{r}', String(rating))
+  const monthYear = (iso, loc) => {
+    const d = new Date(`${iso}T00:00:00`)
+    return Number.isNaN(d.getTime())
+      ? iso
+      : d.toLocaleDateString(loc, { year: 'numeric', month: 'long' })
+  }
+
+  const grid = document.querySelector('[data-reviews-grid]')
+  if (grid) {
+    grid.innerHTML = reviews.items
+      .map((r) => {
+        const dBg = monthYear(r.date, 'bg-BG')
+        const dEn = monthYear(r.date, 'en-GB')
+        const todo = r.todo
+          ? `<span class="review__todo" data-bg="${esc(ui.reviews.todo[0])}"
+                   data-en="${esc(ui.reviews.todo[1])}">${esc(ui.reviews.todo[0])}</span>`
+          : ''
+        return `
+      <figure class="review${r.todo ? ' is-todo' : ''}">
+        <span class="stars" role="img" aria-label="${esc(ratingLabel(r.rating, 0))}"
+              data-aria-bg="${esc(ratingLabel(r.rating, 0))}"
+              data-aria-en="${esc(ratingLabel(r.rating, 1))}">${stars(r.rating)}</span>
+        <blockquote class="review__text" data-bg="${esc(r.textBg)}" data-en="${esc(r.textEn)}">${esc(
+          r.textBg
+        )}</blockquote>
+        <figcaption class="review__by">
+          <span class="review__author">${esc(r.author)}</span>
+          <span class="review__date" data-bg="${esc(dBg)}" data-en="${esc(dEn)}">${esc(dBg)}</span>
+        </figcaption>
+        ${todo}
+      </figure>`
+      })
+      .join('')
+  }
+
+  // the aggregate line above the grid: ★★★★★ + "5.0 от 5 · 12 отзива в Google"
+  const aggStars = document.querySelector('[data-reviews-stars]')
+  if (aggStars) {
+    aggStars.innerHTML = stars(reviews.rating)
+    aggStars.setAttribute('role', 'img')
+    aggStars.dataset.ariaBg = ratingLabel(reviews.rating, 0)
+    aggStars.dataset.ariaEn = ratingLabel(reviews.rating, 1)
+  }
+  const aggText = document.querySelector('[data-reviews-aggtext]')
+  if (aggText) {
+    const fill = (i) =>
+      ui.reviews.agg[i]
+        .replace('{r}', reviews.rating.toFixed(1))
+        .replace('{n}', String(reviews.count))
+    aggText.dataset.bg = fill(0)
+    aggText.dataset.en = fill(1)
+    aggText.textContent = fill(0)
+  }
+  const aggLink = document.querySelector('[data-reviews-link]')
+  if (aggLink && reviews.url) aggLink.href = reviews.url
+
+  /* SEO: rebuild the LocalBusiness JSON-LD with aggregateRating + review hung
+   * off the same entity. src/schema.js decides what is publishable — placeholder
+   * entries are excluded, and while ALL of them are placeholders no rating or
+   * review is emitted at all (see the note in that file). index.html keeps a
+   * static copy of the business node as the no-JS fallback; this replaces it. */
+  const ldTag = document.querySelector('[data-ld-business]')
+  if (ldTag) {
+    try {
+      ldTag.textContent = JSON.stringify(businessLd(business, reviews, 'bg'), null, 2)
+    } catch {} // structured data is an enhancement — never let it break the page
+  }
+}
 
 applyLang('bg')
 
@@ -751,4 +868,145 @@ function motionlessFallback() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeProject()
   })
+}
+
+/* ── 12. ENQUIRY FORM overlay (Netlify Forms, AJAX) ────────────────────────
+ * The "Свържете се с нас" button used to be a mailto: link — a dead end on any
+ * machine without a configured mail client, and it captured nothing. It now
+ * opens the form that ships STATICALLY in index.html (Netlify only registers
+ * forms it can find in the deployed HTML at build time — a JS-injected form is
+ * never registered, so this module deliberately does not build the markup).
+ *
+ * Submission is AJAX so the visitor stays on the page: POST the form
+ * url-encoded to its own action, including the hidden `form-name` field Netlify
+ * requires for non-native submissions. Locally (`vite preview`) there is no
+ * Netlify handler, so the POST fails and the error state shows — that is the
+ * error path working, not a bug.
+ *
+ * Accessibility: role="dialog" + aria-modal, focus moves in on open and back to
+ * the opener on close, Tab is trapped inside the panel, ESC and a backdrop click
+ * both dismiss, and the page behind is scroll-locked (body.is-locked). */
+{
+  const modal = document.querySelector('[data-form-modal]')
+  const form = modal?.querySelector('[data-form]')
+  if (modal && form) {
+    const panel = modal.querySelector('.cform__panel')
+    const bodyEl = modal.querySelector('[data-form-body]')
+    const doneEl = modal.querySelector('[data-form-done]')
+    const errEl = modal.querySelector('[data-form-err]')
+    const submitBtn = modal.querySelector('[data-form-submit]')
+    const submitLabel = modal.querySelector('[data-form-submit-label]')
+    const FOCUSABLE =
+      'a[href], button:not(:disabled), input:not([disabled]):not([tabindex="-1"]),' +
+      'select:not([disabled]), textarea:not([disabled])'
+    const L = () => (lang === 'bg' ? 0 : 1)
+    let lastFocus = null
+    let sending = false
+    let closeT = 0
+
+    const focusables = () =>
+      [...panel.querySelectorAll(FOCUSABLE)].filter(
+        (el) => !el.closest('[hidden]') && el.offsetParent !== null
+      )
+
+    function openForm() {
+      clearTimeout(closeT)
+      lastFocus = document.activeElement
+      // a previous success leaves the done panel showing — reset to the form
+      bodyEl.hidden = false
+      doneEl.hidden = true
+      errEl.hidden = true
+      form.classList.remove('was-submitted', 'is-sending')
+      modal.hidden = false
+      document.body.classList.add('is-locked')
+      document.body.classList.remove('nav-open')
+      requestAnimationFrame(() => {
+        modal.classList.add('is-open')
+        panel.scrollTop = 0
+        // straight into the first field: one less click before typing
+        ;(modal.querySelector('#cf-name') || focusables()[0])?.focus()
+      })
+      document.addEventListener('keydown', onKey, true)
+    }
+
+    function closeForm() {
+      if (modal.hidden) return
+      modal.classList.remove('is-open')
+      document.body.classList.remove('is-locked')
+      document.removeEventListener('keydown', onKey, true)
+      clearTimeout(closeT)
+      closeT = setTimeout(() => {
+        modal.hidden = true
+      }, 400) // matches the .cform opacity transition
+      if (lastFocus?.focus) lastFocus.focus()
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.stopPropagation() // don't also trip the mobile-nav ESC handler
+        closeForm()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const f = focusables()
+      if (!f.length) return
+      const first = f[0]
+      const last = f[f.length - 1]
+      // keep Tab inside the dialog (and pull it back if focus escaped entirely)
+      if (!panel.contains(document.activeElement)) {
+        e.preventDefault()
+        first.focus()
+      } else if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+
+    document
+      .querySelectorAll('[data-form-open]')
+      .forEach((b) => b.addEventListener('click', openForm))
+    modal.querySelectorAll('[data-form-close]').forEach((b) => b.addEventListener('click', closeForm))
+    modal.querySelector('[data-form-backdrop]')?.addEventListener('click', closeForm)
+
+    /* Native constraint validation stays in charge: an invalid form never fires
+     * `submit` at all (no novalidate), so the browser's own bubbles are what the
+     * visitor sees. This click handler only arms the invalid-field styling,
+     * because it runs BEFORE that validation pass. */
+    submitBtn.addEventListener('click', () => form.classList.add('was-submitted'))
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      if (sending) return
+      sending = true
+      errEl.hidden = true
+      form.classList.add('is-sending')
+      submitBtn.disabled = true
+      submitLabel.textContent = ui.form.sending[L()]
+      try {
+        const res = await fetch(form.getAttribute('action') || '/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          // FormData → url-encoded keeps the hidden form-name field Netlify needs
+          body: new URLSearchParams(new FormData(form)).toString(),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        form.reset()
+        bodyEl.hidden = true
+        doneEl.hidden = false
+        panel.scrollTop = 0
+        doneEl.querySelector('[data-form-close]')?.focus()
+      } catch {
+        errEl.hidden = false
+        errEl.scrollIntoView({ block: 'nearest', behavior: prefersReduced ? 'auto' : 'smooth' })
+      } finally {
+        sending = false
+        form.classList.remove('is-sending')
+        submitBtn.disabled = false
+        submitLabel.textContent = ui.form.submit[L()]
+      }
+    })
+  }
 }

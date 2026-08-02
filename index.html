@@ -3,11 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Semplo — Интериорно студио · Interior Studio</title>
+    <title>Semplo Concept — Интериорно студио · Interior Studio</title>
     <meta
       name="description"
-      content="Semplo — интериорно студио за спокойни, премиум пространства. Избрани проекти, завършени интериори. A calm, photography-first interior studio — selected work, finished interiors."
+      content="Semplo Concept — интериорно студио за спокойни, премиум пространства. Избрани проекти, завършени интериори. A calm, photography-first interior studio — selected work, finished interiors."
     />
+    <!-- Social / link-preview cards. og:url is deliberately absent: the deploy
+         domain isn't known at build time and a wrong canonical is worse than
+         none — add it once the custom domain is live on Netlify. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Semplo Concept" />
+    <meta property="og:locale" content="bg_BG" />
+    <meta property="og:locale:alternate" content="en_GB" />
+    <meta property="og:title" content="Semplo Concept — Интериорно студио · Interior Studio" />
+    <meta
+      property="og:description"
+      content="Интериорен дизайн, сухо строителство и мебели по поръчка в София. Избрани проекти и завършени интериори."
+    />
+    <meta property="og:image" content="/videos/hero-poster.webp" />
+    <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f3f1ec'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='22' fill='%23a6760a' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E"
@@ -39,13 +53,19 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/styles.css" />
-    <script type="application/ld+json">
+    <!-- LocalBusiness structured data. main.js REBUILDS this node from the
+         `business` + `reviews` config at boot, adding aggregateRating + review
+         (which is why the reviews live in config and not here). What is written
+         below is the no-JS fallback for crawlers that don't run scripts, so it
+         must mirror `business` in src/sections.config.js by hand. -->
+    <script type="application/ld+json" data-ld-business>
       {
         "@context": "https://schema.org",
         "@type": "HomeAndConstructionBusiness",
-        "name": "Semplo",
-        "description": "Интериорно студио — дизайн, строителство, внос на строителни материали и мебели по поръчка.",
-        "telephone": "+359 889 747 773",
+        "@id": "#business",
+        "name": "Semplo Concept",
+        "description": "Интериорно студио — дизайн, сухо строителство, внос на строителни материали и мебели по поръчка.",
+        "telephone": "+359 877 600 018",
         "email": "office@semplohome.com",
         "address": {
           "@type": "PostalAddress",
@@ -53,6 +73,12 @@
           "addressLocality": "София",
           "addressCountry": "BG"
         },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 42.6332151,
+          "longitude": 23.332162
+        },
+        "hasMap": "https://maps.app.goo.gl/RW5PLieX7xKHSCPx5",
         "sameAs": [
           "https://www.facebook.com/semplodesign.bulgaria",
           "https://www.instagram.com/semplo.design",
@@ -69,7 +95,7 @@
     <!-- ───────────────── Top nav ───────────────── -->
     <header class="nav" data-nav>
       <a class="nav__brand" href="#top">
-        <span class="nav__logo" data-i18n="brand">Semplo</span>
+        <span class="nav__logo" data-i18n="brand">Semplo Concept</span>
         <span class="nav__tag" data-i18n="tagline">Интериорно студио</span>
       </a>
       <nav class="nav__links" id="nav-links" aria-label="Primary">
@@ -125,6 +151,38 @@
         <div class="catgrid" data-catgrid></div>
       </section>
 
+      <!-- ──────────── Отзиви — Google reviews ────────────
+           PLACED HERE ON PURPOSE: the last thing a visitor reads before the
+           contact section. By this point they have seen the work (#work), the
+           studio's story (#studio) and the catalogues, so the reviews are not
+           making the case — they are removing the last doubt, immediately above
+           the "Свържете се с нас" button. It is also what anyone who jumps
+           straight to "Контакт" from the nav scrolls through on the way.
+
+           Cards are injected from the `reviews` config by main.js (Google's
+           review text needs a billed Places API key, so the array is filled by
+           hand); the same config drives the Review + AggregateRating JSON-LD. -->
+      <section class="reviews" id="reviews">
+        <div class="interlude__inner">
+          <p class="reviews__eyebrow" data-i18n="reviews.eyebrow">Отзиви</p>
+          <h2 class="reviews__title" data-i18n="reviews.title">Какво казват клиентите ни.</h2>
+          <p class="reviews__agg">
+            <span class="stars reviews__stars" data-reviews-stars></span>
+            <span class="reviews__aggtext" data-reviews-aggtext></span>
+            <a
+              class="reviews__link"
+              data-reviews-link
+              href="https://maps.app.goo.gl/RW5PLieX7xKHSCPx5"
+              target="_blank"
+              rel="noopener"
+              data-i18n="reviews.link"
+              >Прочетете всички в Google</a
+            >
+          </p>
+        </div>
+        <div class="reviews__grid" data-reviews-grid></div>
+      </section>
+
       <!-- ──────────── Portfolio + Contact (layout aligned with #catalogs) ──────────── -->
       <section class="cta" id="contact" data-alive="geometry">
         <div class="interlude__inner">
@@ -139,24 +197,40 @@
         <div class="hstrip" data-hstrip="portfolio" aria-hidden="true"></div>
         <!-- own clear moment: generous space above the button (see .cta__act) -->
         <div class="interlude__inner cta__act">
-          <a class="cta__btn" href="mailto:office@semplohome.com" data-i18n="cta.button">Свържете се с нас</a>
+          <!-- was a mailto: link — now opens the enquiry form overlay. Kept as a
+               <button> so it is never a dead link if the overlay script fails;
+               .cta__btn styling and the magnetic hover both still apply. -->
+          <button class="cta__btn" type="button" data-form-open aria-haspopup="dialog"
+                  data-i18n="cta.button">Свържете се с нас</button>
           <p class="cta__contacts">
-            <a href="tel:+359889747773">+359 889 747 773</a>
+            <a href="tel:+359877600018" data-i18n="contact.phone">+359 877 600 018</a>
             <span aria-hidden="true">·</span>
-            <a href="mailto:office@semplohome.com">office@semplohome.com</a>
+            <a href="mailto:office@semplohome.com" data-i18n="contact.email">office@semplohome.com</a>
             <span aria-hidden="true">·</span>
             <span data-i18n="contact.addr">бул. „Околовръстен път“ 130, София</span>
           </p>
         </div>
-        <!-- PATTERN D: full-bleed Google Maps band (no API key), muted to the palette -->
+        <!-- PATTERN D: full-bleed Google Maps band (no API key), muted to the
+             palette. `cid=` addresses their actual Google Business listing, so
+             the pin carries the SEMPLO name rather than being a bare address
+             point — see `business.map` in src/sections.config.js for how the CID
+             is derived from their share link. -->
         <div class="cta__map">
           <iframe
-            src="https://www.google.com/maps?q=%D0%B1%D1%83%D0%BB.%20%E2%80%9E%D0%9E%D0%BA%D0%BE%D0%BB%D0%BE%D0%B2%D1%80%D1%8A%D1%81%D1%82%D0%B5%D0%BD%20%D0%BF%D1%8A%D1%82%E2%80%9C%20130%2C%20%D0%A1%D0%BE%D1%84%D0%B8%D1%8F&output=embed&hl=bg"
+            src="https://maps.google.com/maps?cid=5967275219225122018&amp;hl=bg&amp;z=17&amp;output=embed"
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
             allowfullscreen
-            title="Semplo — бул. „Околовръстен път“ 130, София"
+            title="SEMPLO — бул. „Околовръстен път“ 130, София"
           ></iframe>
+          <a
+            class="cta__maplink"
+            href="https://maps.app.goo.gl/RW5PLieX7xKHSCPx5"
+            target="_blank"
+            rel="noopener"
+            data-i18n="contact.map"
+            >Отвори в Google Maps</a
+          >
         </div>
       </section>
 
@@ -176,14 +250,16 @@
         </div>
         <!-- CENTER: wordmark + rights -->
         <div class="foot__col foot__center">
-          <span class="foot__brand">Semplo</span>
-          <span data-i18n="foot.rights">© 2026 Semplo — Интериорно студио · Всички права запазени</span>
+          <span class="foot__brand" data-i18n="brand">Semplo Concept</span>
+          <span data-i18n="foot.rights"
+            >© 2026 Semplo Concept — Интериорно студио · Всички права запазени</span
+          >
         </div>
         <!-- RIGHT: address + phone + email -->
         <div class="foot__col foot__contact">
           <span data-i18n="contact.addr">бул. „Околовръстен път“ 130, София</span>
-          <a href="tel:+359889747773">+359 889 747 773</a>
-          <a href="mailto:office@semplohome.com">office@semplohome.com</a>
+          <a href="tel:+359877600018" data-i18n="contact.phone">+359 877 600 018</a>
+          <a href="mailto:office@semplohome.com" data-i18n="contact.email">office@semplohome.com</a>
         </div>
       </footer>
 
@@ -191,8 +267,8 @@
       <noscript>
         <div class="nojs-gallery">
           <figure>
-            <img src="/videos/hero-poster.webp" alt="Semplo — a finished, furnished interior in soft daylight" />
-            <figcaption><b>Semplo</b> · Interiors that settle around the light</figcaption>
+            <img src="/videos/hero-poster.webp" alt="Semplo Concept — a finished, furnished interior in soft daylight" />
+            <figcaption><b>Semplo Concept</b> · Interiors that settle around the light</figcaption>
           </figure>
           <figure>
             <img src="/projects/g1-01-1600.webp" alt="Semplo — living area with marble media wall and copper lighting" />
@@ -214,7 +290,162 @@
       </noscript>
     </main>
 
-    <div class="loader" data-loader aria-hidden="true"><span class="loader__mark">Semplo</span></div>
+    <!-- ═══════════════ ENQUIRY FORM OVERLAY (Netlify Forms) ═══════════════
+         This markup is STATIC and lives in index.html on purpose. Netlify
+         discovers forms by parsing the HTML of the *deployed files* at build
+         time — a form injected by JS at runtime is never registered and its
+         submissions silently 404. So the real form ships in the HTML (inside a
+         `hidden` dialog, which detection is fine with) and main.js only wires
+         up open/close, validation and the AJAX POST.
+
+         The three Netlify contracts, all of which must stay together:
+           data-netlify="true"          → register the form named "contact"
+           <input name="form-name">     → required for AJAX (non-native) POSTs
+           netlify-honeypot="bot-field" → the field a bot fills and a human can't
+         Submissions land under Site → Forms → contact. -->
+    <div class="cform" data-form-modal hidden role="dialog" aria-modal="true"
+         aria-labelledby="cform-title">
+      <div class="cform__backdrop" data-form-backdrop></div>
+      <div class="cform__panel" role="document">
+        <button class="cform__close" type="button" data-form-close
+                data-i18n-aria="form.close" aria-label="Затвори">
+          <span aria-hidden="true">✕</span>
+        </button>
+
+        <div class="cform__body" data-form-body>
+          <p class="cform__eyebrow" data-i18n="cta.eyebrow">Контакт</p>
+          <h2 class="cform__title" id="cform-title" data-i18n="form.title">
+            Разкажете ни за проекта
+          </h2>
+          <p class="cform__intro" data-i18n="form.intro">
+            Отговаряме в рамките на един работен ден. Полетата със звездичка са задължителни.
+          </p>
+
+          <form
+            class="cform__form"
+            name="contact"
+            method="POST"
+            action="/"
+            data-netlify="true"
+            netlify-honeypot="bot-field"
+            data-form
+          >
+            <input type="hidden" name="form-name" value="contact" />
+            <!-- honeypot: off-screen, never focusable, no autofill. A bot fills
+                 it; Netlify then drops the submission as spam. -->
+            <p class="cform__pot" aria-hidden="true">
+              <label>Do not fill this in<input name="bot-field" tabindex="-1" autocomplete="off" /></label>
+            </p>
+
+            <div class="cform__grid">
+              <p class="cform__field">
+                <label for="cf-name" data-i18n="form.name">Име</label
+                ><span class="cform__req" aria-hidden="true">*</span>
+                <input id="cf-name" name="name" type="text" required autocomplete="name"
+                       maxlength="120" data-i18n-ph="form.namePh" placeholder="Име и фамилия" />
+              </p>
+              <p class="cform__field">
+                <label for="cf-email" data-i18n="form.email">Имейл</label
+                ><span class="cform__req" aria-hidden="true">*</span>
+                <input id="cf-email" name="email" type="email" required autocomplete="email"
+                       maxlength="160" data-i18n-ph="form.emailPh" placeholder="вашият@имейл.com" />
+              </p>
+              <p class="cform__field">
+                <label for="cf-phone" data-i18n="form.phone">Телефон</label
+                ><span class="cform__req" aria-hidden="true">*</span>
+                <input id="cf-phone" name="phone" type="tel" required autocomplete="tel"
+                       maxlength="40" data-i18n-ph="form.phonePh" placeholder="+359 …" />
+              </p>
+              <p class="cform__field">
+                <label for="cf-size" data-i18n="form.size">Площ (кв.м)</label>
+                <span class="cform__opt" data-i18n="form.optional">по избор</span>
+                <input id="cf-size" name="size-m2" type="number" min="1" max="100000" step="1"
+                       inputmode="numeric" data-i18n-ph="form.sizePh" placeholder="напр. 95" />
+              </p>
+              <p class="cform__field">
+                <label for="cf-type" data-i18n="form.type">Тип проект</label
+                ><span class="cform__req" aria-hidden="true">*</span>
+                <select id="cf-type" name="project-type" required>
+                  <option value="" selected disabled data-i18n="form.choose">Изберете…</option>
+                  <option value="Апартамент" data-i18n="form.types.apartment">Апартамент</option>
+                  <option value="Къща" data-i18n="form.types.house">Къща</option>
+                  <option value="Офис" data-i18n="form.types.office">Офис</option>
+                  <option value="Ресторант" data-i18n="form.types.restaurant">Ресторант</option>
+                  <option value="Друго" data-i18n="form.types.other">Друго</option>
+                </select>
+              </p>
+              <p class="cform__field">
+                <label for="cf-stage" data-i18n="form.stage">Етап</label
+                ><span class="cform__req" aria-hidden="true">*</span>
+                <select id="cf-stage" name="project-stage" required>
+                  <option value="" selected disabled data-i18n="form.choose">Изберете…</option>
+                  <option value="Идея" data-i18n="form.stages.idea">Идея</option>
+                  <option value="Проект готов" data-i18n="form.stages.ready">Проект готов</option>
+                  <option value="В процес на ремонт" data-i18n="form.stages.works">В процес на ремонт</option>
+                </select>
+              </p>
+              <p class="cform__field">
+                <label for="cf-when" data-i18n="form.timeline">Кога</label>
+                <span class="cform__opt" data-i18n="form.optional">по избор</span>
+                <select id="cf-when" name="timeline">
+                  <option value="" selected data-i18n="form.choose">Изберете…</option>
+                  <option value="Възможно най-скоро" data-i18n="form.timelines.asap">Възможно най-скоро</option>
+                  <option value="1–3 месеца" data-i18n="form.timelines.m13">1–3 месеца</option>
+                  <option value="3–6 месеца" data-i18n="form.timelines.m36">3–6 месеца</option>
+                  <option value="След 6 месеца" data-i18n="form.timelines.later">След 6 месеца</option>
+                  <option value="Още проучвам" data-i18n="form.timelines.exploring">Още проучвам</option>
+                </select>
+              </p>
+              <p class="cform__field">
+                <label for="cf-budget" data-i18n="form.budget">Бюджет</label>
+                <span class="cform__opt" data-i18n="form.optional">по избор</span>
+                <select id="cf-budget" name="budget">
+                  <option value="" selected data-i18n="form.choose">Изберете…</option>
+                  <option value="до 20 000 €" data-i18n="form.budgets.b1">до 20 000 €</option>
+                  <option value="20 000 – 50 000 €" data-i18n="form.budgets.b2">20 000 – 50 000 €</option>
+                  <option value="50 000 – 100 000 €" data-i18n="form.budgets.b3">50 000 – 100 000 €</option>
+                  <option value="над 100 000 €" data-i18n="form.budgets.b4">над 100 000 €</option>
+                  <option value="Още не е определен" data-i18n="form.budgets.unsure">Още не е определен</option>
+                </select>
+              </p>
+              <p class="cform__field cform__field--wide">
+                <label for="cf-msg" data-i18n="form.message">Съобщение</label>
+                <span class="cform__opt" data-i18n="form.optional">по избор</span>
+                <textarea id="cf-msg" name="message" rows="4" maxlength="2000"
+                          data-i18n-ph="form.messagePh"
+                          placeholder="Няколко думи за пространството и какво търсите."></textarea>
+              </p>
+            </div>
+
+            <div class="cform__act">
+              <button class="cform__submit" type="submit" data-form-submit>
+                <span data-form-submit-label data-i18n="form.submit">Изпратете запитване</span>
+              </button>
+              <p class="cform__err" data-form-err role="alert" hidden>
+                <strong data-i18n="form.errTitle">Нещо се обърка</strong>
+                <span data-i18n="form.errText"
+                  >Запитването не беше изпратено. Опитайте отново или ни пишете директно на</span
+                >
+                <a href="mailto:office@semplohome.com" data-i18n="contact.email">office@semplohome.com</a>
+              </p>
+            </div>
+          </form>
+        </div>
+
+        <!-- success panel — swapped in place of the form after a 200 -->
+        <div class="cform__done" data-form-done hidden>
+          <span class="cform__done-mark" aria-hidden="true">✓</span>
+          <h2 class="cform__title" data-i18n="form.sentTitle">Благодарим!</h2>
+          <p class="cform__intro" data-i18n="form.sentText">
+            Получихме запитването ви и ще се свържем с вас в рамките на един работен ден.
+          </p>
+          <button class="cform__submit" type="button" data-form-close
+                  data-i18n="form.sentClose">Затвори</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="loader" data-loader aria-hidden="true"><span class="loader__mark">Semplo Concept</span></div>
 
     <script type="module" src="/src/main.js"></script>
   </body>

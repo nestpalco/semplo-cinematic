@@ -109,7 +109,13 @@ const spanEnd = (el, vhPart) => () =>
 
 const REST_SEL =
   '.interlude__eyebrow, .interlude__body, .interlude__btn, .studio__stat, .studio__media,' +
-  '.projects__eyebrow, .cta__eyebrow, .cta__text, .cta__btn, .cta__contacts'
+  '.projects__eyebrow, .cta__eyebrow, .cta__text, .cta__btn, .cta__contacts,' +
+  '.reviews__eyebrow, .reviews__agg, .review'
+/* Sections that get the statement treatment (masked title reveal + staggered
+ * rest) but are NOT `.interlude[data-alive]`: the projects header, the contact
+ * block, and the reviews section. Listed once, used by both branches of start()
+ * so the two can't drift apart. */
+const PLAIN_STATEMENTS = '.projects__head, .cta, .reviews'
 
 const scrubDiag = {}
 window.__semploScrub = () =>
@@ -124,16 +130,33 @@ const lazyRefresh = () => {
 }
 
 /* ── shared reveal helpers ────────────────────────────────────────────────── */
+/* A masked line reveal that CANNOT clobber a mid-flight language switch.
+ * While the tween runs, the element's real text is replaced by SplitText's line
+ * divs. If applyLang() rewrites textContent in that window it drops those divs,
+ * and the pending `onComplete: split.revert()` would then restore the
+ * OLD-language HTML — the switch silently undone. So the reveal cancels itself
+ * on `semplo:lang`: the element is already showing the new text at rest.
+ * (The hero used to carry this guard on its own; every display title needs it,
+ * including the reviews section's, so it lives here now.) */
 function maskReveal(el, vars = {}) {
   const split = SplitText.create(el, { type: 'lines', mask: 'lines' })
-  return gsap.from(split.lines, {
+  const cancel = () => {
+    document.removeEventListener('semplo:lang', cancel)
+    tw.kill()
+  }
+  document.addEventListener('semplo:lang', cancel)
+  const tw = gsap.from(split.lines, {
     yPercent: 115,
     duration: MASK_DUR,
     ease: 'power3.out',
     stagger: 0.11,
-    onComplete: () => split.revert(),
+    onComplete: () => {
+      document.removeEventListener('semplo:lang', cancel)
+      split.revert()
+    },
     ...vars,
   })
+  return tw
 }
 function riseIn(targets, vars = {}) {
   return gsap.fromTo(
@@ -366,7 +389,7 @@ function nativeStatement(sec) {
   if (layer) nativeParallax(sec, speedEls(layer))
   const track = sec.querySelector('[data-hstrip-track]')
   if (track) nativeHstrip(track)
-  const display = sec.querySelector('.interlude__title, .cta__title, .projects__title')
+  const display = sec.querySelector('.interlude__title, .cta__title, .projects__title, .reviews__title')
   const rest = sec.querySelectorAll(REST_SEL)
   if (display) gsap.set(display, { autoAlpha: 0 })
   if (rest.length) hide(rest)
@@ -546,7 +569,7 @@ export async function start() {
       })
       video.addEventListener('play', () => { kb?.kill(); kb = null; gsap.set(video, { scale: 1 }) })
     }
-    document.querySelectorAll('.interlude, .cta, .projects__head').forEach(nativeStatement)
+    document.querySelectorAll(`.interlude, ${PLAIN_STATEMENTS}`).forEach(nativeStatement)
     document.querySelectorAll('[data-ambient]').forEach(nativeAmbient)
     // PATTERN C project cards — stepped strip advance (see mobileCard)
     document.querySelectorAll('.project').forEach(mobileCard)
@@ -567,8 +590,9 @@ export async function start() {
     document.querySelectorAll('.project').forEach((card) =>
       PIN_ENABLED.card ? pinCard(card) : nativeCard(card)
     )
-    // Unpinned desktop sections: projects header + contact (too tall to pin: map/footer)
-    document.querySelectorAll('.projects__head, .cta').forEach(nativeStatement)
+    // Unpinned desktop sections: projects header, reviews, contact (all too tall
+    // to pin — the contact block carries the map, the reviews grid is a full band)
+    document.querySelectorAll(PLAIN_STATEMENTS).forEach(nativeStatement)
   }
 
   /* Catalogue cards — staggered reveal on enter (both modes) */

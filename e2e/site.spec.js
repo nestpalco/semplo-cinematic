@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
+import { businessLd, publishable } from '../src/schema.js'
+import { business, reviews } from '../src/sections.config.js'
+
+const PHONE = '+359 877 600 018'
+const TEL = 'tel:+359877600018'
+const WORDMARK = 'Semplo Concept'
 
 /* ── shared helpers ───────────────────────────────────────────────────────── */
 
@@ -61,6 +67,17 @@ async function revealNav(page) {
   await waitScrollIdle(page)
   await page.evaluate(() => document.body.classList.remove('nav-hidden'))
   await page.waitForTimeout(350)
+}
+
+// Open the enquiry dialog. The CTA button starts at visibility:hidden (the
+// motion layer's staggered reveal owns it) and Playwright waits for visibility
+// BEFORE it scrolls — so bring the contact section into view and let the reveal
+// play first, or the click deadlocks on an element that will never appear.
+async function openEnquiry(page) {
+  await page.locator('#contact').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(1200)
+  await page.locator('[data-form-open]').click()
+  await page.waitForTimeout(450)
 }
 
 // the compact mobile nav hides links behind a burger — open it before clicking.
@@ -127,8 +144,14 @@ async function contrastFailures(page) {
       '.projects__eyebrow', '.projects__title', '.project__title', '.project__sub',
       '.catcard__cat', '.catcard__title', '.catcard__dl', '.catcard__size', '.catcard__doc',
       '.cta__eyebrow', '.cta__title', '.cta__text', '.cta__btn', '.cta__contacts',
-      '.cta__contacts a', '.foot__brand', '.foot__center span', '.foot__contact span',
-      '.foot__contact a',
+      '.cta__contacts a', '.cta__maplink', '.foot__brand', '.foot__center span',
+      '.foot__contact span', '.foot__contact a',
+      // reviews section
+      '.reviews__eyebrow', '.reviews__title', '.reviews__aggtext', '.reviews__link',
+      '.review__text', '.review__author', '.review__date', '.review__todo',
+      // enquiry form overlay (only audited while it is open — see the test)
+      '.cform__eyebrow', '.cform__title', '.cform__intro', '.cform__field label',
+      '.cform__opt', '.cform__req', '.cform__submit', '.cform__err', '.cform__err a',
     ].join(',')
 
     const px = (c) => {
@@ -340,7 +363,8 @@ test('full scroll: no horizontal overflow, nothing left hidden', async ({ page }
   const stuck = await page.evaluate(() => {
     const sel =
       '.interlude__title, .interlude__body, .projects__title, .cta__title, .cta__contacts,' +
-      '.catcard, .foot, .studio__stat, .studio__media, .project__title'
+      '.catcard, .foot, .studio__stat, .studio__media, .project__title,' +
+      '.reviews__title, .reviews__agg, .review, .review__text'
     const out = []
     for (const el of document.querySelectorAll(sel)) {
       const cs = getComputedStyle(el)
@@ -521,6 +545,16 @@ test('contrast: all section + nav text passes AA in light AND dark', async ({ pa
   await page.evaluate(() => document.body.classList.remove('nav-hidden'))
   await page.waitForTimeout(300)
 
+  // the enquiry form only exists as painted pixels while it is open, and its
+  // labels/hints are the smallest type on the site — audit it in both themes too.
+  // The error panel is forced visible so its copy is measured as well.
+  await page.locator('[data-form-open]').click()
+  await page.waitForTimeout(500)
+  await page.evaluate(() => {
+    document.querySelector('[data-form-err]').hidden = false
+  })
+  await page.waitForTimeout(200)
+
   for (const theme of ['light', 'dark']) {
     await page.evaluate((t) => {
       document.documentElement.dataset.theme = t
@@ -593,4 +627,504 @@ test('mobile: project film strips advance with scroll', async ({ page }, info) =
   expect(trace.endShift, 'strip really translated').toBeLessThan(-50)
   expect(trace.back, 'steps back when scrolled back up').toBe(0)
   expect(Math.abs(trace.backShift), 'and returns to frame 1').toBeLessThan(5)
+})
+
+/* ── 12. WORDMARK: "Semplo Concept" everywhere, and it still fits the bar ──── */
+test('wordmark reads "Semplo Concept" everywhere and fits the nav', async ({ page }, info) => {
+  await ready(page)
+
+  await expect(page.locator('.nav__logo')).toHaveText(WORDMARK)
+  await expect(page.locator('.foot__brand')).toHaveText(WORDMARK)
+  await expect(page.locator('.loader__mark')).toHaveText(WORDMARK)
+  expect(await page.title()).toContain(WORDMARK)
+
+  // meta / OG / JSON-LD all carry the new name, and none still says bare "Semplo"
+  const meta = await page.evaluate(() => ({
+    desc: document.querySelector('meta[name="description"]')?.content || '',
+    ogTitle: document.querySelector('meta[property="og:title"]')?.content || '',
+    ogSite: document.querySelector('meta[property="og:site_name"]')?.content || '',
+    rights: document.querySelector('[data-i18n="foot.rights"]')?.textContent || '',
+  }))
+  for (const [k, v] of Object.entries(meta)) expect(v, `${k} carries the wordmark`).toContain(WORDMARK)
+
+  const ld = await page.evaluate(() => JSON.parse(document.querySelector('[data-ld-business]').textContent))
+  expect(ld.name).toBe(WORDMARK)
+
+  // "Semplo" must never appear WITHOUT "Concept" following it in visible chrome
+  const bare = await page.evaluate(() =>
+    ['.nav__logo', '.foot__brand', '.loader__mark', '[data-i18n="foot.rights"]']
+      .map((s) => document.querySelector(s)?.textContent || '')
+      .filter((t) => /Semplo(?!\s+Concept)/.test(t))
+  )
+  expect(bare, `bare "Semplo" left in: ${bare.join(' | ')}`).toHaveLength(0)
+
+  // …in English too
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await expect(page.locator('.nav__logo')).toHaveText(WORDMARK)
+  await expect(page.locator('.foot__brand')).toHaveText(WORDMARK)
+
+  if (info.project.name === 'mobile') {
+    // the longer mark must not crowd the language toggle at 390px
+    await revealNav(page)
+    const logo = await page.locator('.nav__logo').boundingBox()
+    const langBox = await page.locator('.lang').boundingBox()
+    const burger = await page.locator('[data-burger]').boundingBox()
+    expect(logo.x, 'wordmark starts inside the bar').toBeGreaterThanOrEqual(0)
+    expect(logo.x + logo.width, `wordmark right=${Math.round(logo.x + logo.width)} vs lang left=${Math.round(langBox.x)}`)
+      .toBeLessThan(langBox.x - 8)
+    expect(burger.x + burger.width, 'burger still inside the viewport').toBeLessThanOrEqual(
+      page.viewportSize().width
+    )
+    // and it is not wrapped onto two lines
+    const lines = await page.locator('.nav__logo').evaluate((el) => el.getClientRects().length)
+    expect(lines, 'wordmark stays on one line').toBe(1)
+  }
+})
+
+/* ── 13. PHONE: the new number everywhere, the old one nowhere ─────────────── */
+test('phone is +359 877 600 018 in every surface', async ({ page }) => {
+  await ready(page)
+
+  const tels = await page.evaluate(() =>
+    [...document.querySelectorAll('a[href^="tel:"]')].map((a) => ({
+      href: a.getAttribute('href'),
+      text: a.textContent.trim(),
+    }))
+  )
+  expect(tels.length, 'contact + footer both link the phone').toBeGreaterThanOrEqual(2)
+  for (const t of tels) {
+    expect(t.href).toBe(TEL)
+    expect(t.text).toBe(PHONE)
+  }
+
+  const ld = await page.evaluate(() => JSON.parse(document.querySelector('[data-ld-business]').textContent))
+  expect(ld.telephone).toBe(PHONE)
+
+  // no trace of the previous number anywhere in the rendered page or its schema
+  const stale = await page.evaluate(() => {
+    const hay = document.documentElement.outerHTML
+    return ['889747773', '889 747 773'].filter((n) => hay.includes(n))
+  })
+  expect(stale, `old phone number still present: ${stale.join(', ')}`).toHaveLength(0)
+})
+
+/* ── 14. HERO credibility line names сухо строителство ────────────────────── */
+test('hero credibility line says "Сухо строителство" (and its EN equivalent)', async ({ page }) => {
+  await ready(page)
+  const cred = page.locator('.hero__cred')
+  await expect(cred).toContainText('Сухо строителство')
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await expect(cred).toContainText(/Drywall/i)
+})
+
+/* ── 15. MAP: the real Google Business listing, not an address point ───────── */
+test('map band embeds the SEMPLO business listing + links to it', async ({ page }) => {
+  await ready(page)
+  const frame = page.locator('.cta__map iframe')
+  await expect(frame).toHaveCount(1)
+  const src = await frame.getAttribute('src')
+  // cid= addresses the LISTING (business pin); a q=<address> embed would only
+  // drop an address marker, which is what the client asked us to move away from
+  expect(src, `embed src = ${src}`).toContain(`cid=${business.map.cid}`)
+  expect(src).toContain('output=embed')
+  expect(src, 'no leftover address-query embed').not.toMatch(/[?&]q=/)
+
+  // the band is still full-bleed and still theme-muted
+  const band = await page.evaluate(() => {
+    const el = document.querySelector('.cta__map')
+    const r = el.getBoundingClientRect()
+    return {
+      width: Math.round(r.width),
+      vw: document.documentElement.clientWidth,
+      filter: getComputedStyle(el.querySelector('iframe')).filter,
+    }
+  })
+  expect(Math.abs(band.width - band.vw), 'map band runs edge to edge').toBeLessThanOrEqual(2)
+  expect(band.filter, 'muted to the palette').toContain('grayscale')
+
+  // the source link points at their share link and opens safely
+  const link = page.locator('.cta__maplink')
+  expect(await link.getAttribute('href')).toBe(business.map.link)
+  expect(await link.getAttribute('target')).toBe('_blank')
+  expect(await link.getAttribute('rel')).toContain('noopener')
+})
+
+/* ── 16. REVIEWS: section, cards, aggregate, placement, schema ────────────── */
+test('reviews section renders from config, bilingual, and links to Google', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const section = page.locator('#reviews')
+  await expect(section).toHaveCount(1)
+
+  // sits immediately before the contact section — social proof next to the ask
+  const order = await page.evaluate(() => {
+    const r = document.getElementById('reviews')
+    const c = document.getElementById('contact')
+    return {
+      reviewsBeforeContact: !!(r.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING),
+      afterProjects: !!(document.getElementById('work').compareDocumentPosition(r) &
+        Node.DOCUMENT_POSITION_FOLLOWING),
+    }
+  })
+  expect(order.reviewsBeforeContact, 'reviews come before #contact').toBe(true)
+  expect(order.afterProjects, 'and after the projects gallery').toBe(true)
+
+  // one card per config entry, each with a 5-star row and an author
+  await section.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(700)
+  const cards = page.locator('.review')
+  await expect(cards).toHaveCount(reviews.items.length)
+  const shape = await cards.evaluateAll((els) =>
+    els.map((el) => ({
+      stars: el.querySelectorAll('.stars i').length,
+      lit: el.querySelectorAll('.stars i:not([data-off])').length,
+      text: (el.querySelector('.review__text')?.textContent || '').trim().length,
+      author: (el.querySelector('.review__author')?.textContent || '').trim(),
+      date: (el.querySelector('.review__date')?.textContent || '').trim(),
+      label: el.querySelector('.stars')?.getAttribute('aria-label') || '',
+      todo: el.classList.contains('is-todo'),
+    }))
+  )
+  shape.forEach((s, i) => {
+    expect(s.stars, `card ${i} draws 5 stars`).toBe(5)
+    expect(s.lit, `card ${i} lights its rating`).toBe(reviews.items[i].rating)
+    expect(s.text, `card ${i} has review text`).toBeGreaterThan(20)
+    expect(s.author, `card ${i} has an author`).toBe(reviews.items[i].author)
+    expect(s.date, `card ${i} shows a localised date`).toMatch(/\d{4}/)
+    expect(s.label, `card ${i} star row is labelled for screen readers`).toContain('5')
+    expect(s.todo, `card ${i} placeholder state matches config`).toBe(!!reviews.items[i].todo)
+  })
+  // placeholders are visibly badged so they can't be mistaken for real reviews
+  expect(await page.locator('.review__todo').count()).toBe(
+    reviews.items.filter((r) => r.todo).length
+  )
+
+  // aggregate line + Google listing link
+  await expect(page.locator('[data-reviews-stars] i')).toHaveCount(5)
+  await expect(page.locator('[data-reviews-aggtext]')).toContainText(String(reviews.count))
+  await expect(page.locator('[data-reviews-aggtext]')).toContainText('Google')
+  const gl = page.locator('[data-reviews-link]')
+  expect(await gl.getAttribute('href')).toBe(reviews.url)
+  expect(await gl.getAttribute('target')).toBe('_blank')
+
+  // language toggle swaps quote text, date and the aggregate line
+  const before = await page.evaluate(() => ({
+    quote: document.querySelector('.review__text').textContent.trim(),
+    date: document.querySelector('.review__date').textContent.trim(),
+    agg: document.querySelector('[data-reviews-aggtext]').textContent.trim(),
+  }))
+  await revealNav(page) // we scrolled down — the bar is tucked away
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(350)
+  const after = await page.evaluate(() => ({
+    quote: document.querySelector('.review__text').textContent.trim(),
+    date: document.querySelector('.review__date').textContent.trim(),
+    agg: document.querySelector('[data-reviews-aggtext]').textContent.trim(),
+  }))
+  expect(after.quote, 'quote translated').not.toBe(before.quote)
+  expect(after.date, 'date localised').not.toBe(before.date)
+  expect(after.agg, 'aggregate line translated').not.toBe(before.agg)
+  await expect(page.locator('.reviews__title')).toHaveText(/What our clients say/i)
+
+  expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
+/* ── 17. REVIEW SCHEMA: tied to the LocalBusiness, placeholder-gated ───────── */
+test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
+  await ready(page)
+  const ld = await page.evaluate(() => JSON.parse(document.querySelector('[data-ld-business]').textContent))
+
+  expect(ld['@type']).toBe('HomeAndConstructionBusiness')
+  expect(ld['@id'], 'one stable entity id the reviews attach to').toBe('#business')
+  expect(ld.geo).toMatchObject({ latitude: business.geo.lat, longitude: business.geo.lng })
+  expect(ld.hasMap).toBe(business.map.link)
+
+  const real = publishable(reviews)
+  if (real.length === 0) {
+    // every entry is still a TODO placeholder → publishing invented reviews as
+    // structured data is a spam-policy risk, so nothing rating-shaped is emitted
+    expect(ld.review, 'no review schema while all entries are placeholders').toBeUndefined()
+    expect(ld.aggregateRating, 'and no aggregate either').toBeUndefined()
+  } else {
+    expect(ld.review.length).toBe(real.length)
+    expect(ld.aggregateRating).toMatchObject({ '@type': 'AggregateRating', bestRating: '5' })
+  }
+
+  // and prove the builder produces valid, attached schema once real reviews land
+  const filled = {
+    ...reviews,
+    rating: 4.9,
+    count: 31,
+    items: reviews.items.map(({ todo, ...r }) => r),
+  }
+  const withReviews = businessLd(business, filled, 'bg')
+  expect(withReviews['@id'], 'reviews attach to the same entity').toBe('#business')
+  expect(withReviews.aggregateRating).toEqual({
+    '@type': 'AggregateRating',
+    ratingValue: '4.9',
+    reviewCount: '31',
+    bestRating: '5',
+    worstRating: '1',
+  })
+  expect(withReviews.review).toHaveLength(reviews.items.length)
+  for (const r of withReviews.review) {
+    expect(r['@type']).toBe('Review')
+    expect(r.author['@type']).toBe('Person')
+    expect(r.author.name).toBeTruthy()
+    expect(r.reviewRating).toMatchObject({ '@type': 'Rating', bestRating: '5' })
+    expect(r.reviewBody.length).toBeGreaterThan(20)
+    expect(r.datePublished).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(r.url).toBe(reviews.url)
+  }
+  // one placeholder left in → it alone is dropped, the real ones still publish
+  const mixed = businessLd(business, {
+    ...filled,
+    items: [{ ...filled.items[0], todo: true }, ...filled.items.slice(1)],
+  })
+  expect(mixed.review).toHaveLength(filled.items.length - 1)
+})
+
+/* ── 18. CONTACT FORM: opens, validates, submits, closes ──────────────────── */
+test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const modal = page.locator('[data-form-modal]')
+  const opener = page.locator('[data-form-open]')
+
+  // the CTA is a real button now, not a mailto: dead end
+  await expect(opener).toHaveCount(1)
+  expect(await opener.evaluate((el) => el.tagName)).toBe('BUTTON')
+  // (the email address in .cta__contacts stays a mailto — it's the BUTTON that
+  // must no longer be one)
+  expect(await page.locator('a.cta__btn').count(), 'the CTA is no longer a mailto link').toBe(0)
+  await expect(modal).toBeHidden()
+
+  /* ── Netlify Forms contract: all three parts must be in the DEPLOYED HTML,
+        because form detection happens at build time by parsing it ── */
+  const netlify = await page.evaluate(() => {
+    const f = document.querySelector('[data-form]')
+    return {
+      name: f.getAttribute('name'),
+      method: (f.getAttribute('method') || '').toUpperCase(),
+      dataNetlify: f.getAttribute('data-netlify'),
+      honeypotAttr: f.getAttribute('netlify-honeypot'),
+      formName: f.querySelector('input[name="form-name"]')?.value,
+      hasPot: !!f.querySelector('input[name="bot-field"]'),
+      potVisible: (() => {
+        const el = f.querySelector('input[name="bot-field"]')
+        const r = el.getBoundingClientRect()
+        return r.width > 2 && r.height > 2
+      })(),
+      potTabbable: f.querySelector('input[name="bot-field"]').tabIndex >= 0,
+      fields: [...f.elements].filter((e) => e.name && e.name !== 'form-name' && e.name !== 'bot-field')
+        .map((e) => e.name),
+    }
+  })
+  expect(netlify.name).toBe('contact')
+  expect(netlify.method).toBe('POST')
+  expect(netlify.dataNetlify).toBe('true')
+  expect(netlify.honeypotAttr).toBe('bot-field')
+  expect(netlify.formName, 'hidden form-name is required for AJAX POSTs').toBe('contact')
+  expect(netlify.hasPot).toBe(true)
+  expect(netlify.potVisible, 'honeypot must be invisible to humans').toBe(false)
+  expect(netlify.potTabbable, 'honeypot must be out of the tab order').toBe(false)
+  // the qualifying fields a studio actually needs
+  expect(netlify.fields).toEqual([
+    'name', 'email', 'phone', 'size-m2', 'project-type', 'project-stage', 'timeline',
+    'budget', 'message',
+  ])
+
+  /* ── opens on the button, focus lands in the form ── */
+  await openEnquiry(page)
+  await expect(modal).toBeVisible()
+  expect(await page.evaluate(() => document.activeElement?.id), 'focus moves into the form').toBe('cf-name')
+  expect(await page.evaluate(() => document.body.classList.contains('is-locked'))).toBe(true)
+  expect(await modal.getAttribute('aria-modal')).toBe('true')
+  expect(await modal.getAttribute('role')).toBe('dialog')
+
+  // no horizontal overflow with the dialog open (checked at every viewport)
+  expect(await horizontalOverflow(page), 'dialog opened a horizontal scrollbar').toBeNull()
+
+  /* ── native validation blocks an empty submit ──
+     Scope the interception to OUR origin: the Google Maps iframe in this very
+     section fires its own POSTs (telemetry/batch), and a catch-all route counts
+     those as form submissions. */
+  const origin = new URL(page.url()).origin
+  const ours = (url) => url.origin === origin
+  const ourPost = (req) => req.method() === 'POST' && ours(new URL(req.url()))
+  let posts = 0
+  await page.route(ours, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    return route.fulfill({ status: 200, contentType: 'text/html', body: 'ok' })
+  })
+  await page.locator('[data-form-submit]').click()
+  await page.waitForTimeout(400)
+  expect(posts, 'empty form must not POST').toBe(0)
+  await expect(modal).toBeVisible()
+  expect(
+    await page.evaluate(() => document.querySelector('#cf-name').matches(':invalid')),
+    'required field reports invalid'
+  ).toBe(true)
+  expect(
+    await page.evaluate(() => document.querySelector('[data-form]').classList.contains('was-submitted')),
+    'invalid styling armed after a submit attempt'
+  ).toBe(true)
+
+  /* ── ESC closes and hands focus back to the opener ── */
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await expect(modal).toBeHidden()
+  expect(await page.evaluate(() => document.body.classList.contains('is-locked'))).toBe(false)
+  expect(
+    await page.evaluate(() => document.activeElement?.hasAttribute('data-form-open')),
+    'focus returned to the opener'
+  ).toBe(true)
+
+  /* ── backdrop click closes too ── */
+  await opener.click()
+  await expect(modal).toBeVisible()
+  await page.waitForTimeout(400)
+  await page.locator('[data-form-backdrop]').click({ position: { x: 4, y: 4 } })
+  await page.waitForTimeout(600)
+  await expect(modal).toBeHidden()
+
+  /* ── fill + submit → AJAX success panel, page never navigates ── */
+  const url0 = page.url()
+  await opener.click()
+  await page.waitForTimeout(400)
+  await page.fill('#cf-name', 'Иван Тестов')
+  await page.fill('#cf-email', 'ivan@example.com')
+  await page.fill('#cf-phone', '+359 888 123 456')
+  await page.fill('#cf-size', '95')
+  await page.selectOption('#cf-type', 'Апартамент')
+  await page.selectOption('#cf-stage', 'Идея')
+  await page.selectOption('#cf-when', '1–3 месеца')
+  await page.fill('#cf-msg', 'Търсим цялостен проект за двустаен апартамент.')
+
+  const post = page.waitForRequest(ourPost)
+  await page.locator('[data-form-submit]').click()
+  const req = await post
+  // the payload Netlify needs: url-encoded, form-name included, honeypot empty.
+  // Parse it rather than string-matching — `+` is an encoded space here, which
+  // decodeURIComponent would leave as a literal plus.
+  expect(req.headers()['content-type']).toContain('application/x-www-form-urlencoded')
+  const sent = new URLSearchParams(req.postData() || '')
+  expect(sent.get('form-name'), 'Netlify needs form-name in an AJAX POST').toBe('contact')
+  expect(sent.get('name')).toBe('Иван Тестов')
+  expect(sent.get('email')).toBe('ivan@example.com')
+  expect(sent.get('phone')).toBe('+359 888 123 456')
+  expect(sent.get('size-m2')).toBe('95')
+  // the qualifiers arrive in Bulgarian whatever the UI language was
+  expect(sent.get('project-type')).toBe('Апартамент')
+  expect(sent.get('project-stage')).toBe('Идея')
+  expect(sent.get('timeline')).toBe('1–3 месеца')
+  expect(sent.get('message')).toContain('двустаен апартамент')
+  expect(sent.get('bot-field'), 'honeypot posts empty for a human').toBe('')
+
+  await expect(page.locator('[data-form-done]')).toBeVisible()
+  await expect(page.locator('[data-form-body]')).toBeHidden()
+  expect(page.url(), 'AJAX submit — no navigation').toBe(url0)
+  await page.locator('[data-form-done] [data-form-close]').click()
+  await page.waitForTimeout(600)
+  await expect(modal).toBeHidden()
+
+  /* ── a failed POST shows the error state and keeps the answers ── */
+  await page.unrouteAll()
+  await page.route(ours, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    return route.fulfill({ status: 500, contentType: 'text/html', body: 'nope' })
+  })
+  await opener.click()
+  await page.waitForTimeout(400)
+  // reopening returns to the form, not the success panel
+  await expect(page.locator('[data-form-body]')).toBeVisible()
+  await expect(page.locator('[data-form-done]')).toBeHidden()
+  await page.fill('#cf-name', 'Втори опит')
+  await page.fill('#cf-email', 'two@example.com')
+  await page.fill('#cf-phone', '+359 888 000 000')
+  await page.selectOption('#cf-type', 'Офис')
+  await page.selectOption('#cf-stage', 'Идея')
+  await page.locator('[data-form-submit]').click()
+  await expect(page.locator('[data-form-err]')).toBeVisible()
+  await expect(page.locator('[data-form-done]')).toBeHidden()
+  expect(await page.inputValue('#cf-name'), 'answers survive a failure').toBe('Втори опит')
+  expect(
+    await page.locator('[data-form-submit]').isEnabled(),
+    'submit is re-enabled so it can be retried'
+  ).toBe(true)
+
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(500)
+  // the 500 above is ours on purpose — Chrome logs every failed request as a
+  // console error, so exclude just that one and require silence otherwise
+  const unexpected = errors.filter((e) => !/status of 500/.test(e))
+  expect(unexpected, unexpected.join('\n')).toHaveLength(0)
+})
+
+/* ── 19. FORM is bilingual, keyboard-navigable and theme-aware ─────────────── */
+test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }) => {
+  await ready(page)
+  await openEnquiry(page)
+
+  // BG labels + placeholders, and BG option VALUES (what lands in Netlify)
+  await expect(page.locator('label[for="cf-type"]')).toHaveText('Тип проект')
+  expect(await page.getAttribute('#cf-name', 'placeholder')).toBe('Име и фамилия')
+  const values = await page.locator('#cf-type option').evaluateAll((o) =>
+    o.map((e) => e.value).filter(Boolean)
+  )
+  expect(values).toEqual(['Апартамент', 'Къща', 'Офис', 'Ресторант', 'Друго'])
+  await expect(page.locator('#cf-stage option[value="Идея"]')).toHaveText('Идея')
+
+  // Switch to EN. The dialog is modal — its backdrop deliberately swallows
+  // clicks on the page behind, including the nav — so close it first, which also
+  // proves the language applies to markup that was never open when it changed.
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  // we are scrolled down at #contact — unhide the bar. (The language toggle
+  // lives in the bar itself at every width, never behind the burger.)
+  await revealNav(page)
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(350)
+  await page.locator('[data-form-open]').click()
+  await page.waitForTimeout(450)
+  await expect(page.locator('label[for="cf-type"]')).toHaveText('Project type')
+  await expect(page.locator('.cform__title').first()).toHaveText('Tell us about your project')
+  expect(await page.getAttribute('#cf-name', 'placeholder')).toBe('First and last name')
+  await expect(page.locator('#cf-stage option[value="Идея"]')).toHaveText('Just an idea')
+  expect(
+    await page.locator('#cf-type option').evaluateAll((o) => o.map((e) => e.value).filter(Boolean))
+  ).toEqual(values)
+  expect(await page.locator('[data-form-close]').first().getAttribute('aria-label')).toBe('Close')
+
+  // Tab is trapped: walking forward from the last control comes back inside
+  const trapped = await page.evaluate(async () => {
+    const panel = document.querySelector('.cform__panel')
+    const f = [...panel.querySelectorAll('a[href],button:not(:disabled),input:not([disabled]):not([tabindex="-1"]),select,textarea')]
+      .filter((el) => !el.closest('[hidden]') && el.offsetParent !== null)
+    return { count: f.length, allInPanel: f.every((el) => panel.contains(el)) }
+  })
+  expect(trapped.count, 'every field is reachable by keyboard').toBeGreaterThan(9)
+  expect(trapped.allInPanel).toBe(true)
+  await page.locator('[data-form-submit]').focus()
+  await page.keyboard.press('Tab')
+  await page.waitForTimeout(150)
+  expect(
+    await page.evaluate(() => document.querySelector('.cform__panel').contains(document.activeElement)),
+    'Tab does not escape the dialog'
+  ).toBe(true)
+
+  // the dialog is themed by the same token flip as the page
+  const panelBg = () => page.evaluate(() => getComputedStyle(document.querySelector('.cform__panel')).backgroundColor)
+  const inputBg = () => page.evaluate(() => getComputedStyle(document.querySelector('#cf-name')).backgroundColor)
+  const light = { panel: await panelBg(), input: await inputBg() }
+  await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'))
+  await page.waitForTimeout(500)
+  const dark = { panel: await panelBg(), input: await inputBg() }
+  expect(dark.panel, 'panel follows the theme').not.toBe(light.panel)
+  expect(dark.input, 'inputs follow the theme').not.toBe(light.input)
 })
