@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Semplo Concept — sitemap.
+
+  The site is ONE page, so there is one real page URL. The five catalogue PDFs
+  are listed alongside it because they are genuinely indexable content that
+  crawlers would otherwise struggle to reach: the grid that links them is
+  injected by JavaScript, so a crawler that does not execute scripts never sees
+  an <a href> to any of them. This file is how they get discovered.
+
+  Anchor targets (#work, #studio, #reviews, #contact) are deliberately NOT
+  listed — they are positions within this page, not separate URLs, and listing
+  them would ask Google to index the same document five times.
+
+  <changefreq> and <priority> are omitted on purpose: Google ignores both.
+
+  Every <loc> mirrors `business.url` in src/sections.config.js. The e2e suite
+  compares them and fails if they drift. DNS still points at the old WordPress
+  install, so these URLs are correct for the future live site and will not
+  resolve until the domain is switched to Netlify.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://semplodesign.com/</loc>
+    <lastmod>2026-08-02</lastmod>
+  </url>
+  <url>
+    <loc>https://semplodesign.com/catalogs/gastronomy-general.pdf</loc>
+  </url>
+  <url>
+    <loc>https://semplodesign.com/catalogs/gastronomy-restaurant.pdf</loc>
+  </url>
+  <url>
+    <loc>https://semplodesign.com/catalogs/gastronomy-exclusive.pdf</loc>
+  </url>
+  <url>
+    <loc>https://semplodesign.com/catalogs/furniture-chairs.pdf</loc>
+  </url>
+  <url>
+    <loc>https://semplodesign.com/catalogs/furniture-general.pdf</loc>
+  </url>
+</urlset>

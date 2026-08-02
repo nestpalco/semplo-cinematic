@@ -1,0 +1,18 @@
+# Semplo Concept — https://semplodesign.com/
+#
+# One public page, nothing private, no crawl traps: allow everything.
+# `public/` is copied to the web root verbatim by Vite, so this is served at
+# /robots.txt on both the custom domain and the *.netlify.app address.
+#
+# The Sitemap line below mirrors `business.url` in src/sections.config.js. The
+# e2e suite compares them and fails if they drift.
+#
+# NOTE: a Sitemap: URL must be absolute, and it names the CANONICAL host on
+# purpose. While DNS still points at the old WordPress install this file is only
+# reachable at the Netlify address — a crawler that finds it there is still sent
+# to the canonical sitemap, which is what we want indexed.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://semplodesign.com/sitemap.xml

@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import { businessLd, publishable } from '../src/schema.js'
-import { business, reviews } from '../src/sections.config.js'
+import { business, reviews, catalogs } from '../src/sections.config.js'
+
+const SITE = business.url // 'https://semplodesign.com/'
+const SITE_ORIGIN = new URL(SITE).origin
 
 const PHONE = '+359 877 600 018'
 const TEL = 'tel:+359877600018'
@@ -311,10 +314,18 @@ test('catalogues grid renders, all downloads internal', async ({ page }) => {
   await expect(cards).toHaveCount(5)
   const hrefs = await cards.evaluateAll((els) => els.map((a) => a.getAttribute('href')))
   for (const h of hrefs) expect(h).toMatch(/^\/catalogs\/.+\.pdf$/)
-  const oldLinks = await page.evaluate(() =>
-    [...document.querySelectorAll('a[href*="semplodesign.com"]')].map((a) => a.href)
+
+  // This site now TAKES OVER semplodesign.com from the retired WordPress
+  // install, so the guard is no longer "any link to that host" — the host is
+  // ours. What must never appear is a link to a LEGACY PATH on it: those pages
+  // are gone, their content was migrated into this single page, and a visitor
+  // sent there would land on a 404 once DNS switches to Netlify.
+  const legacy = await page.evaluate(() =>
+    [...document.querySelectorAll('a[href]')]
+      .map((a) => a.href)
+      .filter((h) => /semplodesign\.com\/(projects|about-us|catalogs|contact|shop|blog)/i.test(h))
   )
-  expect(oldLinks, oldLinks.join('\n')).toHaveLength(0)
+  expect(legacy, `links to retired WordPress paths:\n${legacy.join('\n')}`).toHaveLength(0)
 })
 
 /* ── 6. FULL SCROLL: no overflow at any step, nothing stuck hidden ─────────── */
@@ -838,7 +849,9 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
   const ld = await page.evaluate(() => JSON.parse(document.querySelector('[data-ld-business]').textContent))
 
   expect(ld['@type']).toBe('HomeAndConstructionBusiness')
-  expect(ld['@id'], 'one stable entity id the reviews attach to').toBe('#business')
+  // absolute on the canonical domain, so the same entity is identified however
+  // the page is reached (custom domain, *.netlify.app, deploy preview)
+  expect(ld['@id'], 'one stable entity id the reviews attach to').toBe(`${SITE}#business`)
   expect(ld.geo).toMatchObject({ latitude: business.geo.lat, longitude: business.geo.lng })
   expect(ld.hasMap).toBe(business.map.link)
 
@@ -861,7 +874,7 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
     items: reviews.items.map(({ todo, ...r }) => r),
   }
   const withReviews = businessLd(business, filled, 'bg')
-  expect(withReviews['@id'], 'reviews attach to the same entity').toBe('#business')
+  expect(withReviews['@id'], 'reviews attach to the same entity').toBe(`${SITE}#business`)
   expect(withReviews.aggregateRating).toEqual({
     '@type': 'AggregateRating',
     ratingValue: '4.9',
@@ -1064,6 +1077,108 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   // console error, so exclude just that one and require silence otherwise
   const unexpected = errors.filter((e) => !/status of 500/.test(e))
   expect(unexpected, unexpected.join('\n')).toHaveLength(0)
+})
+
+/* ── 20. CANONICAL DOMAIN: one base URL, mirrored everywhere, no drift ──────
+ * The domain lives in `business.url` but four static files have to repeat it
+ * (they cannot import config). This test IS that contract: it compares every
+ * copy against the config value, so a change made in one place and forgotten in
+ * another fails here instead of shipping. It also fetches each URL it finds —
+ * with the canonical origin rewritten to the local preview — so a listed file
+ * that isn't actually in the deploy is caught too.
+ *
+ * The URLs do not resolve on the public internet yet (DNS still points at the
+ * old WordPress install); that is orthogonal to whether they are correct. */
+test('canonical domain is applied consistently and every listed URL exists', async ({
+  page,
+  request,
+}) => {
+  await ready(page)
+  // canonical origin → the local preview, so listed URLs can actually be fetched
+  const local = (u) => u.replace(SITE_ORIGIN, new URL(page.url()).origin)
+
+  /* ── <head>: canonical + Open Graph ── */
+  const head = await page.evaluate(() => {
+    const meta = (p) => document.querySelector(`meta[property="${p}"]`)?.content ?? null
+    return {
+      // getAttribute, not .href: .href would resolve a relative value and hide
+      // exactly the bug this asserts against
+      canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') ?? null,
+      canonicalCount: document.querySelectorAll('link[rel="canonical"]').length,
+      ogUrl: meta('og:url'),
+      ogImage: meta('og:image'),
+    }
+  })
+  expect(head.canonicalCount, 'exactly one canonical').toBe(1)
+  expect(head.canonical, 'canonical matches business.url').toBe(SITE)
+  expect(head.ogUrl, 'og:url matches business.url').toBe(SITE)
+  // an off-site scraper cannot resolve a root-relative image path
+  expect(head.ogImage, 'og:image is absolute on the canonical origin').toBe(
+    `${SITE_ORIGIN}/videos/hero-poster.webp`
+  )
+  expect((await request.get(local(head.ogImage))).status(), 'og:image is in the deploy').toBe(200)
+
+  /* ── JSON-LD, both the runtime build and the static no-JS fallback ── */
+  const ld = await page.evaluate(() =>
+    JSON.parse(document.querySelector('[data-ld-business]').textContent)
+  )
+  expect(ld.url, 'JSON-LD url').toBe(SITE)
+  expect(ld['@id'], 'JSON-LD @id is absolute on the canonical domain').toBe(`${SITE}#business`)
+  expect(ld.image.startsWith(SITE_ORIGIN), `JSON-LD image = ${ld.image}`).toBe(true)
+  // the canonical domain belongs in `url`; sameAs is for OTHER profiles
+  expect(ld.sameAs.some((s) => s.includes('semplodesign.com')), 'own domain not in sameAs').toBe(false)
+
+  // the raw served HTML (what a crawler that runs no JS sees) must agree
+  const rawHtml = await (await request.get('/')).text()
+  const fallback = JSON.parse(
+    rawHtml.match(/<script type="application\/ld\+json" data-ld-business>([\s\S]*?)<\/script>/)[1]
+  )
+  expect(fallback['@id'], 'no-JS fallback @id').toBe(`${SITE}#business`)
+  expect(fallback.url, 'no-JS fallback url').toBe(SITE)
+  expect(rawHtml, 'canonical is in the served HTML, not injected').toContain(
+    `<link rel="canonical" href="${SITE}"`
+  )
+
+  /* ── robots.txt ── */
+  const robotsRes = await request.get('/robots.txt')
+  expect(robotsRes.status(), 'robots.txt is deployed').toBe(200)
+  const robots = await robotsRes.text()
+  expect(robots).toMatch(/^User-agent:\s*\*/m)
+  expect(robots).toMatch(/^Allow:\s*\/$/m)
+  expect(robots, 'nothing is blanket-disallowed').not.toMatch(/^Disallow:\s*\/\s*$/m)
+  expect(robots, 'Sitemap: line points at the canonical sitemap').toMatch(
+    new RegExp(`^Sitemap:\\s*${SITE_ORIGIN}/sitemap\\.xml$`, 'm')
+  )
+
+  /* ── sitemap.xml ── */
+  const smRes = await request.get('/sitemap.xml')
+  expect(smRes.status(), 'sitemap.xml is deployed').toBe(200)
+  const sm = await smRes.text()
+  expect(sm).toContain('http://www.sitemaps.org/schemas/sitemap/0.9')
+  const locs = [...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1].trim())
+
+  for (const loc of locs) {
+    expect(loc.startsWith(`${SITE_ORIGIN}/`), `<loc> off the canonical origin: ${loc}`).toBe(true)
+    expect(loc, 'https only').not.toMatch(/^http:/)
+  }
+  expect(locs, 'the homepage is listed').toContain(SITE)
+  // every catalogue PDF is listed — add a catalogue without updating the
+  // sitemap and this fails, which is the point of deriving it from config
+  for (const c of catalogs) {
+    expect(locs, `catalogue ${c.id} is missing from the sitemap`).toContain(
+      `${SITE_ORIGIN}/catalogs/${c.id}.pdf`
+    )
+  }
+  expect(locs.length, 'homepage + one entry per catalogue, nothing stale').toBe(1 + catalogs.length)
+  // anchors are positions on this page, not URLs — they must not be listed
+  expect(locs.filter((l) => l.includes('#')), 'no anchor URLs in the sitemap').toHaveLength(0)
+  expect(new Set(locs).size, 'no duplicate <loc>').toBe(locs.length)
+
+  // and each one is genuinely in the deploy
+  for (const loc of locs) {
+    const res = await request.get(local(loc))
+    expect(res.status(), `sitemap lists a URL that 404s: ${loc}`).toBe(200)
+  }
 })
 
 /* ── 19. FORM is bilingual, keyboard-navigable and theme-aware ─────────────── */

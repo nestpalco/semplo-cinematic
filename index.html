@@ -8,10 +8,18 @@
       name="description"
       content="Semplo Concept — интериорно студио за спокойни, премиум пространства. Избрани проекти, завършени интериори. A calm, photography-first interior studio — selected work, finished interiors."
     />
-    <!-- Social / link-preview cards. og:url is deliberately absent: the deploy
-         domain isn't known at build time and a wrong canonical is worse than
-         none — add it once the custom domain is live on Netlify. -->
+    <!-- CANONICAL. One page, one URL. This is the live domain the Netlify site
+         will answer on; DNS still points at the old WordPress install, so it
+         does not resolve yet. Declaring it now is the point: until the switch
+         the site is reachable at its *.netlify.app address, and this keeps that
+         copy from competing with the real domain in the index.
+         Mirrors `business.url` in src/sections.config.js — the e2e suite fails
+         if the two ever disagree. -->
+    <link rel="canonical" href="https://semplodesign.com/" />
+    <!-- Social / link-preview cards. og:url and og:image must be ABSOLUTE — a
+         root-relative path is not resolvable by an off-site scraper. -->
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://semplodesign.com/" />
     <meta property="og:site_name" content="Semplo Concept" />
     <meta property="og:locale" content="bg_BG" />
     <meta property="og:locale:alternate" content="en_GB" />
@@ -20,7 +28,8 @@
       property="og:description"
       content="Интериорен дизайн, сухо строителство и мебели по поръчка в София. Избрани проекти и завършени интериори."
     />
-    <meta property="og:image" content="/videos/hero-poster.webp" />
+    <meta property="og:image" content="https://semplodesign.com/videos/hero-poster.webp" />
+    <meta property="og:image:alt" content="Semplo Concept — завършен интериор в мека дневна светлина" />
     <meta name="twitter:card" content="summary_large_image" />
     <link
       rel="icon"
@@ -62,7 +71,8 @@
       {
         "@context": "https://schema.org",
         "@type": "HomeAndConstructionBusiness",
-        "@id": "#business",
+        "@id": "https://semplodesign.com/#business",
+        "url": "https://semplodesign.com/",
         "name": "Semplo Concept",
         "description": "Интериорно студио — дизайн, сухо строителство, внос на строителни материали и мебели по поръчка.",
         "telephone": "+359 877 600 018",
@@ -79,6 +89,7 @@
           "longitude": 23.332162
         },
         "hasMap": "https://maps.app.goo.gl/RW5PLieX7xKHSCPx5",
+        "image": "https://semplodesign.com/videos/hero-poster.webp",
         "sameAs": [
           "https://www.facebook.com/semplodesign.bulgaria",
           "https://www.instagram.com/semplo.design",

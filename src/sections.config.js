@@ -242,6 +242,24 @@ export const interludes = [
 export const business = {
   name: 'Semplo Concept',
   legalName: 'Semplo Concept',
+  /* ── CANONICAL DOMAIN — the one base URL for the whole site ───────────────
+   * Read by src/schema.js (JSON-LD `url` + `@id` + `image`) and mirrored by
+   * hand in four static places that cannot import config:
+   *     index.html      <link rel="canonical"> and og:url / og:image
+   *     index.html      the no-JS JSON-LD fallback
+   *     public/robots.txt   the Sitemap: line
+   *     public/sitemap.xml  every <loc>
+   * The e2e suite compares all of them against this value, so a change here
+   * that isn't mirrored fails the build rather than shipping quietly.
+   *
+   * ⚠ DNS still points at the old WordPress install, so these URLs describe the
+   * FUTURE live site — they will not resolve until the domain is switched to
+   * Netlify. That is fine, and is exactly why the canonical matters now: until
+   * the switch the site is reachable at its *.netlify.app address, and the
+   * canonical keeps that copy from competing with this domain in the index.
+   * Trailing slash included — it is the homepage, and every mirrored copy uses
+   * the identical string so nothing has to normalise it. */
+  url: 'https://semplodesign.com/',
   phone: '+359 877 600 018',
   tel: '+359877600018', // tel: href form (no spaces)
   email: 'office@semplohome.com',

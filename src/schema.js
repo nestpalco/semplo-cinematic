@@ -40,9 +40,13 @@ export function businessLd(business, reviews, lang = 'bg') {
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'HomeAndConstructionBusiness',
-    // relative @id, resolved against the page URL — so a single node identity
-    // works on any deploy domain (Netlify preview, custom domain, localhost)
-    '@id': '#business',
+    // Absolute @id on the canonical domain. It was a relative '#business' while
+    // no domain was settled; now that one exists an absolute IRI is the better
+    // identity — it stays the same node when this page is crawled through the
+    // *.netlify.app address or a deploy preview, instead of minting a new
+    // entity per host and splitting the reviews off from the business.
+    '@id': `${b.url}#business`,
+    url: b.url,
     name: b.name,
     description:
       'Интериорно студио — дизайн, сухо строителство, внос на строителни материали и мебели по поръчка.',
@@ -56,6 +60,10 @@ export function businessLd(business, reviews, lang = 'bg') {
     },
     geo: { '@type': 'GeoCoordinates', latitude: b.geo.lat, longitude: b.geo.lng },
     hasMap: b.map.link,
+    // absolute, as schema.org requires — same asset the OG card uses
+    image: `${b.url}videos/hero-poster.webp`,
+    // OTHER profiles for the same business. The canonical domain belongs in
+    // `url` above, not here: sameAs is for the shop and the social accounts.
     sameAs: b.social.slice(),
   }
 
