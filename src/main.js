@@ -1000,8 +1000,13 @@ function motionlessFallback() {
             size: 'flexible', // spans the column like every other control
             action: 'enquiry', // shows up in Cloudflare's analytics
             callback: () => {
-              if (!errEl.hidden && errTitle.dataset.i18n.startsWith('form.captcha')) {
-                errEl.hidden = true // solved — clear any "still verifying" nag
+              // Clear ONLY the "still verifying" nag, and only that one. Matching
+              // every form.captcha* key here wiped the "security check failed"
+              // message the visitor needs to read: a rejected submit resets the
+              // widget, the reset issues a fresh token, and this callback then
+              // erased the explanation a moment after it appeared.
+              if (!errEl.hidden && errTitle.dataset.i18n === 'form.captchaPendingTitle') {
+                errEl.hidden = true
               }
             },
             'expired-callback': () => ts.reset(capId),

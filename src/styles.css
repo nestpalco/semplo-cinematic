@@ -1792,6 +1792,13 @@ main {
 }
 /* dummy-sitekey stand-in — dashed + gold badge, same language as the placeholder
    review cards, so an unconfigured form reads as unconfigured, never as broken */
+/* `display` MUST be paired with a [hidden] reset — a UA `[hidden]{display:none}`
+   loses to any author display declaration, so without this the badge paints even
+   when main.js has hidden it, and its width:100% then squeezes the real widget
+   into whatever space is left. (Same trap as .cform[hidden] above.) */
+.cform__captcha-test[hidden] {
+  display: none;
+}
 .cform__captcha-test {
   display: grid;
   place-items: center;

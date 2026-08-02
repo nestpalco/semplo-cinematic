@@ -89,11 +89,70 @@ async function openEnquiry(page) {
   await page.waitForTimeout(450)
 }
 
-// Wait for Turnstile to issue a token. The committed sitekey is Cloudflare's
-// documented always-passes DUMMY key, which works on any domain (localhost
-// included) and self-solves — so the suite exercises the real widget and the
-// real hidden input rather than a stub, and a submit that needs a token can
-// actually get one.
+/* Serve a stand-in for Turnstile's api.js.
+ *
+ * WHY: the production sitekey is domain-locked to semplodesign.com, so on
+ * localhost the real widget renders its "failed to connect" state and never
+ * issues a token — every test that needs one would hang. Cloudflare also
+ * deliberately challenges headless browsers, so even an allowed domain could not
+ * be relied on to self-solve in CI.
+ *
+ * WHAT IS STILL REAL: the request to challenges.cloudflare.com (so the
+ * lazy-load assertion still means something), our loader, the explicit-render
+ * handshake via the ?onload= callback, the hidden cf-turnstile-response input
+ * that FormData reads, and every branch of our own gate and error handling. The
+ * appearance of Cloudflare's own widget is the one thing this cannot cover — it
+ * is checked by eye against a deployed build. */
+async function fakeTurnstile(page) {
+  await page.route('**/turnstile/v0/api.js*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/javascript; charset=utf-8',
+      body: `(() => {
+  let n = 0
+  const widgets = new Map()
+  const issue = (w) => {
+    w.input.value = 'FAKE.TOKEN.' + (++n)
+    if (w.opts.callback) w.opts.callback(w.input.value)
+  }
+  window.turnstile = {
+    render(el, opts) {
+      const host = typeof el === 'string' ? document.querySelector(el) : el
+      const wrap = document.createElement('div')
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = 'cf-turnstile-response'
+      wrap.appendChild(input)
+      host.appendChild(wrap)
+      const id = 'fake-' + (widgets.size + 1)
+      const w = { host, wrap, input, opts }
+      widgets.set(id, w)
+      setTimeout(() => issue(w), 30)   // tokens arrive asynchronously, as real ones do
+      return id
+    },
+    getResponse(id) { return (widgets.get(id) || {}).input?.value || '' },
+    reset(id) {
+      const w = widgets.get(id)
+      if (!w) return
+      w.input.value = ''               // single-use: cleared, then re-issued
+      setTimeout(() => issue(w), 30)
+    },
+    remove(id) {
+      const w = widgets.get(id)
+      if (!w) return
+      w.wrap.remove()
+      widgets.delete(id)
+    },
+  }
+  const src = (document.currentScript && document.currentScript.src) || ''
+  const cb = src ? new URL(src, location.href).searchParams.get('onload') : null
+  if (cb && typeof window[cb] === 'function') window[cb]()
+})()`,
+    })
+  )
+}
+
+// Wait for a token to land in the hidden field the form actually submits.
 async function waitCaptcha(page) {
   await page.waitForFunction(
     () => {
@@ -574,6 +633,7 @@ test('theme: toggle flips light ⇄ dark, persists, honours prefers-color-scheme
 
 /* ── 10. CONTRAST: WCAG AA on themed surfaces, in BOTH themes ─────────────── */
 test('contrast: all section + nav text passes AA in light AND dark', async ({ page }) => {
+  await fakeTurnstile(page) // the dialog is audited open; keep it off the network
   await ready(page)
   await scrollWholePage(page)
   await page.evaluate(() => document.body.classList.remove('nav-hidden'))
@@ -926,6 +986,7 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
 /* ── 18. CONTACT FORM: opens, validates, submits, closes ──────────────────── */
 test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ page }) => {
   const errors = collectErrors(page)
+  await fakeTurnstile(page)
   // watch every request to Cloudflare so we can prove the CAPTCHA is lazy
   const capReqs = []
   page.on('request', (r) => {
@@ -1020,18 +1081,13 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
     await page.locator('[data-turnstile]').getAttribute('data-rendered'),
     'widget built for the active theme and language'
   ).toBe('light|bg')
-  // Both configurations are asserted, so this test keeps working — and gets
-  // STRONGER — the moment the real sitekey is pasted into config.
+  // A real sitekey is configured, so the "not protected" badge must be gone.
+  // (If someone reverts to a dummy key it has to come back — asserted both ways
+  // so neither state can regress silently.)
   if (USING_TEST_KEY) {
-    // dummy key: flagged in the UI so an unconfigured form cannot be mistaken
-    // for a working one, and no widget is drawn
     await expect(page.locator('[data-captcha-test]')).toBeVisible()
   } else {
     await expect(page.locator('[data-captcha-test]')).toBeHidden()
-    expect(
-      await page.locator('[data-turnstile] iframe').count(),
-      'the real sitekey draws exactly one widget'
-    ).toBe(1)
   }
 
   // no horizontal overflow with the dialog open (checked at every viewport)
@@ -1349,6 +1405,7 @@ test('canonical domain is applied consistently and every listed URL exists', asy
 
 /* ── 19. FORM is bilingual, keyboard-navigable and theme-aware ─────────────── */
 test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }) => {
+  await fakeTurnstile(page)
   await ready(page)
   await openEnquiry(page)
 
@@ -1457,12 +1514,9 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
     'widget rebuilt for the dark theme'
   ).toBe('dark|en')
   // one widget, not two: the light one must have been REMOVED, not stacked under
-  // the dark one. Counted via the response field so it holds for either key kind.
+  // the dark one (turnstile.remove() before the re-render, not just a render)
   expect(
     await page.locator('[data-turnstile] input[name="cf-turnstile-response"]').count(),
     'the previous widget was removed, not stacked'
   ).toBe(1)
-  if (!USING_TEST_KEY) {
-    expect(await page.locator('[data-turnstile] iframe').count()).toBe(1)
-  }
 })

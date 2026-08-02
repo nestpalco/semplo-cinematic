@@ -409,7 +409,10 @@ export const reviews = {
  */
 export const captcha = {
   provider: 'turnstile',
-  sitekey: '1x00000000000000000000AA', // ★ TODO: replace with the real site key
+  // SEMPLO's live Turnstile site key. Public by design (the SECRET key is the
+  // half that must stay private — it lives only in Netlify's environment as
+  // TURNSTILE_SECRET_KEY and is never in this repo).
+  sitekey: '0x4AAAAAAEEhCNbT9NBnI65P',
   // Cloudflare's documented dummy keys — recognised so we can warn on them.
   //   1x…AA always passes · 2x…AB always fails · 3x…FF forces a challenge
   testKeys: ['1x00000000000000000000AA', '2x00000000000000000000AB', '3x00000000000000000000FF'],
