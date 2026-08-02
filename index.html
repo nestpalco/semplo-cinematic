@@ -340,11 +340,17 @@
             Отговаряме в рамките на един работен ден. Полетата със звездичка са задължителни.
           </p>
 
+          <!-- action is the VERIFYING FUNCTION, not Netlify's form endpoint:
+               Netlify Forms cannot validate a Turnstile token, so
+               netlify/functions/enquiry.mjs checks the honeypot, verifies the
+               token with the secret key, and only then forwards the submission
+               into Netlify Forms. `data-netlify` stays because that is what
+               registers the form and gives us the dashboard. -->
           <form
             class="cform__form"
             name="contact"
             method="POST"
-            action="/"
+            action="/.netlify/functions/enquiry"
             data-netlify="true"
             netlify-honeypot="bot-field"
             data-form
@@ -436,16 +442,43 @@
               </p>
             </div>
 
+            <!-- Turnstile mounts here. The widget is rendered by main.js ONLY
+                 when the dialog opens (the script is ~60–90 KB of third party
+                 that non-enquiring visitors should never pay for), with theme
+                 and language read from the page at render time so it matches
+                 light/dark and BG/EN. It injects its own hidden
+                 cf-turnstile-response input, which FormData then picks up. -->
+            <div class="cform__captcha">
+              <span class="cform__captcha-label" data-i18n="form.captchaLabel">Проверка за сигурност</span>
+              <div class="cform__captcha-box" data-turnstile>
+                <!-- stands in while the sitekey is still a Cloudflare dummy key:
+                     those hand back a token WITHOUT drawing a widget, so the box
+                     would otherwise sit there labelled and empty. Badged the same
+                     way the placeholder reviews are, and unhidden by main.js. -->
+                <span class="cform__captcha-test" data-captcha-test hidden
+                      data-i18n="form.captchaTestKey">ТЕСТОВ КЛЮЧ — БЕЗ ЗАЩИТА</span>
+              </div>
+              <span class="cform__captcha-note" data-i18n="form.captchaNote"
+                >Защитено от Cloudflare Turnstile. Без проследяващи бисквитки.</span
+              >
+            </div>
+
             <div class="cform__act">
               <button class="cform__submit" type="submit" data-form-submit>
                 <span data-form-submit-label data-i18n="form.submit">Изпратете запитване</span>
               </button>
+              <!-- one panel, four messages: main.js rewrites the data-i18n keys
+                   on the title/text so a language switch keeps whichever message
+                   is showing correct (generic failure, captcha rejected,
+                   captcha still pending, captcha script blocked). -->
               <p class="cform__err" data-form-err role="alert" hidden>
-                <strong data-i18n="form.errTitle">Нещо се обърка</strong>
-                <span data-i18n="form.errText"
+                <strong data-form-err-title data-i18n="form.errTitle">Нещо се обърка</strong>
+                <span data-form-err-text data-i18n="form.errText"
                   >Запитването не беше изпратено. Опитайте отново или ни пишете директно на</span
                 >
-                <a href="mailto:office@semplohome.com" data-i18n="contact.email">office@semplohome.com</a>
+                <a data-form-err-mail href="mailto:office@semplohome.com" data-i18n="contact.email"
+                  >office@semplohome.com</a
+                >
               </p>
             </div>
           </form>

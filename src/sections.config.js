@@ -368,6 +368,58 @@ export const reviews = {
   ],
 }
 
+/*
+ * ── SPAM PROTECTION — Cloudflare Turnstile ────────────────────────────────
+ * Chosen over Netlify's built-in reCAPTCHA 2 on four counts: Turnstile's
+ * managed mode usually passes with no interaction (a checkbox click, sometimes
+ * an image puzzle, is real friction on a lead form); it is ~60–90 KB against
+ * reCAPTCHA's ~400–600 KB; it sets no cross-site tracking cookies and ships an
+ * EU-jurisdiction DPA, which matters for a Bulgarian studio collecting leads;
+ * and it takes `theme`, `size: flexible` and `language`, so it follows this
+ * site's light/dark tokens, field rhythm and BG/EN toggle instead of pasting a
+ * Google-branded box into the middle of the form. Netlify's own reCAPTCHA also
+ * injects its script into the published HTML, so every visitor pays for it
+ * whether or not they open the dialog — we load this one only on open.
+ *
+ * ── HOW IT IS ENFORCED ───────────────────────────────────────────────────
+ * Netlify Forms cannot validate Turnstile, so the dialog POSTs to `endpoint`
+ * (netlify/functions/enquiry.mjs) instead of straight to Netlify. That function
+ * checks the honeypot, verifies the token against Cloudflare with the SECRET
+ * key, and only then forwards the submission into Netlify Forms — so it still
+ * lands in the dashboard. The honeypot stays as a second, independent layer.
+ *
+ * LIMITATION, stated plainly: Netlify registers a form by parsing public HTML,
+ * so `form-name=contact` is always discoverable and the bare Netlify endpoint
+ * stays POST-able. A bot that scrapes this page and submits what it finds hits
+ * the function and is blocked; one written specifically against Netlify Forms
+ * could skip it, and would then meet the honeypot and Netlify's own spam
+ * filtering. Closing that last gap means storing submissions in the function
+ * rather than in Netlify Forms.
+ *
+ * ★ TO GO LIVE (2 minutes, free, no credit card):
+ *   1. dash.cloudflare.com → Turnstile → Add site. Domain: semplodesign.com
+ *      (add localhost too if you want to test locally). Widget mode: Managed.
+ *   2. Paste the SITE key over `sitekey` below. It is public — safe to commit.
+ *   3. Put the SECRET key in Netlify → Site configuration → Environment
+ *      variables as TURNSTILE_SECRET_KEY (scope: Functions). Never commit it.
+ * Until step 2 is done this holds Cloudflare's documented ALWAYS-PASSES TEST
+ * key: it renders a real widget on any domain (localhost included) and always
+ * issues a valid token, so the design and the e2e suite work out of the box —
+ * but it blocks nothing. main.js logs a loud console warning while it is in use.
+ */
+export const captcha = {
+  provider: 'turnstile',
+  sitekey: '1x00000000000000000000AA', // ★ TODO: replace with the real site key
+  // Cloudflare's documented dummy keys — recognised so we can warn on them.
+  //   1x…AA always passes · 2x…AB always fails · 3x…FF forces a challenge
+  testKeys: ['1x00000000000000000000AA', '2x00000000000000000000AB', '3x00000000000000000000FF'],
+  scriptSrc: 'https://challenges.cloudflare.com/turnstile/v0/api.js',
+  // The verifying function. Not a prettier /api/… path on purpose: that would
+  // need a netlify.toml redirect, and this site has no netlify.toml to conflict
+  // with the deploy settings already configured in the Netlify UI.
+  endpoint: '/.netlify/functions/enquiry',
+}
+
 // UI / chrome copy, bilingual as [bg, en].
 export const ui = {
   brand: ['Semplo Concept', 'Semplo Concept'],
@@ -482,6 +534,34 @@ export const ui = {
       'The enquiry was not sent. Please try again, or email us directly at',
     ],
     retry: ['Опитайте отново', 'Try again'],
+    // ── Turnstile (see the `captcha` export) ──
+    captchaLabel: ['Проверка за сигурност', 'Security check'],
+    // shown in place of the widget while `captcha.sitekey` is still one of
+    // Cloudflare's dummy keys — those issue a token with no visible widget, so
+    // without this the form would show a labelled empty box and look broken
+    captchaTestKey: ['ТЕСТОВ КЛЮЧ — БЕЗ ЗАЩИТА', 'TEST KEY — NO PROTECTION'],
+    captchaNote: [
+      'Защитено от Cloudflare Turnstile. Без проследяващи бисквитки.',
+      'Protected by Cloudflare Turnstile. No tracking cookies.',
+    ],
+    // still waiting for the widget — not an error, just "one moment"
+    captchaPendingTitle: ['Един момент', 'One moment'],
+    captchaPendingText: [
+      'Проверката за сигурност още не е завършила. Изчакайте да се появи отметката и опитайте отново.',
+      'The security check has not finished yet. Wait for the tick to appear, then try again.',
+    ],
+    // the token was rejected by Cloudflare (or had already been used)
+    captchaFailedTitle: ['Проверката за сигурност не мина', 'Security check failed'],
+    captchaFailedText: [
+      'Опитайте отново. Ако проблемът продължава, пишете ни директно на',
+      'Please try again. If it keeps happening, email us directly at',
+    ],
+    // the widget script itself could not load (offline, blocked, ad-blocker)
+    captchaLoadTitle: ['Проверката не може да се зареди', 'The check could not load'],
+    captchaLoadText: [
+      'Проверете връзката си или изключете блокиращите разширения. Или просто ни пишете на',
+      'Check your connection or disable blocking extensions. Or simply email us at',
+    ],
     // select options — `value` posted to Netlify is always the Bulgarian label
     types: {
       apartment: ['Апартамент', 'Apartment'],

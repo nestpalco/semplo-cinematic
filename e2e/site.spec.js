@@ -2,10 +2,15 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import sharp from 'sharp'
 import { businessLd, publishable } from '../src/schema.js'
-import { business, reviews, catalogs } from '../src/sections.config.js'
+import { business, reviews, catalogs, captcha, ui } from '../src/sections.config.js'
 
 const SITE = business.url // 'https://semplodesign.com/'
 const SITE_ORIGIN = new URL(SITE).origin
+// Cloudflare's dummy sitekeys issue a token but draw NO widget, so a few
+// CAPTCHA assertions have to branch on which kind of key is configured. Both
+// branches are asserted, so the suite keeps passing — and starts checking the
+// real widget — as soon as the production key replaces the placeholder.
+const USING_TEST_KEY = captcha.testKeys.includes(captcha.sitekey)
 
 const PHONE = '+359 877 600 018'
 const TEL = 'tel:+359877600018'
@@ -84,6 +89,22 @@ async function openEnquiry(page) {
   await page.waitForTimeout(450)
 }
 
+// Wait for Turnstile to issue a token. The committed sitekey is Cloudflare's
+// documented always-passes DUMMY key, which works on any domain (localhost
+// included) and self-solves — so the suite exercises the real widget and the
+// real hidden input rather than a stub, and a submit that needs a token can
+// actually get one.
+async function waitCaptcha(page) {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-turnstile] input[name="cf-turnstile-response"]')
+      return !!(el && el.value)
+    },
+    null,
+    { timeout: 25_000 }
+  )
+}
+
 // the compact mobile nav hides links behind a burger — open it before clicking.
 async function openMobileNav(page) {
   const burger = page.locator('[data-burger]')
@@ -156,6 +177,7 @@ async function contrastFailures(page) {
       // enquiry form overlay (only audited while it is open — see the test)
       '.cform__eyebrow', '.cform__title', '.cform__intro', '.cform__field label',
       '.cform__opt', '.cform__req', '.cform__submit', '.cform__err', '.cform__err a',
+      '.cform__captcha-label', '.cform__captcha-note', '.cform__captcha-test',
     ].join(',')
 
     const px = (c) => {
@@ -904,7 +926,17 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
 /* ── 18. CONTACT FORM: opens, validates, submits, closes ──────────────────── */
 test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ page }) => {
   const errors = collectErrors(page)
+  // watch every request to Cloudflare so we can prove the CAPTCHA is lazy
+  const capReqs = []
+  page.on('request', (r) => {
+    if (r.url().includes('challenges.cloudflare.com')) capReqs.push(r.url())
+  })
   await ready(page)
+
+  // LAZY LOAD: not one byte of third-party CAPTCHA for a visitor who never
+  // opens the form. This is the whole reason we did not use Netlify's built-in
+  // reCAPTCHA, which injects its script into the published HTML.
+  expect(capReqs, `CAPTCHA requested on page load:\n${capReqs.join('\n')}`).toHaveLength(0)
 
   const modal = page.locator('[data-form-modal]')
   const opener = page.locator('[data-form-open]')
@@ -934,12 +966,21 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
         return r.width > 2 && r.height > 2
       })(),
       potTabbable: f.querySelector('input[name="bot-field"]').tabIndex >= 0,
-      fields: [...f.elements].filter((e) => e.name && e.name !== 'form-name' && e.name !== 'bot-field')
+      action: f.getAttribute('action'),
+      fields: [...f.elements]
+        .filter(
+          (e) =>
+            e.name &&
+            !['form-name', 'bot-field', 'cf-turnstile-response'].includes(e.name)
+        )
         .map((e) => e.name),
     }
   })
   expect(netlify.name).toBe('contact')
   expect(netlify.method).toBe('POST')
+  // posts to the VERIFYING FUNCTION, not straight at Netlify's form endpoint —
+  // Netlify Forms cannot validate a Turnstile token
+  expect(netlify.action, 'form posts to the Turnstile-verifying function').toBe(captcha.endpoint)
   expect(netlify.dataNetlify).toBe('true')
   expect(netlify.honeypotAttr).toBe('bot-field')
   expect(netlify.formName, 'hidden form-name is required for AJAX POSTs').toBe('contact')
@@ -959,6 +1000,39 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   expect(await page.evaluate(() => document.body.classList.contains('is-locked'))).toBe(true)
   expect(await modal.getAttribute('aria-modal')).toBe('true')
   expect(await modal.getAttribute('role')).toBe('dialog')
+
+  // …and NOW the CAPTCHA loads, on open, and mounts a real widget
+  await waitCaptcha(page)
+  expect(
+    capReqs.some((u) => u.includes('/turnstile/v0/api.js')),
+    'CAPTCHA script fetched when the dialog opened'
+  ).toBe(true)
+  // Asserted via the response input and data-rendered, NOT by counting iframes:
+  // Cloudflare's dummy sitekeys (which is what ships until the real one is
+  // pasted in) hand back a token WITHOUT drawing a widget, so an iframe count
+  // would be 0 here and 1 in production. The response input and the render
+  // record exist under both.
+  expect(
+    await page.locator('[data-turnstile] input[name="cf-turnstile-response"]').count(),
+    'exactly one Turnstile response field is mounted in the form'
+  ).toBe(1)
+  expect(
+    await page.locator('[data-turnstile]').getAttribute('data-rendered'),
+    'widget built for the active theme and language'
+  ).toBe('light|bg')
+  // Both configurations are asserted, so this test keeps working — and gets
+  // STRONGER — the moment the real sitekey is pasted into config.
+  if (USING_TEST_KEY) {
+    // dummy key: flagged in the UI so an unconfigured form cannot be mistaken
+    // for a working one, and no widget is drawn
+    await expect(page.locator('[data-captcha-test]')).toBeVisible()
+  } else {
+    await expect(page.locator('[data-captcha-test]')).toBeHidden()
+    expect(
+      await page.locator('[data-turnstile] iframe').count(),
+      'the real sitekey draws exactly one widget'
+    ).toBe(1)
+  }
 
   // no horizontal overflow with the dialog open (checked at every viewport)
   expect(await horizontalOverflow(page), 'dialog opened a horizontal scrollbar').toBeNull()
@@ -1020,6 +1094,36 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   await page.selectOption('#cf-when', '1–3 месеца')
   await page.fill('#cf-msg', 'Търсим цялостен проект за двустаен апартамент.')
 
+  /* ── no CAPTCHA token → the client refuses to POST at all ──
+     A filled, natively-valid form still must not go anywhere without a token.
+     Stubbing getResponse() exercises the real gate rather than racing the
+     widget. (The binding enforcement is server-side in the function; this is
+     the courtesy message so the visitor isn't left guessing.) */
+  await waitCaptcha(page)
+  await page.evaluate(() => {
+    window.__realGetResponse = window.turnstile.getResponse
+    window.turnstile.getResponse = () => ''
+  })
+  await page.locator('[data-form-submit]').click()
+  await page.waitForTimeout(500)
+  expect(posts, 'no CAPTCHA token → must not POST').toBe(0)
+  await expect(page.locator('[data-form-err]')).toBeVisible()
+  await expect(page.locator('[data-form-done]')).toBeHidden()
+  // the message is the CAPTCHA one, not the generic failure…
+  await expect(page.locator('[data-form-err-title]')).toHaveText(ui.form.captchaPendingTitle[0])
+  // …and "still verifying" offers no mailto escape hatch — it is not a failure
+  await expect(page.locator('[data-form-err-mail]')).toBeHidden()
+  // the key (not just the text) is swapped, which is what keeps the message
+  // correct if the visitor switches language while it is on screen
+  expect(await page.locator('[data-form-err-title]').getAttribute('data-i18n')).toBe(
+    'form.captchaPendingTitle'
+  )
+  await page.evaluate(() => {
+    window.turnstile.getResponse = window.__realGetResponse
+  })
+
+  /* ── with a token, it submits ── */
+  await waitCaptcha(page)
   const post = page.waitForRequest(ourPost)
   await page.locator('[data-form-submit]').click()
   const req = await post
@@ -1039,6 +1143,8 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   expect(sent.get('timeline')).toBe('1–3 месеца')
   expect(sent.get('message')).toContain('двустаен апартамент')
   expect(sent.get('bot-field'), 'honeypot posts empty for a human').toBe('')
+  // the token rides along in the body — the function verifies it before storing
+  expect(sent.get('cf-turnstile-response'), 'CAPTCHA token is in the payload').toBeTruthy()
 
   await expect(page.locator('[data-form-done]')).toBeVisible()
   await expect(page.locator('[data-form-body]')).toBeHidden()
@@ -1047,11 +1153,18 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   await page.waitForTimeout(600)
   await expect(modal).toBeHidden()
 
-  /* ── a failed POST shows the error state and keeps the answers ── */
+  /* ── the FUNCTION rejecting the token (403) gets the CAPTCHA message ──
+     This is the real-world case: the token was spent, expired, or forged, so
+     netlify/functions/enquiry.mjs answers 403 { error: 'captcha' }. It must not
+     read as a generic "something went wrong". */
   await page.unrouteAll()
   await page.route(ours, async (route) => {
     if (route.request().method() !== 'POST') return route.continue()
-    return route.fulfill({ status: 500, contentType: 'text/html', body: 'nope' })
+    return route.fulfill({
+      status: 403,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: 'captcha', reason: ['timeout-or-duplicate'] }),
+    })
   })
   await opener.click()
   await page.waitForTimeout(400)
@@ -1063,8 +1176,28 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   await page.fill('#cf-phone', '+359 888 000 000')
   await page.selectOption('#cf-type', 'Офис')
   await page.selectOption('#cf-stage', 'Идея')
+  await waitCaptcha(page)
   await page.locator('[data-form-submit]').click()
   await expect(page.locator('[data-form-err]')).toBeVisible()
+  await expect(page.locator('[data-form-err-title]')).toHaveText(ui.form.captchaFailedTitle[0])
+  expect(await page.locator('[data-form-err-title]').getAttribute('data-i18n')).toBe(
+    'form.captchaFailedTitle'
+  )
+  // a rejected attempt still offers the direct-email fallback
+  await expect(page.locator('[data-form-err-mail]')).toBeVisible()
+  await expect(page.locator('[data-form-done]')).toBeHidden()
+
+  /* ── any OTHER failure keeps the generic message and the answers ── */
+  await page.unrouteAll()
+  await page.route(ours, async (route) => {
+    if (route.request().method() !== 'POST') return route.continue()
+    return route.fulfill({ status: 500, contentType: 'text/html', body: 'nope' })
+  })
+  // the token was consumed by the rejected attempt, so the widget was reset —
+  // wait for the replacement before retrying
+  await waitCaptcha(page)
+  await page.locator('[data-form-submit]').click()
+  await expect(page.locator('[data-form-err-title]')).toHaveText(ui.form.errTitle[0])
   await expect(page.locator('[data-form-done]')).toBeHidden()
   expect(await page.inputValue('#cf-name'), 'answers survive a failure').toBe('Втори опит')
   expect(
@@ -1074,9 +1207,9 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
 
   await page.keyboard.press('Escape')
   await page.waitForTimeout(500)
-  // the 500 above is ours on purpose — Chrome logs every failed request as a
-  // console error, so exclude just that one and require silence otherwise
-  const unexpected = errors.filter((e) => !/status of 500/.test(e))
+  // the 403 and 500 above are ours on purpose — Chrome logs every failed request
+  // as a console error, so exclude those and require silence otherwise
+  const unexpected = errors.filter((e) => !/status of (403|500)/.test(e))
   expect(unexpected, unexpected.join('\n')).toHaveLength(0)
 })
 
@@ -1249,6 +1382,41 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
   ).toEqual(values)
   expect(await page.locator('[data-form-close]').first().getAttribute('aria-label')).toBe('Close')
 
+  /* the CAPTCHA block is part of the form's language and layout, and the widget
+     itself is asked to render in the active language */
+  await expect(page.locator('.cform__captcha-label')).toHaveText(ui.form.captchaLabel[1])
+  await expect(page.locator('.cform__captcha-note')).toHaveText(ui.form.captchaNote[1])
+  await waitCaptcha(page)
+  expect(
+    await page.locator('[data-turnstile]').getAttribute('data-rendered'),
+    'widget built for the light theme and the active language'
+  ).toBe('light|en')
+  // it spans the field column rather than sitting as a 300px island
+  const capW = (await page.locator('[data-turnstile]').boundingBox()).width
+  const formW = (await page.locator('.cform__grid').boundingBox()).width
+  expect(Math.abs(capW - formW), 'CAPTCHA spans the form column').toBeLessThan(formW * 0.06)
+
+  /* a CAPTCHA error message is bilingual too. The form must be natively VALID
+     first — otherwise the browser blocks the submit before our gate runs and the
+     error panel is never touched (it would still hold its default markup). */
+  await page.fill('#cf-name', 'Test Person')
+  await page.fill('#cf-email', 'test@example.com')
+  await page.fill('#cf-phone', '+359 888 111 222')
+  await page.selectOption('#cf-type', 'Апартамент')
+  await page.selectOption('#cf-stage', 'Идея')
+  await page.evaluate(() => {
+    window.__realGetResponse = window.turnstile.getResponse
+    window.turnstile.getResponse = () => ''
+  })
+  await page.locator('[data-form-submit]').click()
+  await page.waitForTimeout(400)
+  await expect(page.locator('[data-form-err]')).toBeVisible()
+  await expect(page.locator('[data-form-err-title]')).toHaveText(ui.form.captchaPendingTitle[1])
+  await expect(page.locator('[data-form-err-text]')).toHaveText(ui.form.captchaPendingText[1])
+  await page.evaluate(() => {
+    window.turnstile.getResponse = window.__realGetResponse
+  })
+
   // Tab is trapped: walking forward from the last control comes back inside
   const trapped = await page.evaluate(async () => {
     const panel = document.querySelector('.cform__panel')
@@ -1275,4 +1443,26 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
   const dark = { panel: await panelBg(), input: await inputBg() }
   expect(dark.panel, 'panel follows the theme').not.toBe(light.panel)
   expect(dark.input, 'inputs follow the theme').not.toBe(light.input)
+
+  /* the CAPTCHA follows it too. Turnstile cannot restyle a live widget, so the
+     dialog tears it down and rebuilds it on the next open — verify that, since a
+     light Cloudflare box on the dark panel would be the one glaring seam. */
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await page.locator('[data-form-open]').click()
+  await page.waitForTimeout(500)
+  await waitCaptcha(page)
+  expect(
+    await page.locator('[data-turnstile]').getAttribute('data-rendered'),
+    'widget rebuilt for the dark theme'
+  ).toBe('dark|en')
+  // one widget, not two: the light one must have been REMOVED, not stacked under
+  // the dark one. Counted via the response field so it holds for either key kind.
+  expect(
+    await page.locator('[data-turnstile] input[name="cf-turnstile-response"]').count(),
+    'the previous widget was removed, not stacked'
+  ).toBe(1)
+  if (!USING_TEST_KEY) {
+    expect(await page.locator('[data-turnstile] iframe').count()).toBe(1)
+  }
 })

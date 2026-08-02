@@ -7,6 +7,7 @@ import {
   catalogs,
   business,
   reviews,
+  captcha,
   ui,
   motion,
 } from './sections.config.js'
@@ -894,8 +895,12 @@ function motionlessFallback() {
     const bodyEl = modal.querySelector('[data-form-body]')
     const doneEl = modal.querySelector('[data-form-done]')
     const errEl = modal.querySelector('[data-form-err]')
+    const errTitle = modal.querySelector('[data-form-err-title]')
+    const errText = modal.querySelector('[data-form-err-text]')
+    const errMail = modal.querySelector('[data-form-err-mail]')
     const submitBtn = modal.querySelector('[data-form-submit]')
     const submitLabel = modal.querySelector('[data-form-submit-label]')
+    const capHost = modal.querySelector('[data-turnstile]')
     const FOCUSABLE =
       'a[href], button:not(:disabled), input:not([disabled]):not([tabindex="-1"]),' +
       'select:not([disabled]), textarea:not([disabled])'
@@ -903,6 +908,136 @@ function motionlessFallback() {
     let lastFocus = null
     let sending = false
     let closeT = 0
+
+    /* ── the error panel, four ways ──────────────────────────────────────────
+     * One panel serves the generic failure and the three CAPTCHA states. We
+     * rewrite the title/text elements' data-i18n KEYS rather than their text, so
+     * applyLang() keeps whichever message is on screen correct if the visitor
+     * switches language afterwards — no bespoke re-translation path. */
+    const ERRORS = {
+      generic: ['form.errTitle', 'form.errText', true],
+      captcha: ['form.captchaFailedTitle', 'form.captchaFailedText', true],
+      captchaLoad: ['form.captchaLoadTitle', 'form.captchaLoadText', true],
+      // "still verifying" is not a failure — no mailto escape hatch needed
+      captchaPending: ['form.captchaPendingTitle', 'form.captchaPendingText', false],
+    }
+    function showError(kind) {
+      const [titleKey, textKey, withMail] = ERRORS[kind] || ERRORS.generic
+      errTitle.dataset.i18n = titleKey
+      errText.dataset.i18n = textKey
+      errTitle.textContent = dig(titleKey)[L()]
+      errText.textContent = dig(textKey)[L()]
+      errMail.hidden = !withMail
+      errEl.hidden = false
+      errEl.scrollIntoView({ block: 'nearest', behavior: prefersReduced ? 'auto' : 'smooth' })
+    }
+
+    /* ── Turnstile, loaded LAZILY on first open ──────────────────────────────
+     * Deliberately not in the page bundle or a preload: it is ~60–90 KB of third
+     * party that only matters to someone who actually opens the enquiry form, so
+     * non-enquiring visitors never pay for it and it cannot touch LCP/INP on the
+     * page itself. `render=explicit` means the script does not hunt the DOM for
+     * widgets — we place ours when we are ready. */
+    let capScript = null
+    let capId = null
+    let capRenderedAs = '' // theme|lang the live widget was built with
+    let capBroken = false
+
+    const usingTestKey = captcha.testKeys.includes(captcha.sitekey)
+    if (usingTestKey) {
+      console.warn(
+        `[semplo] Turnstile is using Cloudflare's TEST site key (${captcha.sitekey}) — the ` +
+          `enquiry form is NOT protected. Replace \`captcha.sitekey\` in src/sections.config.js ` +
+          `with the real key and set TURNSTILE_SECRET_KEY in Netlify.`
+      )
+    }
+
+    function loadTurnstile() {
+      if (capScript) return capScript
+      capScript = new Promise((resolve, reject) => {
+        // the script calls this global once its API is ready
+        window.__semploTurnstile = () => resolve(window.turnstile)
+        const s = document.createElement('script')
+        s.src = `${captcha.scriptSrc}?render=explicit&onload=__semploTurnstile`
+        s.async = true
+        s.defer = true
+        s.onerror = () => reject(new Error('turnstile script blocked'))
+        document.head.appendChild(s)
+        // an ad-blocker can neuter the request without firing onerror
+        setTimeout(() => reject(new Error('turnstile script timed out')), 12_000)
+      }).catch((e) => {
+        capScript = null // let a retry re-attempt the load
+        throw e
+      })
+      return capScript
+    }
+
+    async function mountCaptcha() {
+      if (!capHost) return
+      // read the theme off the root attribute rather than the module's `theme`
+      // variable: the attribute is what the page is actually painted with, and
+      // it stays correct even if something set it without going through
+      // applyTheme() (the pre-paint boot script in index.html does exactly that)
+      const active = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+      const want = `${active}|${lang}`
+      // Turnstile cannot restyle or re-translate a live widget — to follow the
+      // theme or language it has to be torn down and rebuilt. (Both are in fact
+      // unreachable while the dialog is open, since the backdrop swallows clicks
+      // on the nav, so in practice this only fires when the visitor changes one,
+      // closes nothing, and opens the dialog again.)
+      try {
+        const ts = await loadTurnstile()
+        capBroken = false
+        if (capId !== null && capRenderedAs !== want) {
+          ts.remove(capId)
+          capId = null
+        }
+        if (capId === null) {
+          capId = ts.render(capHost, {
+            sitekey: captcha.sitekey,
+            theme: active,
+            language: lang === 'bg' ? 'bg' : 'en',
+            size: 'flexible', // spans the column like every other control
+            action: 'enquiry', // shows up in Cloudflare's analytics
+            callback: () => {
+              if (!errEl.hidden && errTitle.dataset.i18n.startsWith('form.captcha')) {
+                errEl.hidden = true // solved — clear any "still verifying" nag
+              }
+            },
+            'expired-callback': () => ts.reset(capId),
+            'error-callback': () => {
+              capBroken = true
+            },
+          })
+          capRenderedAs = want
+          // published on the host element: Turnstile encodes theme/language as
+          // opaque path segments in its iframe URL, so this is the only stable
+          // way to see (or assert) what the live widget was actually built with
+          capHost.dataset.rendered = want
+          // a dummy sitekey returns a token but draws nothing — show the badge
+          // so the box never looks simply broken
+          const badge = capHost.querySelector('[data-captcha-test]')
+          if (badge) badge.hidden = !usingTestKey
+        } else {
+          ts.reset(capId) // fresh token: they are single-use and time-limited
+        }
+      } catch {
+        capBroken = true // handled at submit time, not with an alert on open
+      }
+    }
+
+    const capToken = () => {
+      try {
+        return (capId !== null && window.turnstile?.getResponse(capId)) || ''
+      } catch {
+        return ''
+      }
+    }
+    const capReset = () => {
+      try {
+        if (capId !== null) window.turnstile?.reset(capId)
+      } catch {}
+    }
 
     const focusables = () =>
       [...panel.querySelectorAll(FOCUSABLE)].filter(
@@ -927,6 +1062,10 @@ function motionlessFallback() {
         ;(modal.querySelector('#cf-name') || focusables()[0])?.focus()
       })
       document.addEventListener('keydown', onKey, true)
+      // fetch + render the CAPTCHA now, not on page load. Fire-and-forget: it
+      // resolves while they are still typing, and any failure surfaces at submit
+      // rather than interrupting them the moment the dialog appears.
+      mountCaptcha()
     }
 
     function closeForm() {
@@ -980,6 +1119,18 @@ function motionlessFallback() {
     form.addEventListener('submit', async (e) => {
       e.preventDefault()
       if (sending) return
+
+      /* CAPTCHA gate, client side. This is a courtesy check so the visitor gets
+       * a useful message instead of a bounced POST — the ACTUAL enforcement is
+       * the token verification in netlify/functions/enquiry.mjs, which a client
+       * cannot skip by editing this file. */
+      if (!capToken()) {
+        // distinguish "blocked/never loaded" from "just not finished yet"
+        showError(capBroken || capId === null ? 'captchaLoad' : 'captchaPending')
+        if (capBroken) mountCaptcha() // one quiet retry of the script
+        return
+      }
+
       sending = true
       errEl.hidden = true
       form.classList.add('is-sending')
@@ -989,19 +1140,27 @@ function motionlessFallback() {
         const res = await fetch(form.getAttribute('action') || '/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          // FormData → url-encoded keeps the hidden form-name field Netlify needs
+          // FormData → url-encoded keeps the hidden form-name field Netlify
+          // needs, the honeypot, and Turnstile's cf-turnstile-response input
           body: new URLSearchParams(new FormData(form)).toString(),
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        if (!res.ok) {
+          // the function reports a rejected token as 403 { error: 'captcha' }
+          const why = res.status === 403 ? await res.json().catch(() => ({})) : {}
+          throw Object.assign(new Error(`HTTP ${res.status}`), { captcha: why.error === 'captcha' })
+        }
         form.reset()
         bodyEl.hidden = true
         doneEl.hidden = false
         panel.scrollTop = 0
         doneEl.querySelector('[data-form-close]')?.focus()
-      } catch {
-        errEl.hidden = false
-        errEl.scrollIntoView({ block: 'nearest', behavior: prefersReduced ? 'auto' : 'smooth' })
+      } catch (err) {
+        showError(err?.captcha ? 'captcha' : 'generic')
       } finally {
+        // A token is single-use and Cloudflare has now consumed it, so the
+        // widget must be reset either way — otherwise a retry re-sends a spent
+        // token and the function rejects it a second time.
+        capReset()
         sending = false
         form.classList.remove('is-sending')
         submitBtn.disabled = false

@@ -1765,6 +1765,63 @@ main {
 .cform__form.was-submitted :invalid {
   border-color: #c0562e;
 }
+/* ── Turnstile block ────────────────────────────────────────────────────────
+   Given the same shape as a form field (uppercase hairline label above, muted
+   note below) so it reads as part of the form rather than a bolted-on gadget.
+   The widget itself is a Cloudflare iframe — its interior cannot be styled, so
+   main.js passes it theme: light|dark and it is sized `flexible` to span the
+   column like every input. Reserved min-height stops the submit button jumping
+   when the widget finishes loading (a small CLS win inside the dialog). */
+.cform__captcha {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: clamp(1rem, 2.4vw, 1.35rem);
+}
+.cform__captcha-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.cform__captcha-box {
+  position: relative;
+  min-height: 65px; /* Turnstile's own height — reserved before it renders */
+  display: flex;
+  align-items: center;
+}
+/* dummy-sitekey stand-in — dashed + gold badge, same language as the placeholder
+   review cards, so an unconfigured form reads as unconfigured, never as broken */
+.cform__captcha-test {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 65px;
+  border: 1px dashed var(--gold-line);
+  border-radius: 3px;
+  background: var(--gold-wash);
+  color: var(--gold-ink);
+  font-size: 0.64rem;
+  letter-spacing: 0.18em;
+  text-align: center;
+}
+.cform__captcha-box iframe {
+  /* colour-scheme:normal stops a UA dark-mode pass double-darkening the frame
+     we already asked Cloudflare to render dark */
+  color-scheme: normal;
+  border-radius: 3px;
+}
+/* while the script is still in flight, hold the space with a quiet hairline
+   rather than a blank gap */
+.cform__captcha-box:empty {
+  border: 1px dashed var(--line);
+  border-radius: 3px;
+}
+.cform__captcha-note {
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
 .cform__act {
   display: flex;
   flex-direction: column;
