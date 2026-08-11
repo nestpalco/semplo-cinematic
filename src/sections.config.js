@@ -271,9 +271,9 @@ export const business = {
    * before the image has downloaded — keep them in step with CARD in that
    * script (the e2e suite probes the real file and fails if they disagree). */
   ogImage: { path: 'social/og-card.jpg', width: 1200, height: 630, type: 'image/jpeg' },
-  phone: '+359 877 600 018',
-  tel: '+359877600018', // tel: href form (no spaces)
-  email: 'office@semplohome.com',
+  phone: '+359 894 880 088',
+  tel: '+359894880088', // tel: href form (no spaces)
+  email: 'semplo.design@gmail.com',
   street: 'бул. „Околовръстен път“ 130',
   city: 'София',
   country: 'BG',

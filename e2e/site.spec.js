@@ -12,8 +12,8 @@ const SITE_ORIGIN = new URL(SITE).origin
 // real widget — as soon as the production key replaces the placeholder.
 const USING_TEST_KEY = captcha.testKeys.includes(captcha.sitekey)
 
-const PHONE = '+359 877 600 018'
-const TEL = 'tel:+359877600018'
+const PHONE = '+359 894 880 088'
+const TEL = 'tel:+359894880088'
 const WORDMARK = 'Semplo Concept'
 
 /* ── shared helpers ───────────────────────────────────────────────────────── */
@@ -777,7 +777,7 @@ test('wordmark reads "Semplo Concept" everywhere and fits the nav', async ({ pag
 })
 
 /* ── 13. PHONE: the new number everywhere, the old one nowhere ─────────────── */
-test('phone is +359 877 600 018 in every surface', async ({ page }) => {
+test('phone is +359 894 880 088 in every surface', async ({ page }) => {
   await ready(page)
 
   const tels = await page.evaluate(() =>
@@ -798,7 +798,7 @@ test('phone is +359 877 600 018 in every surface', async ({ page }) => {
   // no trace of the previous number anywhere in the rendered page or its schema
   const stale = await page.evaluate(() => {
     const hay = document.documentElement.outerHTML
-    return ['889747773', '889 747 773'].filter((n) => hay.includes(n))
+    return ['889747773', '889 747 773', '877600018', '877 600 018'].filter((n) => hay.includes(n))
   })
   expect(stale, `old phone number still present: ${stale.join(', ')}`).toHaveLength(0)
 })
