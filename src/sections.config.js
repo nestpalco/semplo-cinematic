@@ -103,82 +103,63 @@ export const ambients = [
 
 /*
  * ── PROJECTS — the centerpiece editorial gallery ──────────────────────────
- * Photography is the interface: large imagery, minimal chrome. Each project
- * opens a detail overlay with an edge-to-edge photo SEQUENCE (`frames`).
+ * Photography is the interface: large imagery, minimal chrome. A PROJECT is a
+ * whole PROPERTY (an apartment, a house, an office), one folder per project:
  *
- * REAL SEMPLO imagery, harvested from semplodesign.com/projects/ (their
- * portfolio is one flagship apartment presented room by room, so our four
- * "projects" are its four strongest room-suites). Raw files live in
- * assets/projects/ — assets/projects/source-manifest.json maps every file to
- * its source URL. `npm run optimize:projects` emits the -1600/-900 webp
- * variants used here. `span`: 'wide' | 'tall' | null (gallery size hint).
+ *     assets/projects/<project-id>/
+ *         gallery/    01.jpg 02.jpg …      finished photos, shown in order
+ *         sketches/   01.jpg 02.jpg …      plans/drawings (optional)
+ *         panoramas/  <room-name>.jpg …    360° equirects, one per room (opt.)
  *
- * `panorama` (OPTIONAL) — id of an equirectangular 360° source in
- * assets/panoramas/<id>.jpg. Projects that have one get an immersive
- * drag-to-look 360° block in their detail overlay (Three.js + texture are
- * lazy-loaded only when that overlay opens). Omit the key = no block.
+ * `npm run optimize:projects` WALKS those folders (no per-file listing here),
+ * emits the webp variants into public/projects/<id>/…, writes
+ * src/projects.manifest.json (which main.js reads to build the cards, the
+ * overlay, the Проект tab and the 360° room switcher), and FAILS THE BUILD if
+ * an entry below has no folder/gallery or labels a panorama that has no file.
  *
- * `sketches` (OPTIONAL) — the Проект/Project tab: design sketches, plans and
- * visualizations (the PROCESS work), as an ordered list of BASE NAMES.
- *   ★ TO ADD SKETCHES TO A PROJECT (see assets/sketches/README.md):
- *     1. drop files in assets/sketches/ named <projectId>-NN.jpg
- *     2. list the base names here:  sketches: ['living-01', 'living-02'],
- *     3. npm run optimize:sketches  (part of `npm run assets` too)
- * Projects WITH sketches get a Проект/Галерия tab bar in their overlay
- * (gallery opens first — the finished work is the payoff; sketches are the
- * deeper dive). Projects without simply have no tab bar — same overlay as
- * before. Drawings are shown UNCROPPED (mixed aspect ratios are fine) and
- * click-to-zoom to a 2000px variant so fine linework stays readable.
+ * ★ TO ADD A NEW PROJECT (full walkthrough: assets/projects/README.md):
+ *     1. create assets/projects/<new-id>/gallery/ and drop numbered photos
+ *        (sketches/ and panoramas/ too, if you have them)
+ *     2. add ONE entry below: id + titles + meta + blurb (+ `panoramas`
+ *        labels if the project has 360° rooms)
+ *     3. npm run optimize:projects  (or just npm run dev)
+ *
+ * Per entry:
+ *   `panoramas` — the 360° rooms, IN DISPLAY ORDER, each { file, bg, en }:
+ *      `file` is the base name in panoramas/, bg/en the room label shown in
+ *      the viewer (and on the switcher chips when there are several). The
+ *      viewer itself stays lazy: Three.js + one texture load only when the
+ *      overlay opens; switching rooms swaps the texture in place.
+ *   sketches need NO config — folder presence alone adds the Проект tab
+ *      (gallery still opens selected; no folder = no tab). Drawings render
+ *      uncropped, click-to-zoom to the 2000px variant.
+ *   `span`: 'wide' | null — gallery card size hint.
+ *
+ * REAL SEMPLO imagery, harvested from semplodesign.com/projects/. Their
+ * portfolio is ONE flagship apartment presented room by room, so it is ONE
+ * project here — its gallery runs living → dining/kitchen → attic bedroom →
+ * home office (see assets/projects/sofia-apartment/source-manifest.json for
+ * the ours → theirs mapping of every photo).
  */
-const pf = (name) => `/projects/${name}-1600.webp`
 export const projects = [
   {
-    id: 'living',
-    titleBg: 'Дневна зона', titleEn: 'The Living Area',
+    id: 'sofia-apartment',
+    titleBg: 'Апартамент София', titleEn: 'Sofia Apartment',
     metaBg: 'София · 2023', metaEn: 'Sofia · 2023',
-    cover: pf('g1-01'), coverMobile: '/projects/g1-01-900.webp',
     span: 'wide',
-    frames: ['g1-01', 'g1-02', 'g1-03', 'g1-04', 'g1-05', 'g1-06', 'g1-07', 'g1-08'].map(pf),
-    panorama: 'living',
-    // TODO: living-01..03 are generated PLACEHOLDERS (labelled as such on
-    // their face) — replace the files in assets/sketches/ with the real
-    // drawings, keep the names, re-run the optimizer.
-    sketches: ['living-01', 'living-02', 'living-03'],
-    blurbBg: 'Мрамор, мед и меки кремави обеми — дневна, подредена около медийната стена и светлината от двете страни.',
-    blurbEn: 'Marble, copper and soft cream volumes — a living room arranged around the media wall and light from both sides.',
-  },
-  {
-    id: 'dining',
-    titleBg: 'Трапезария и кухня', titleEn: 'Dining & Kitchen',
-    metaBg: 'София · 2023', metaEn: 'Sofia · 2023',
-    cover: pf('g5-01'), coverMobile: '/projects/g5-01-900.webp',
-    span: null,
-    frames: ['g5-01', 'g5-02', 'g5-03', 'g5-04', 'g5-05', 'g5-06', 'g5-07', 'g5-08'].map(pf),
-    panorama: 'hallway',
-    blurbBg: 'Каменна маса върху месингова основа, медни висулки и кухня, скрита в топло дърво и стъкло.',
-    blurbEn: 'A stone table on a brass base, copper pendants, and a kitchen tucked into warm wood and glass.',
-  },
-  {
-    id: 'bedroom',
-    titleBg: 'Спалня под покрива', titleEn: 'The Attic Bedroom',
-    metaBg: 'София · 2023', metaEn: 'Sofia · 2023',
-    cover: pf('g14-01'), coverMobile: '/projects/g14-01-900.webp',
-    span: null,
-    frames: ['g14-01', 'g14-02', 'g14-03', 'g14-04', 'g14-05', 'g15-01', 'g15-02', 'g15-03'].map(pf),
-    panorama: 'bedroom',
-    blurbBg: 'Скосени тавани, дъб и гардероби от опушено стъкло — спокойна спалня, събрана под линията на покрива.',
-    blurbEn: 'Sloped ceilings, oak and smoked-glass wardrobes — a calm bedroom gathered under the roofline.',
-  },
-  {
-    id: 'office',
-    titleBg: 'Домашен кабинет', titleEn: 'The Home Office',
-    metaBg: 'София · 2023', metaEn: 'Sofia · 2023',
-    cover: pf('g20-01'), coverMobile: '/projects/g20-01-900.webp',
-    span: 'wide',
-    frames: ['g20-01', 'g20-02', 'g20-03', 'g21-01', 'g21-02', 'g22-01', 'g22-02', 'g22-03'].map(pf),
-    panorama: 'office',
-    blurbBg: 'Тъмно дърво, черен мрамор и място за концентрация — кабинет, който остава тих в края на деня.',
-    blurbEn: 'Dark wood, black marble and room to focus — a study that stays quiet at the end of the day.',
+    panoramas: [
+      { file: 'living', bg: 'Дневна', en: 'Living room' },
+      { file: 'hallway', bg: 'Коридор', en: 'Hallway' },
+      { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
+      { file: 'office', bg: 'Кабинет', en: 'Home office' },
+    ],
+    // TODO: sketches/01..03.jpg are generated PLACEHOLDERS (labelled as such
+    // on their face) — replace the files with the real drawings, re-run the
+    // optimizer.
+    blurbBg:
+      'Мрамор, мед и дъб през целия апартамент — дневна около медийната стена, каменна маса върху месингова основа, спалня под линията на покрива и кабинет, който остава тих в края на деня.',
+    blurbEn:
+      'Marble, copper and oak throughout — a living room arranged around the media wall, a stone table on a brass base, a bedroom gathered under the roofline, and a study that stays quiet at the end of the day.',
   },
 ]
 
@@ -475,6 +456,7 @@ export const ui = {
   pano: {
     badge: ['360°', '360°'],
     hint: ['Влачете, за да разгледате', 'Drag to look around'],
+    rooms: ['Изберете стая', 'Choose a room'], // accessible name of the switcher
   },
   // Real SEMPLO contact details. Phone/email mirror `business` above (which is
   // what the JSON-LD reads) — keep the two in step.
@@ -685,12 +667,14 @@ export const catalogs = [
 ]
 
 /* Horizontal photo strip (PATTERN C) for the portfolio/contact section.
- * Paths into public/projects/ (900 variants — they render ~300px tall). */
+ * Paths into public/projects/<id>/gallery/ (900 variants — they render ~300px
+ * tall). One frame per room-suite of the apartment: living, dining, bedroom,
+ * office. */
 export const strips = {
   portfolio: [
-    '/projects/g1-01-900.webp',
-    '/projects/g5-01-900.webp',
-    '/projects/g14-01-900.webp',
-    '/projects/g20-01-900.webp',
+    '/projects/sofia-apartment/gallery/01-900.webp',
+    '/projects/sofia-apartment/gallery/09-900.webp',
+    '/projects/sofia-apartment/gallery/17-900.webp',
+    '/projects/sofia-apartment/gallery/25-900.webp',
   ],
 }

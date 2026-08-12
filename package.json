@@ -4,10 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "assets": "node scripts/optimize-videos.mjs && node scripts/optimize-panoramas.mjs && node scripts/optimize-projects.mjs && node scripts/optimize-sketches.mjs && node scripts/optimize-social.mjs",
-    "optimize:panoramas": "node scripts/optimize-panoramas.mjs",
+    "assets": "node scripts/optimize-videos.mjs && node scripts/optimize-projects.mjs && node scripts/optimize-social.mjs",
     "optimize:projects": "node scripts/optimize-projects.mjs",
-    "optimize:sketches": "node scripts/optimize-sketches.mjs",
     "optimize:social": "node scripts/optimize-social.mjs",
     "predev": "npm run assets",
     "dev": "vite",

@@ -13,6 +13,7 @@ import {
 } from './sections.config.js'
 import { businessLd } from './schema.js'
 import manifest from './videos.manifest.json'
+import pmanifest from './projects.manifest.json'
 
 /* ──────────────────────────────────────────────────────────────────────────
  * SEMPLO — calm, photography-first page. ONE signature moment, native scroll.
@@ -276,6 +277,13 @@ function interludeHTML(t) {
     </section>`
 }
 
+/* project assets resolve through src/projects.manifest.json (emitted by
+ * scripts/optimize-projects.mjs walking assets/projects/<id>/): the config
+ * entry carries copy + panorama labels, the manifest carries what files exist */
+const pAsset = (pid, type, name, w) => `/projects/${pid}/${type}/${name}-${w}.webp`
+const galleryOf = (p) => pmanifest[p.id]?.gallery || []
+const sketchesOf = (p) => pmanifest[p.id]?.sketches || []
+
 function projectsHTML() {
   // PATTERN C: every card is a uniform BIG cover holding a horizontal film
   // strip of its first frames. Scroll advances the strip rightward (motion.js);
@@ -283,11 +291,11 @@ function projectsHTML() {
   const K = motion.stripFrames
   const cards = projects
     .map((p, i) => {
-      const frames = (p.frames || [p.cover]).slice(0, K)
-      const imgs = frames
+      const imgs = galleryOf(p)
+        .slice(0, K)
         .map(
-          (src, k) =>
-            `<img src="${k === 0 && isMobile && p.coverMobile ? p.coverMobile : src}" alt=""
+          (n, k) =>
+            `<img src="${pAsset(p.id, 'gallery', n, k === 0 && isMobile ? 900 : 1600)}" alt=""
                   loading="${k === 0 && i === 0 ? 'eager' : 'lazy'}" decoding="async" />`
         )
         .join('')
@@ -789,10 +797,14 @@ function motionlessFallback() {
   const tabBtns = [...elTabs.querySelectorAll('[role="tab"]')]
   let lastFocus = null
   let pano = null // live 360° viewer instance for the open project
+  let panoRoom = 0 // index into the open project's `panoramas` config list
   let overlayCleanup = null // motion-layer teardown for the open project
   let openToken = 0 // guards async pano setup against a fast close/reopen
 
-  /* The 360° viewer: Three.js + the texture load ONLY here — never on the
+  const roomSrc = (p, i) =>
+    pAsset(p.id, 'panoramas', p.panoramas[i].file, isMobile ? 2048 : 4096)
+
+  /* The 360° viewer: Three.js + ONE texture load, only here — never on the
    * main page. Works in every mode; auto-yaw is off under reduced-motion. */
   async function setupPano(p, token) {
     const stageEl = overlay.querySelector('[data-pano-stage]')
@@ -801,12 +813,31 @@ function motionlessFallback() {
       const { createPano } = await import('./pano.js')
       if (token !== openToken || overlay.hidden) return // closed while loading
       pano = createPano(stageEl, {
-        src: `/panoramas/${p.panorama}-${isMobile ? 2048 : 4096}.webp`,
+        // panoRoom, not 0: the visitor may have picked a room while Three.js
+        // was still downloading — honour the choice they already made
+        src: roomSrc(p, panoRoom),
         scroller: elScroll,
         scrollYawDeg: motion.panoScrollYaw,
         autoYaw: !prefersReduced,
       })
     } catch {} // viewer is an enhancement — the photo sequence still stands
+  }
+
+  /* room switcher: one viewer, textures swapped in place (never N canvases) */
+  function selectRoom(p, i) {
+    panoRoom = i
+    const room = p.panoramas[i]
+    const label = overlay.querySelector('[data-pano-room]')
+    if (label) {
+      label.dataset.bg = room.bg
+      label.dataset.en = room.en
+      label.textContent = lang === 'bg' ? room.bg : room.en
+    }
+    overlay.querySelectorAll('[data-pano-jump]').forEach((b, k) => {
+      b.classList.toggle('is-active', k === i)
+      b.setAttribute('aria-pressed', String(k === i))
+    })
+    pano?.setSource(roomSrc(p, i)) // no instance yet → setupPano honours panoRoom
   }
 
   /* ── tabs: Проект (sketches) ⇄ Галерия (photos) ─────────────────────────
@@ -871,7 +902,10 @@ function motionlessFallback() {
     btn.dataset.ariaEn = label[1]
     btn.setAttribute('aria-label', label[lang === 'bg' ? 0 : 1])
   }
+  let openedProject = null // config entry of the open overlay (for room clicks)
   elSeq.addEventListener('click', (e) => {
+    const jump = e.target.closest('[data-pano-jump]')
+    if (jump && openedProject) return selectRoom(openedProject, +jump.dataset.panoJump)
     const btn = e.target.closest('[data-sketch-zoom]')
     if (!btn) return
     const fig = btn.closest('.pdetail__sketch')
@@ -890,34 +924,53 @@ function motionlessFallback() {
     elMeta.dataset.bg = p.metaBg; elMeta.dataset.en = p.metaEn
     elBlurb.dataset.bg = p.blurbBg || ''; elBlurb.dataset.en = p.blurbEn || ''
 
-    const frames = (p.frames || [p.cover])
+    const L = lang === 'bg' ? 0 : 1
+    const frames = galleryOf(p)
       .map(
-        (src) =>
-          `<figure class="pdetail__frame"><img src="${src}" alt="" loading="lazy" decoding="async" /></figure>`
+        (n) =>
+          `<figure class="pdetail__frame"><img src="${pAsset(p.id, 'gallery', n, 1600)}" alt="" loading="lazy" decoding="async" /></figure>`
       )
       .join('')
     // 360° block: shared between both views — first thing under the tab bar,
-    // so it is on screen when the overlay opens and survives tab switches
-    const panoBlock = p.panorama
+    // so it is on screen when the overlay opens and survives tab switches.
+    // Multi-room projects get a chip switcher; the badge always names the room.
+    const rooms = p.panoramas || []
+    panoRoom = 0
+    const roomChips =
+      rooms.length > 1
+        ? `<div class="pdetail__pano-rooms" role="group"
+                data-i18n-aria="pano.rooms" aria-label="${ui.pano.rooms[L]}">${rooms
+            .map(
+              (r, i) => `
+              <button class="pdetail__pano-room${i === 0 ? ' is-active' : ''}" type="button"
+                      data-pano-jump="${i}" aria-pressed="${i === 0}"
+                      data-bg="${r.bg}" data-en="${r.en}">${lang === 'bg' ? r.bg : r.en}</button>`
+            )
+            .join('')}</div>`
+        : ''
+    const panoBlock = rooms.length
       ? `<div class="pdetail__pano">
            <div class="pdetail__pano-stage" data-pano-stage></div>
-           <span class="pdetail__pano-badge" data-i18n="pano.badge">${ui.pano.badge[lang === 'bg' ? 0 : 1]}</span>
-           <p class="pdetail__pano-hint" data-i18n="pano.hint">${ui.pano.hint[lang === 'bg' ? 0 : 1]}</p>
+           <span class="pdetail__pano-badge"><span data-i18n="pano.badge">${ui.pano.badge[L]}</span> · <span
+                 data-pano-room data-bg="${rooms[0].bg}" data-en="${rooms[0].en}">${lang === 'bg' ? rooms[0].bg : rooms[0].en}</span></span>
+           ${roomChips}
+           <p class="pdetail__pano-hint" data-i18n="pano.hint">${ui.pano.hint[L]}</p>
          </div>`
       : ''
 
-    const hasSketches = Array.isArray(p.sketches) && p.sketches.length > 0
+    const sketchNames = sketchesOf(p)
+    const hasSketches = sketchNames.length > 0
     elTabs.hidden = !hasSketches
     if (hasSketches) {
       const zoomLabel = ui.projects.zoomIn
-      const sketches = p.sketches
+      const sketches = sketchNames
         .map(
           (n) => `
         <figure class="pdetail__sketch">
           <button class="pdetail__sketch-btn" type="button" data-sketch-zoom
-                  aria-pressed="false" aria-label="${zoomLabel[lang === 'bg' ? 0 : 1]}"
+                  aria-pressed="false" aria-label="${zoomLabel[L]}"
                   data-aria-bg="${zoomLabel[0]}" data-aria-en="${zoomLabel[1]}">
-            <img src="/sketches/${n}-1000.webp" data-zoom-src="/sketches/${n}-2000.webp"
+            <img src="${pAsset(p.id, 'sketches', n, 1000)}" data-zoom-src="${pAsset(p.id, 'sketches', n, 2000)}"
                  alt="" loading="lazy" decoding="async" />
           </button>
         </figure>`
@@ -936,6 +989,7 @@ function motionlessFallback() {
     }
 
     overlay.setAttribute('aria-label', t(p.titleBg, p.titleEn))
+    openedProject = p
     lastFocus = document.activeElement
     overlay.hidden = false
     document.body.classList.add('is-locked')
@@ -945,7 +999,7 @@ function motionlessFallback() {
       elClose.focus()
       if (motionMod) overlayCleanup = motionMod.overlayMotion(elScroll)
     })
-    if (p.panorama) setupPano(p, token)
+    if (rooms.length) setupPano(p, token)
     document.addEventListener('keydown', onKey)
   }
   function closeProject() {

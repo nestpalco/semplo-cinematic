@@ -2,7 +2,11 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import sharp from 'sharp'
 import { businessLd, publishable } from '../src/schema.js'
-import { business, reviews, catalogs, captcha, ui, projects } from '../src/sections.config.js'
+import { business, reviews, catalogs, captcha, ui, projects, strips } from '../src/sections.config.js'
+
+// what assets each project actually has (emitted by scripts/optimize-projects.mjs
+// walking assets/projects/<id>/) — the page builds itself from this + the config
+const pmanifest = JSON.parse(fs.readFileSync('src/projects.manifest.json', 'utf8'))
 
 const SITE = business.url // 'https://semplodesign.com/'
 const SITE_ORIGIN = new URL(SITE).origin
@@ -402,8 +406,8 @@ test('project tabs: gallery opens selected, sketches switchable, zoom works', as
   const errors = collectErrors(page)
   await ready(page)
 
-  const iSk = projects.findIndex((p) => p.sketches?.length)
-  expect(iSk, 'at least one project has sketches configured').toBeGreaterThan(-1)
+  const iSk = projects.findIndex((p) => pmanifest[p.id]?.sketches.length)
+  expect(iSk, 'at least one project has sketches in its folder').toBeGreaterThan(-1)
   const card = page.locator('.project').nth(iSk)
   await card.scrollIntoViewIfNeeded()
   await page.waitForTimeout(400)
@@ -436,7 +440,7 @@ test('project tabs: gallery opens selected, sketches switchable, zoom works', as
   expect(
     await panelG.locator('.pdetail__frame').count(),
     'gallery panel holds the full photo sequence'
-  ).toBe(projects[iSk].frames.length)
+  ).toBe(pmanifest[projects[iSk].id].gallery.length)
 
   /* the 360° block is SHARED chrome above the switchable panels — visible when
      the project opens, never hidden behind a tab */
@@ -475,9 +479,9 @@ test('project tabs: gallery opens selected, sketches switchable, zoom works', as
   expect(await tabP.getAttribute('aria-selected')).toBe('true')
   expect(await tabG.getAttribute('aria-selected')).toBe('false')
   const sk = panelP.locator('.pdetail__sketch img')
-  await expect(sk).toHaveCount(projects[iSk].sketches.length)
+  await expect(sk).toHaveCount(pmanifest[projects[iSk].id].sketches.length)
   expect(await sk.first().getAttribute('loading'), 'sketches lazy-load').toBe('lazy')
-  expect(await sk.first().getAttribute('src')).toMatch(/^\/sketches\/.+-1000\.webp$/)
+  expect(await sk.first().getAttribute('src')).toMatch(/^\/projects\/.+\/sketches\/.+-1000\.webp$/)
   // drawings are contained, not cropped: the img keeps its own aspect ratio
   await sk.first().evaluate((img) =>
     img.complete && img.naturalWidth
@@ -537,13 +541,16 @@ test('project tabs: gallery opens selected, sketches switchable, zoom works', as
   expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
-/* ── 4c. EMPTY SKETCHES: no tab, no panel chrome — the overlay as before ───── */
+/* ── 4c. EMPTY SKETCHES: no tab, no panel chrome — the overlay as before ─────
+ * SKIPS while every configured project has sketches (currently true: the one
+ * real project has them). It re-activates automatically the moment a project
+ * without a sketches/ folder lands — typically project #2. */
 test('project without sketches shows no tab bar, just the sequence', async ({ page }) => {
+  const iBare = projects.findIndex((p) => !(pmanifest[p.id]?.sketches || []).length)
+  test.skip(iBare === -1, 'every configured project currently has sketches')
   const errors = collectErrors(page)
   await ready(page)
 
-  const iBare = projects.findIndex((p) => !p.sketches || p.sketches.length === 0)
-  expect(iBare, 'at least one project has no sketches (graceful degradation)').toBeGreaterThan(-1)
   const card = page.locator('.project').nth(iBare)
   await card.scrollIntoViewIfNeeded()
   await page.waitForTimeout(400)
@@ -553,9 +560,13 @@ test('project without sketches shows no tab bar, just the sequence', async ({ pa
   await expect(page.locator('.pdetail__tabs')).toBeHidden()
   expect(await page.locator('.pdetail__panel').count(), 'no tabpanel semantics either').toBe(0)
   expect(await page.locator('.pdetail__sketch').count()).toBe(0)
-  expect(await page.locator('.pdetail__frame').count()).toBe(projects[iBare].frames.length)
-  // the 360° block still leads the sequence
-  expect(await page.locator('[data-pano-stage]').count()).toBe(1)
+  expect(await page.locator('.pdetail__frame').count()).toBe(
+    pmanifest[projects[iBare].id].gallery.length
+  )
+  // the 360° block still leads the sequence, when the project has rooms
+  expect(await page.locator('[data-pano-stage]').count()).toBe(
+    projects[iBare].panoramas?.length ? 1 : 0
+  )
 
   await page.keyboard.press('Escape')
   await page.waitForTimeout(600)
@@ -563,24 +574,107 @@ test('project without sketches shows no tab bar, just the sequence', async ({ pa
   expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
-/* ── 4d. SKETCH PIPELINE contract: config ↔ files ↔ deploy ─────────────────── */
-test('every configured sketch is named for its project and deployed in both sizes', async ({
-  request,
-}) => {
+/* ── 4d. CONTRACT: config ↔ folders ↔ deploy ────────────────────────────────
+ * The optimizer already fails the BUILD when config references missing files;
+ * this is the same contract proven against the actual deploy: every asset the
+ * manifest says a project has must be served, in every emitted size. */
+test('every project asset in the manifest is deployed in all its sizes', async ({ request }) => {
+  const VARIANTS = { gallery: [1600, 900], sketches: [2000, 1000], panoramas: [4096, 2048] }
+  expect(projects.length, 'at least one project configured').toBeGreaterThan(0)
   for (const p of projects) {
-    for (const n of p.sketches || []) {
-      // naming convention: <projectId>-NN keeps the folder self-explanatory
-      expect(n, `sketch "${n}" should be named ${p.id}-NN`).toMatch(new RegExp(`^${p.id}-`))
-      for (const w of [1000, 2000]) {
-        const res = await request.get(`/sketches/${n}-${w}.webp`)
-        expect(
-          res.status(),
-          `/sketches/${n}-${w}.webp missing — drop ${n}.jpg in assets/sketches/ and run npm run optimize:sketches`
-        ).toBe(200)
-        expect(res.headers()['content-type']).toContain('image/webp')
+    const m = pmanifest[p.id]
+    expect(m, `"${p.id}" missing from src/projects.manifest.json — run npm run optimize:projects`).toBeTruthy()
+    expect(m.gallery.length, `${p.id}: gallery/ is empty`).toBeGreaterThan(0)
+    for (const room of p.panoramas || []) {
+      expect(
+        m.panoramas,
+        `${p.id}: config labels panorama "${room.file}" but panoramas/${room.file}.* does not exist`
+      ).toContain(room.file)
+      expect(room.bg && room.en, `${p.id}: panorama "${room.file}" needs bg + en labels`).toBeTruthy()
+    }
+    for (const [type, widths] of Object.entries(VARIANTS)) {
+      for (const n of m[type]) {
+        for (const w of widths) {
+          const url = `/projects/${p.id}/${type}/${n}-${w}.webp`
+          const res = await request.get(url)
+          expect(res.status(), `${url} missing — run npm run optimize:projects`).toBe(200)
+          expect(res.headers()['content-type']).toContain('image/webp')
+        }
       }
     }
   }
+  // the portfolio strip's hand-picked frames must exist too
+  for (const src of strips.portfolio) {
+    expect((await request.get(src)).status(), `${src} (strips.portfolio) missing`).toBe(200)
+  }
+})
+
+/* ── 4e. PANORAMA ROOMS: label + chip switcher swap the texture in place ───── */
+test('360° room switcher: room label, chips, texture swap, bilingual', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const iMulti = projects.findIndex((p) => (p.panoramas || []).length > 1)
+  expect(iMulti, 'a project with several 360° rooms exists').toBeGreaterThan(-1)
+  const p = projects[iMulti]
+  const card = page.locator('.project').nth(iMulti)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+
+  // the badge names the current room, in the active language
+  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[0].bg)
+  // one chip per room, in config order, first one active
+  const chips = page.locator('[data-pano-jump]')
+  await expect(chips).toHaveCount(p.panoramas.length)
+  expect((await chips.allTextContents()).map((t) => t.trim())).toEqual(
+    p.panoramas.map((r) => r.bg)
+  )
+  expect(await chips.first().getAttribute('aria-pressed')).toBe('true')
+  expect(
+    await page.locator('.pdetail__pano-rooms').getAttribute('aria-label'),
+    'switcher is named for screen readers'
+  ).toBeTruthy()
+
+  // the viewer shows the FIRST room (data-src records the mapped texture;
+  // desktop loads 4096, mobile 2048 — Three.js + texture arrive lazily)
+  const stage = page.locator('[data-pano-stage]')
+  await expect(stage).toHaveAttribute(
+    'data-src',
+    new RegExp(`/panoramas/${p.panoramas[0].file}-(4096|2048)\\.webp$`),
+    { timeout: 20_000 }
+  )
+
+  // switching rooms: chip state, badge label and the texture all follow
+  await chips.nth(1).click()
+  expect(await chips.nth(1).getAttribute('aria-pressed')).toBe('true')
+  expect(await chips.first().getAttribute('aria-pressed')).toBe('false')
+  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[1].bg)
+  await expect(stage).toHaveAttribute(
+    'data-src',
+    new RegExp(`/panoramas/${p.panoramas[1].file}-(4096|2048)\\.webp$`),
+    { timeout: 20_000 }
+  )
+
+  // bilingual: reopen in EN → chips and the badge label speak English
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await revealNav(page)
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[0].en)
+  expect((await chips.allTextContents()).map((t) => t.trim())).toEqual(
+    p.panoramas.map((r) => r.en)
+  )
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+
+  expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
 /* ── 5. CATALOGUES: 5 cards, all downloads internal (no old-site links) ────── */

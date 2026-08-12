@@ -14,14 +14,13 @@ e2e/.cache/
 # These are rebuilt on every deploy by `npm run assets` (the `prebuild` hook)
 # from the raw sources committed under assets/. Committing the raw sources (not
 # these outputs) keeps the repo lean and avoids stale duplicates.
-#   assets/videos/    → public/videos/     (optimize-videos.mjs, ffmpeg)
-#   assets/panoramas/ → public/panoramas/  (optimize-panoramas.mjs, sharp)
-#   assets/projects/  → public/projects/   (optimize-projects.mjs, sharp)
-#   assets/sketches/  → public/sketches/   (optimize-sketches.mjs, sharp)
+#   assets/videos/    → public/videos/    (optimize-videos.mjs, ffmpeg)
+#   assets/projects/  → public/projects/  (optimize-projects.mjs, sharp — walks
+#                       assets/projects/<id>/{gallery,sketches,panoramas}/ and
+#                       also emits src/projects.manifest.json, which IS
+#                       committed, like videos.manifest.json)
 public/videos/
-public/panoramas/
 public/projects/
-public/sketches/
 
 # NOTE: public/catalogs/ (Ghostscript-compressed PDFs) and public/studio/ are
 # NOT produced by the build, so they ARE committed. src/videos.manifest.json is

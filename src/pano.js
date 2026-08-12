@@ -15,8 +15,9 @@ import {
  *
  *   LAZY: this module (and therefore Three.js) is dynamic-imported by main.js
  *   ONLY when a project overlay with a `panorama` opens — the main page bundle
- *   stays Three-free. The equirect texture (public/panoramas/<id>-{4096|2048}
- *   .webp) loads at the same moment.
+ *   stays Three-free. The equirect texture (public/projects/<id>/panoramas/
+ *   <room>-{4096|2048}.webp) loads at the same moment. Projects with several
+ *   rooms switch via setSource() — same sphere, texture swapped in place.
  *
  *   Interaction: classic inverted-sphere look-around.
  *     • drag-to-look — Pointer Events (mouse + touch). touch-action: pan-y so
@@ -43,15 +44,27 @@ export function createPano(stage, { src, scroller, scrollYawDeg = 70, autoYaw = 
   const mat = new MeshBasicMaterial()
   scene.add(new Mesh(geo, mat))
 
+  /* texture loading — also used by setSource() for the room switcher.
+   * `loadToken` makes the LAST requested room win a fast chip-click race;
+   * the outgoing texture is disposed only after its replacement is mapped. */
   let tex = null
-  new TextureLoader().load(src, (t) => {
-    t.colorSpace = SRGBColorSpace
-    t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
-    tex = t
-    mat.map = t
-    mat.needsUpdate = true
-    stage.classList.add('is-loaded')
-  })
+  let loadToken = 0
+  function loadTexture(url) {
+    const token = ++loadToken
+    new TextureLoader().load(url, (t) => {
+      if (token !== loadToken) return t.dispose() // a newer room superseded this
+      t.colorSpace = SRGBColorSpace
+      t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
+      const old = tex
+      tex = t
+      mat.map = t
+      mat.needsUpdate = true
+      old?.dispose()
+      stage.classList.add('is-loaded')
+      stage.dataset.src = url // observable: what the sphere is actually showing
+    })
+  }
+  loadTexture(src)
 
   const canvas = renderer.domElement
   canvas.className = 'pano-canvas'
@@ -132,7 +145,14 @@ export function createPano(stage, { src, scroller, scrollYawDeg = 70, autoYaw = 
   onScroll()
 
   return {
+    /* room switch: swap the equirect on the SAME sphere/renderer — the canvas
+     * dips out via the is-loaded fade and returns when the texture arrives */
+    setSource(url) {
+      stage.classList.remove('is-loaded')
+      loadTexture(url)
+    },
     destroy() {
+      loadToken++ // orphan any in-flight texture load (its callback disposes it)
       visible = false
       cancelAnimationFrame(raf)
       io.disconnect()
