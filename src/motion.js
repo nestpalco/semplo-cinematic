@@ -638,6 +638,29 @@ export async function start() {
   window.addEventListener('load', () => ScrollTrigger.refresh())
 }
 
+/* ── scrollOverlayTo(scroller, y): glide the project overlay's scroller ─────
+ * NOT a native smooth scrollTo: the overlay's gallery images fire
+ * ScrollTrigger.refresh() as they lazy-load, and each refresh writes the
+ * scroller's position once — which cancels a UA smooth scroll mid-flight
+ * (observed settling ~400px short on a tab switch). A gsap tween re-writes
+ * scrollTop every frame until it lands, so those refreshes can't strand it. */
+export function scrollOverlayTo(scroller, y) {
+  gsap.to(scroller, {
+    duration: 0.8,
+    ease: 'power2.inOut',
+    overwrite: true,
+    scrollTo: { y, autoKill: false },
+  })
+}
+
+/* ── refreshOverlay(): re-measure overlay ScrollTriggers after a tab switch ──
+ * A hidden tabpanel measures as zero-height, so the gallery's frame-parallax
+ * triggers hold stale positions after Проект ⇄ Галерия switches — main.js
+ * calls this once the panels' hidden state has been swapped. */
+export function refreshOverlay() {
+  ScrollTrigger.refresh()
+}
+
 /* ── overlayMotion(scrollEl): motion inside an opened project overlay ─────── */
 export function overlayMotion(scrollEl) {
   const ctx = gsap.context(() => {

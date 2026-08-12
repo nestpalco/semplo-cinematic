@@ -17,9 +17,11 @@ e2e/.cache/
 #   assets/videos/    → public/videos/     (optimize-videos.mjs, ffmpeg)
 #   assets/panoramas/ → public/panoramas/  (optimize-panoramas.mjs, sharp)
 #   assets/projects/  → public/projects/   (optimize-projects.mjs, sharp)
+#   assets/sketches/  → public/sketches/   (optimize-sketches.mjs, sharp)
 public/videos/
 public/panoramas/
 public/projects/
+public/sketches/
 
 # NOTE: public/catalogs/ (Ghostscript-compressed PDFs) and public/studio/ are
 # NOT produced by the build, so they ARE committed. src/videos.manifest.json is

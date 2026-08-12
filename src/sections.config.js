@@ -117,6 +117,18 @@ export const ambients = [
  * assets/panoramas/<id>.jpg. Projects that have one get an immersive
  * drag-to-look 360° block in their detail overlay (Three.js + texture are
  * lazy-loaded only when that overlay opens). Omit the key = no block.
+ *
+ * `sketches` (OPTIONAL) — the Проект/Project tab: design sketches, plans and
+ * visualizations (the PROCESS work), as an ordered list of BASE NAMES.
+ *   ★ TO ADD SKETCHES TO A PROJECT (see assets/sketches/README.md):
+ *     1. drop files in assets/sketches/ named <projectId>-NN.jpg
+ *     2. list the base names here:  sketches: ['living-01', 'living-02'],
+ *     3. npm run optimize:sketches  (part of `npm run assets` too)
+ * Projects WITH sketches get a Проект/Галерия tab bar in their overlay
+ * (gallery opens first — the finished work is the payoff; sketches are the
+ * deeper dive). Projects without simply have no tab bar — same overlay as
+ * before. Drawings are shown UNCROPPED (mixed aspect ratios are fine) and
+ * click-to-zoom to a 2000px variant so fine linework stays readable.
  */
 const pf = (name) => `/projects/${name}-1600.webp`
 export const projects = [
@@ -128,6 +140,10 @@ export const projects = [
     span: 'wide',
     frames: ['g1-01', 'g1-02', 'g1-03', 'g1-04', 'g1-05', 'g1-06', 'g1-07', 'g1-08'].map(pf),
     panorama: 'living',
+    // TODO: living-01..03 are generated PLACEHOLDERS (labelled as such on
+    // their face) — replace the files in assets/sketches/ with the real
+    // drawings, keep the names, re-run the optimizer.
+    sketches: ['living-01', 'living-02', 'living-03'],
     blurbBg: 'Мрамор, мед и меки кремави обеми — дневна, подредена около медийната стена и светлината от двете страни.',
     blurbEn: 'Marble, copper and soft cream volumes — a living room arranged around the media wall and light from both sides.',
   },
@@ -449,6 +465,12 @@ export const ui = {
     title: ['Завършени интериори.', 'Finished interiors.'],
     view: ['Разгледай', 'View project'],
     close: ['Затвори', 'Close'],
+    // detail-overlay tabs (only shown for projects that have `sketches`)
+    tabs: ['Изглед', 'View'], // the tablist's accessible name
+    tabProject: ['Проект', 'Project'], // sketches / plans / visualizations
+    tabGallery: ['Галерия', 'Gallery'], // the finished photography
+    zoomIn: ['Увеличи скицата', 'Zoom the sketch'],
+    zoomOut: ['Намали скицата', 'Zoom back out'],
   },
   pano: {
     badge: ['360°', '360°'],

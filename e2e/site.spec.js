@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import sharp from 'sharp'
 import { businessLd, publishable } from '../src/schema.js'
-import { business, reviews, catalogs, captcha, ui } from '../src/sections.config.js'
+import { business, reviews, catalogs, captcha, ui, projects } from '../src/sections.config.js'
 
 const SITE = business.url // 'https://semplodesign.com/'
 const SITE_ORIGIN = new URL(SITE).origin
@@ -21,7 +21,15 @@ const WORDMARK = 'Semplo Concept'
 function collectErrors(page) {
   const errors = []
   page.on('console', (m) => {
-    if (m.type() === 'error') errors.push(`console.error: ${m.text()}`)
+    if (m.type() !== 'error') return
+    // failed-resource messages carry no URL in text() — pull it from location()
+    const url = m.location()?.url || ''
+    // Resource failures on THIRD-PARTY hosts are outside the deploy and flake
+    // the suite (observed: fonts.gstatic.com intermittently 404s two Inter
+    // woff2 subsets — Google's CDN, correct <link>, fallback fonts cover it).
+    // Same-origin resource failures and every non-resource error still count.
+    if (m.text().startsWith('Failed to load resource') && url && !url.includes('localhost')) return
+    errors.push(`console.error: ${m.text()} [${url || 'no url'}]`)
   })
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
   return errors
@@ -387,6 +395,192 @@ test('project overlay opens (360° block present) and closes', async ({ page }) 
   await expect(overlay).toBeHidden()
   expect(await page.evaluate(() => document.body.classList.contains('is-locked'))).toBe(false)
   expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
+/* ── 4b. PROJECT TABS: Проект ⇄ Галерия, gallery default, keyboard, zoom ──── */
+test('project tabs: gallery opens selected, sketches switchable, zoom works', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const iSk = projects.findIndex((p) => p.sketches?.length)
+  expect(iSk, 'at least one project has sketches configured').toBeGreaterThan(-1)
+  const card = page.locator('.project').nth(iSk)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+
+  /* proper tab semantics, GALLERY selected by default (the finished work is
+     the payoff; Проект is the deeper dive) */
+  const tabs = page.locator('.pdetail__tabs')
+  await expect(tabs).toBeVisible()
+  expect(await tabs.getAttribute('role')).toBe('tablist')
+  expect(await tabs.getAttribute('aria-label')).toBeTruthy()
+  const tabP = page.locator('#pdetail-tab-project')
+  const tabG = page.locator('#pdetail-tab-gallery')
+  await expect(tabP).toHaveText('Проект')
+  await expect(tabG).toHaveText('Галерия')
+  for (const [t, sel] of [[tabP, false], [tabG, true]]) {
+    expect(await t.getAttribute('role')).toBe('tab')
+    expect(await t.getAttribute('aria-selected')).toBe(String(sel))
+    // roving tabindex: only the selected tab is in the page tab order
+    expect(await t.getAttribute('tabindex')).toBe(sel ? '0' : '-1')
+  }
+  expect(await tabG.getAttribute('aria-controls')).toBe('pdetail-panel-gallery')
+  const panelG = page.locator('#pdetail-panel-gallery')
+  const panelP = page.locator('#pdetail-panel-project')
+  await expect(panelG).toBeVisible()
+  await expect(panelP).toBeHidden()
+  expect(await panelG.getAttribute('role')).toBe('tabpanel')
+  expect(await panelG.getAttribute('aria-labelledby')).toBe('pdetail-tab-gallery')
+  expect(
+    await panelG.locator('.pdetail__frame').count(),
+    'gallery panel holds the full photo sequence'
+  ).toBe(projects[iSk].frames.length)
+
+  /* the 360° block is SHARED chrome above the switchable panels — visible when
+     the project opens, never hidden behind a tab */
+  const panoAboveTabsContent = await page.evaluate(() => {
+    const pano = document.querySelector('.pdetail__pano')
+    const panel = document.querySelector('.pdetail__panel')
+    return pano && panel
+      ? !!(pano.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING)
+      : null
+  })
+  expect(panoAboveTabsContent, '360° sits above the tab panels, not inside one').toBe(true)
+
+  /* switch to Проект: sketches appear, gallery hides, aria follows */
+  await tabP.click()
+  await page.waitForTimeout(450)
+  await expect(panelP).toBeVisible()
+  await expect(panelG).toBeHidden()
+  // the switch glides the fresh panel up under the sticky bar — and LANDS
+  // there (a native smooth scroll gets cancelled by the ScrollTrigger
+  // refreshes that still-loading gallery images fire; the gsap glide doesn't)
+  await page.waitForFunction(
+    () => {
+      const s = document.querySelector('[data-pdetail-scroll]')
+      const panel = document.querySelector('#pdetail-panel-project')
+      const tabs = document.querySelector('.pdetail__tabs')
+      // a panel shorter than the viewport clamps the scroll — allow that
+      const want = Math.min(
+        panel.offsetTop - tabs.offsetHeight,
+        s.scrollHeight - s.clientHeight
+      )
+      return Math.abs(s.scrollTop - want) < 4
+    },
+    null,
+    { timeout: 5000 }
+  )
+  expect(await tabP.getAttribute('aria-selected')).toBe('true')
+  expect(await tabG.getAttribute('aria-selected')).toBe('false')
+  const sk = panelP.locator('.pdetail__sketch img')
+  await expect(sk).toHaveCount(projects[iSk].sketches.length)
+  expect(await sk.first().getAttribute('loading'), 'sketches lazy-load').toBe('lazy')
+  expect(await sk.first().getAttribute('src')).toMatch(/^\/sketches\/.+-1000\.webp$/)
+  // drawings are contained, not cropped: the img keeps its own aspect ratio
+  await sk.first().evaluate((img) =>
+    img.complete && img.naturalWidth
+      ? null
+      : new Promise((r) => { img.onload = r; img.onerror = r })
+  )
+  const fit = await sk.first().evaluate((img) => {
+    const r = img.getBoundingClientRect()
+    return { drawn: +(r.width / r.height).toFixed(2), natural: +(img.naturalWidth / img.naturalHeight).toFixed(2) }
+  })
+  expect(Math.abs(fit.drawn - fit.natural), 'sketch aspect ratio preserved').toBeLessThan(0.05)
+
+  /* click-to-zoom: swaps in the 2000px variant; ESC leaves the zoom first,
+     the overlay only on a second press */
+  const zoomBtn = panelP.locator('[data-sketch-zoom]').first()
+  const fig = panelP.locator('.pdetail__sketch').first()
+  await zoomBtn.click()
+  await expect(fig).toHaveClass(/is-zoomed/)
+  expect(await zoomBtn.getAttribute('aria-pressed')).toBe('true')
+  expect(await sk.first().getAttribute('src')).toMatch(/-2000\.webp$/)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(250)
+  await expect(fig).not.toHaveClass(/is-zoomed/)
+  await expect(page.locator('.pdetail'), 'first ESC only leaves the zoom').toBeVisible()
+
+  /* arrow keys move selection (automatic activation) */
+  await tabP.focus()
+  await page.keyboard.press('ArrowRight')
+  await page.waitForTimeout(450)
+  expect(await tabG.getAttribute('aria-selected')).toBe('true')
+  await expect(panelG).toBeVisible()
+  await expect(panelP).toBeHidden()
+  expect(
+    await page.evaluate(() => document.activeElement?.id),
+    'focus follows the arrow'
+  ).toBe('pdetail-tab-gallery')
+
+  /* bilingual labels */
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await expect(page.locator('.pdetail')).toBeHidden()
+  await revealNav(page)
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+  await expect(tabP).toHaveText('Project')
+  await expect(tabG).toHaveText('Gallery')
+  expect(
+    await panelP.locator('[data-sketch-zoom]').first().getAttribute('aria-label')
+  ).toBe(ui.projects.zoomIn[1])
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+
+  expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
+/* ── 4c. EMPTY SKETCHES: no tab, no panel chrome — the overlay as before ───── */
+test('project without sketches shows no tab bar, just the sequence', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const iBare = projects.findIndex((p) => !p.sketches || p.sketches.length === 0)
+  expect(iBare, 'at least one project has no sketches (graceful degradation)').toBeGreaterThan(-1)
+  const card = page.locator('.project').nth(iBare)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+
+  await expect(page.locator('.pdetail__tabs')).toBeHidden()
+  expect(await page.locator('.pdetail__panel').count(), 'no tabpanel semantics either').toBe(0)
+  expect(await page.locator('.pdetail__sketch').count()).toBe(0)
+  expect(await page.locator('.pdetail__frame').count()).toBe(projects[iBare].frames.length)
+  // the 360° block still leads the sequence
+  expect(await page.locator('[data-pano-stage]').count()).toBe(1)
+
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await expect(page.locator('.pdetail')).toBeHidden()
+  expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
+/* ── 4d. SKETCH PIPELINE contract: config ↔ files ↔ deploy ─────────────────── */
+test('every configured sketch is named for its project and deployed in both sizes', async ({
+  request,
+}) => {
+  for (const p of projects) {
+    for (const n of p.sketches || []) {
+      // naming convention: <projectId>-NN keeps the folder self-explanatory
+      expect(n, `sketch "${n}" should be named ${p.id}-NN`).toMatch(new RegExp(`^${p.id}-`))
+      for (const w of [1000, 2000]) {
+        const res = await request.get(`/sketches/${n}-${w}.webp`)
+        expect(
+          res.status(),
+          `/sketches/${n}-${w}.webp missing — drop ${n}.jpg in assets/sketches/ and run npm run optimize:sketches`
+        ).toBe(200)
+        expect(res.headers()['content-type']).toContain('image/webp')
+      }
+    }
+  }
 })
 
 /* ── 5. CATALOGUES: 5 cards, all downloads internal (no old-site links) ────── */

@@ -736,7 +736,17 @@ function motionlessFallback() {
   }
 }
 
-/* ── 11. PROJECTS — detail overlay (edge-to-edge photo sequence) ──────────── */
+/* ── 11. PROJECTS — detail overlay (tabs: process work ⇄ finished photos) ──
+ * Projects WITH `sketches` get a two-tab bar — Проект (sketches/plans) and
+ * Галерия (the photo sequence). The GALLERY opens selected: the finished
+ * photography is the payoff and the one view every project has; the process
+ * drawings are the deeper dive. Projects without sketches show no bar at all.
+ *
+ * The 360° panorama is deliberately NOT a tab: it sits as a SHARED block
+ * between the tab bar and the switchable panel, so it is on screen the moment
+ * the overlay opens (no hunting) and never vanishes on a tab switch. The tab
+ * bar is sticky, and switching scrolls the fresh panel up under it so the
+ * change is always visible. */
 {
   const overlay = document.createElement('div')
   overlay.className = 'pdetail'
@@ -748,12 +758,23 @@ function motionlessFallback() {
             data-i18n-aria="projects.close" aria-label="Close">
       <span aria-hidden="true">✕</span>
     </button>
-    <div class="pdetail__scroll" data-pdetail-scroll tabindex="-1">
+    <div class="pdetail__scroll" data-pdetail-scroll tabindex="0">
       <header class="pdetail__head">
         <p class="pdetail__meta" data-pdetail-meta></p>
         <h2 class="pdetail__title" data-pdetail-title></h2>
         <p class="pdetail__blurb" data-pdetail-blurb></p>
       </header>
+      <div class="pdetail__tabs" data-pdetail-tabs role="tablist"
+           data-i18n-aria="projects.tabs" aria-label="${ui.projects.tabs[0]}" hidden>
+        <button class="pdetail__tab" type="button" role="tab" data-tab="project"
+                id="pdetail-tab-project" aria-controls="pdetail-panel-project"
+                aria-selected="false" tabindex="-1"
+                data-i18n="projects.tabProject">${ui.projects.tabProject[0]}</button>
+        <button class="pdetail__tab" type="button" role="tab" data-tab="gallery"
+                id="pdetail-tab-gallery" aria-controls="pdetail-panel-gallery"
+                aria-selected="true" tabindex="0"
+                data-i18n="projects.tabGallery">${ui.projects.tabGallery[0]}</button>
+      </div>
       <div class="pdetail__seq" data-pdetail-seq></div>
     </div>`
   document.body.appendChild(overlay)
@@ -764,6 +785,8 @@ function motionlessFallback() {
   const elTitle = overlay.querySelector('[data-pdetail-title]')
   const elBlurb = overlay.querySelector('[data-pdetail-blurb]')
   const elSeq = overlay.querySelector('[data-pdetail-seq]')
+  const elTabs = overlay.querySelector('[data-pdetail-tabs]')
+  const tabBtns = [...elTabs.querySelectorAll('[role="tab"]')]
   let lastFocus = null
   let pano = null // live 360° viewer instance for the open project
   let overlayCleanup = null // motion-layer teardown for the open project
@@ -786,6 +809,75 @@ function motionlessFallback() {
     } catch {} // viewer is an enhancement — the photo sequence still stands
   }
 
+  /* ── tabs: Проект (sketches) ⇄ Галерия (photos) ─────────────────────────
+   * WAI-ARIA tabs with roving tabindex + arrow keys; selection follows focus
+   * (automatic activation). Panels are hidden/shown; a switch scrolls the
+   * fresh panel up under the sticky bar so the change is always on screen. */
+  function selectTab(name, { scroll = false } = {}) {
+    tabBtns.forEach((b) => {
+      const on = b.dataset.tab === name
+      b.setAttribute('aria-selected', String(on))
+      b.tabIndex = on ? 0 : -1
+      b.classList.toggle('is-active', on)
+    })
+    overlay.querySelectorAll('[data-pdetail-panel]').forEach((panel) => {
+      panel.hidden = panel.dataset.pdetailPanel !== name
+    })
+    if (scroll) {
+      // refresh FIRST: ScrollTrigger.refresh() writes the scroller's position
+      // back while re-measuring, which cancels an in-flight smooth scrollTo
+      motionMod?.refreshOverlay?.() // re-measure the gallery parallax triggers
+      const panel = overlay.querySelector(`[data-pdetail-panel="${name}"]`)
+      if (panel) {
+        // put the panel's first content just under the sticky bar; the shared
+        // pano block glides out above so the switch is visible immediately
+        const top = Math.max(0, panel.offsetTop - elTabs.offsetHeight)
+        if (!prefersReduced && motionMod?.scrollOverlayTo) {
+          // gsap glide — a native smooth scroll here gets cancelled by the
+          // ScrollTrigger.refresh() that still-loading gallery images fire
+          motionMod.scrollOverlayTo(elScroll, top)
+        } else {
+          elScroll.scrollTo({ top, behavior: prefersReduced ? 'auto' : 'smooth' })
+        }
+      }
+    }
+  }
+  tabBtns.forEach((btn, i) => {
+    btn.addEventListener('click', () => selectTab(btn.dataset.tab, { scroll: true }))
+    btn.addEventListener('keydown', (e) => {
+      const dir = { ArrowRight: 1, ArrowLeft: -1, Home: 0, End: 0 }
+      if (!(e.key in dir)) return
+      e.preventDefault()
+      const to =
+        e.key === 'Home' ? 0
+        : e.key === 'End' ? tabBtns.length - 1
+        : (i + dir[e.key] + tabBtns.length) % tabBtns.length
+      tabBtns[to].focus()
+      selectTab(tabBtns[to].dataset.tab, { scroll: true })
+    })
+  })
+
+  /* click-to-zoom for sketches: fit view ⇄ pannable 2000px view (drawings
+   * carry fine linework — "readable" means reachable at full size) */
+  const zoomedSketch = () => overlay.querySelector('.pdetail__sketch.is-zoomed')
+  function setZoom(fig, on) {
+    const btn = fig.querySelector('[data-sketch-zoom]')
+    const img = fig.querySelector('img')
+    if (on && img.dataset.zoomSrc && img.src !== img.dataset.zoomSrc) img.src = img.dataset.zoomSrc
+    fig.classList.toggle('is-zoomed', on)
+    btn.setAttribute('aria-pressed', String(on))
+    const label = on ? ui.projects.zoomOut : ui.projects.zoomIn
+    btn.dataset.ariaBg = label[0]
+    btn.dataset.ariaEn = label[1]
+    btn.setAttribute('aria-label', label[lang === 'bg' ? 0 : 1])
+  }
+  elSeq.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-sketch-zoom]')
+    if (!btn) return
+    const fig = btn.closest('.pdetail__sketch')
+    setZoom(fig, !fig.classList.contains('is-zoomed'))
+  })
+
   function openProject(i) {
     const p = projects[i]
     if (!p) return
@@ -798,11 +890,14 @@ function motionlessFallback() {
     elMeta.dataset.bg = p.metaBg; elMeta.dataset.en = p.metaEn
     elBlurb.dataset.bg = p.blurbBg || ''; elBlurb.dataset.en = p.blurbEn || ''
 
-    const frames = (p.frames || [p.cover]).map(
-      (src) =>
-        `<figure class="pdetail__frame"><img src="${src}" alt="" loading="lazy" decoding="async" /></figure>`
-    )
-    // 360° block sits after the lead photo (title → photo → look around → rest)
+    const frames = (p.frames || [p.cover])
+      .map(
+        (src) =>
+          `<figure class="pdetail__frame"><img src="${src}" alt="" loading="lazy" decoding="async" /></figure>`
+      )
+      .join('')
+    // 360° block: shared between both views — first thing under the tab bar,
+    // so it is on screen when the overlay opens and survives tab switches
     const panoBlock = p.panorama
       ? `<div class="pdetail__pano">
            <div class="pdetail__pano-stage" data-pano-stage></div>
@@ -810,7 +905,35 @@ function motionlessFallback() {
            <p class="pdetail__pano-hint" data-i18n="pano.hint">${ui.pano.hint[lang === 'bg' ? 0 : 1]}</p>
          </div>`
       : ''
-    elSeq.innerHTML = frames[0] + panoBlock + frames.slice(1).join('')
+
+    const hasSketches = Array.isArray(p.sketches) && p.sketches.length > 0
+    elTabs.hidden = !hasSketches
+    if (hasSketches) {
+      const zoomLabel = ui.projects.zoomIn
+      const sketches = p.sketches
+        .map(
+          (n) => `
+        <figure class="pdetail__sketch">
+          <button class="pdetail__sketch-btn" type="button" data-sketch-zoom
+                  aria-pressed="false" aria-label="${zoomLabel[lang === 'bg' ? 0 : 1]}"
+                  data-aria-bg="${zoomLabel[0]}" data-aria-en="${zoomLabel[1]}">
+            <img src="/sketches/${n}-1000.webp" data-zoom-src="/sketches/${n}-2000.webp"
+                 alt="" loading="lazy" decoding="async" />
+          </button>
+        </figure>`
+        )
+        .join('')
+      elSeq.innerHTML =
+        panoBlock +
+        `<div class="pdetail__panel" id="pdetail-panel-project" data-pdetail-panel="project"
+              role="tabpanel" tabindex="0" aria-labelledby="pdetail-tab-project" hidden>${sketches}</div>` +
+        `<div class="pdetail__panel" id="pdetail-panel-gallery" data-pdetail-panel="gallery"
+              role="tabpanel" tabindex="0" aria-labelledby="pdetail-tab-gallery">${frames}</div>`
+      selectTab('gallery') // the finished work opens; Проект is the deeper dive
+    } else {
+      // no sketches → no tab bar, no panel semantics: the overlay as it was
+      elSeq.innerHTML = panoBlock + frames
+    }
 
     overlay.setAttribute('aria-label', t(p.titleBg, p.titleEn))
     lastFocus = document.activeElement
@@ -848,13 +971,27 @@ function motionlessFallback() {
     setTimeout(done, 450) // fallback if no transition fires
   }
   function onKey(e) {
-    if (e.key === 'Escape') return closeProject()
+    if (e.key === 'Escape') {
+      // a zoomed sketch swallows the first ESC (zoom out, stay in the overlay)
+      const z = zoomedSketch()
+      if (z) return setZoom(z, false)
+      return closeProject()
+    }
     if (e.key === 'Tab') {
-      // minimal focus trap: only close + scroll region are focusable
-      const f = [elClose, elScroll]
+      // focus trap across everything focusable in the overlay (close button,
+      // visible tabs — roving tabindex keeps unselected ones out — and the
+      // zoom buttons of whichever panel is shown)
+      // getClientRects, not offsetParent: the close button is position:fixed,
+      // which reports offsetParent === null even while perfectly visible
+      const f = [...overlay.querySelectorAll('button, [tabindex="0"]')].filter(
+        (el) => !el.closest('[hidden]') && el.tabIndex >= 0 && el.getClientRects().length > 0
+      )
+      if (!f.length) return
       const first = f[0]
       const last = f[f.length - 1]
-      if (e.shiftKey && document.activeElement === first) {
+      if (!overlay.contains(document.activeElement)) {
+        e.preventDefault(); first.focus()
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault(); last.focus()
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault(); first.focus()
