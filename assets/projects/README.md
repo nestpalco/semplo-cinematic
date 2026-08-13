@@ -51,9 +51,17 @@ block and its room switcher all follow from the folder + that one entry.
 ## Notes
 
 - **Gallery order** is filename order — number them `01.jpg, 02.jpg, …`.
-- **Panorama files** must be ~2:1 equirectangular (e.g. 8000×4000); name them
-  after the room in ASCII (`living.jpg`, not `дневна.jpg`) — the visible
-  bilingual label comes from the config entry.
+- **Sketches that arrive as PDFs** must be rendered to images (the pipeline
+  publishes images only). Render each page at high resolution (≈3000px wide
+  for an A2 sheet keeps dimension text readable in the click-to-zoom view)
+  and park the original PDFs in `sketches/pdf-originals/` — the optimizer
+  only reads images directly in `sketches/`, so anything in a subfolder
+  stays unpublished but versioned for re-rendering.
+- **Panorama files** must be ~2:1 equirectangular, ideally 4096px wide or
+  more (e.g. 8000×4000 — the pipeline never upscales, so a small source like
+  1600×800 will render soft in the viewer); name them after the room in
+  ASCII (`living.jpg`, not `дневна.jpg`) — the visible bilingual label comes
+  from the config entry.
 - **Sketches** may be any aspect ratio (portrait plans are fine); they are
   shown uncropped with click-to-zoom.
 - **Deleting**: remove the files AND (for panoramas) the config label, or the

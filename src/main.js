@@ -888,7 +888,7 @@ function motionlessFallback() {
     })
   })
 
-  /* click-to-zoom for sketches: fit view ⇄ pannable 2000px view (drawings
+  /* click-to-zoom for sketches: fit view ⇄ pannable 3000px view (drawings
    * carry fine linework — "readable" means reachable at full size) */
   const zoomedSketch = () => overlay.querySelector('.pdetail__sketch.is-zoomed')
   function setZoom(fig, on) {
@@ -970,7 +970,7 @@ function motionlessFallback() {
           <button class="pdetail__sketch-btn" type="button" data-sketch-zoom
                   aria-pressed="false" aria-label="${zoomLabel[L]}"
                   data-aria-bg="${zoomLabel[0]}" data-aria-en="${zoomLabel[1]}">
-            <img src="${pAsset(p.id, 'sketches', n, 1000)}" data-zoom-src="${pAsset(p.id, 'sketches', n, 2000)}"
+            <img src="${pAsset(p.id, 'sketches', n, 1000)}" data-zoom-src="${pAsset(p.id, 'sketches', n, 3000)}"
                  alt="" loading="lazy" decoding="async" />
           </button>
         </figure>`

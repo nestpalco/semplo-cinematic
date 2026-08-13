@@ -494,14 +494,14 @@ test('project tabs: gallery opens selected, sketches switchable, zoom works', as
   })
   expect(Math.abs(fit.drawn - fit.natural), 'sketch aspect ratio preserved').toBeLessThan(0.05)
 
-  /* click-to-zoom: swaps in the 2000px variant; ESC leaves the zoom first,
+  /* click-to-zoom: swaps in the 3000px variant; ESC leaves the zoom first,
      the overlay only on a second press */
   const zoomBtn = panelP.locator('[data-sketch-zoom]').first()
   const fig = panelP.locator('.pdetail__sketch').first()
   await zoomBtn.click()
   await expect(fig).toHaveClass(/is-zoomed/)
   expect(await zoomBtn.getAttribute('aria-pressed')).toBe('true')
-  expect(await sk.first().getAttribute('src')).toMatch(/-2000\.webp$/)
+  expect(await sk.first().getAttribute('src')).toMatch(/-3000\.webp$/)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(250)
   await expect(fig).not.toHaveClass(/is-zoomed/)
@@ -579,7 +579,7 @@ test('project without sketches shows no tab bar, just the sequence', async ({ pa
  * this is the same contract proven against the actual deploy: every asset the
  * manifest says a project has must be served, in every emitted size. */
 test('every project asset in the manifest is deployed in all its sizes', async ({ request }) => {
-  const VARIANTS = { gallery: [1600, 900], sketches: [2000, 1000], panoramas: [4096, 2048] }
+  const VARIANTS = { gallery: [1600, 900], sketches: [3000, 1000], panoramas: [4096, 2048] }
   expect(projects.length, 'at least one project configured').toBeGreaterThan(0)
   for (const p of projects) {
     const m = pmanifest[p.id]

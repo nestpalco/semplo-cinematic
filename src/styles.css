@@ -1251,7 +1251,7 @@ body.motion .pdetail__panel {
 
 /* ── sketches (Проект): drawings, not photographs ──
    Never cropped (mixed aspect ratios, portrait included), centred on a quiet
-   surface, click-to-zoom to the 2000px variant for the fine linework. */
+   surface, click-to-zoom to the 3000px variant for the fine linework. */
 .pdetail__sketch {
   margin: 0;
   background: var(--wash-neutral);

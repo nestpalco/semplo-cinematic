@@ -132,7 +132,7 @@ export const ambients = [
  *      overlay opens; switching rooms swaps the texture in place.
  *   sketches need NO config — folder presence alone adds the Проект tab
  *      (gallery still opens selected; no folder = no tab). Drawings render
- *      uncropped, click-to-zoom to the 2000px variant.
+ *      uncropped, click-to-zoom to the 3000px variant.
  *   `span`: 'wide' | null — gallery card size hint.
  *
  * REAL SEMPLO imagery, harvested from semplodesign.com/projects/. Their
@@ -142,6 +142,24 @@ export const ambients = [
  * the ours → theirs mapping of every photo).
  */
 export const projects = [
+  {
+    id: 'house-tryavna',
+    titleBg: 'Къща Трявна', titleEn: 'Tryavna House',
+    // year from the plan sheets' title block (ДАТА: 4.8.2026). NB: the same
+    // title block names the project "Къща Троян" — kept "Трявна" as briefed;
+    // if the sheets are right and the town is Troyan, fix the four names here.
+    metaBg: 'Трявна · 2026', metaEn: 'Tryavna · 2026',
+    span: 'wide',
+    panoramas: [
+      { file: 'living', bg: 'Дневна', en: 'Living room' },
+      { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
+    ],
+    // draft blurb — edit freely
+    blurbBg:
+      'Двуетажна къща с отворена дневна, кухня и трапезария, три спални и гараж — топло дърво, камък и мека светлина в полите на Балкана.',
+    blurbEn:
+      'A two-storey house with an open living, kitchen and dining space, three bedrooms and a garage — warm wood, stone and soft light in the foothills of the Balkan range.',
+  },
   {
     id: 'sofia-apartment',
     titleBg: 'Апартамент София', titleEn: 'Sofia Apartment',

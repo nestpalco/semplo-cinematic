@@ -12,9 +12,12 @@
  *
  *   out: public/projects/<project-id>/
  *            gallery/<name>-{1600,900}.webp       q80 — photos
- *            sketches/<name>-{2000,1000}.webp     q85 — drawings carry fine
- *                                                 linework; near-white plans
- *                                                 compress well anyway
+ *            sketches/<name>-{3000,1000}.webp     q85 — drawings carry fine
+ *                                                 linework (3000 keeps an A2
+ *                                                 plan sheet's dimension text
+ *                                                 readable in the zoom view);
+ *                                                 near-white plans compress
+ *                                                 well anyway
  *            panoramas/<name>-{4096,2048}.webp    q78 — 4096 is a safe max
  *                                                 GPU texture size (2048 mobile)
  *
@@ -50,7 +53,7 @@ const MANIFEST = resolve(ROOT, 'src/projects.manifest.json')
 
 const TYPES = {
   gallery: { widths: [1600, 900], quality: 80 },
-  sketches: { widths: [2000, 1000], quality: 85 },
+  sketches: { widths: [3000, 1000], quality: 85 },
   panoramas: { widths: [4096, 2048], quality: 78, equirect: true },
 }
 
