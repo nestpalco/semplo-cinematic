@@ -241,7 +241,7 @@ async function contrastFailures(page) {
       '.catcard__cat', '.catcard__title', '.catcard__dl', '.catcard__size', '.catcard__doc',
       '.cta__eyebrow', '.cta__title', '.cta__text', '.cta__btn', '.cta__contacts',
       '.cta__contacts a', '.cta__maplink', '.foot__brand', '.foot__center span',
-      '.foot__contact span', '.foot__contact a',
+      '.foot__contact span', '.foot__contact a', '.foot__credit',
       // reviews section
       '.reviews__eyebrow', '.reviews__title', '.reviews__aggtext', '.reviews__link',
       '.review__text', '.review__author', '.review__date', '.review__todo',
@@ -1062,6 +1062,29 @@ test('wordmark reads "Semplo Concept" everywhere and fits the nav', async ({ pag
     const lines = await page.locator('.nav__logo').evaluate((el) => el.getClientRects().length)
     expect(lines, 'wordmark stays on one line').toBe(1)
   }
+})
+
+/* ── 12b. FOOTER CREDIT: quiet, bilingual, safe external link ──────────────── */
+test('footer credit links webservices.agency, bilingual and understated', async ({ page }) => {
+  await ready(page)
+  const credit = page.locator('.foot__credit')
+  await expect(credit).toHaveCount(1)
+  expect(await credit.getAttribute('href')).toBe('https://webservices.agency')
+  expect(await credit.getAttribute('target')).toBe('_blank')
+  expect(await credit.getAttribute('rel')).toContain('noopener')
+  await expect(credit).toHaveText(ui.foot.credit[0])
+
+  // understated: strictly smaller type than the rights line beside it
+  const sizes = await page.evaluate(() => ({
+    credit: parseFloat(getComputedStyle(document.querySelector('.foot__credit')).fontSize),
+    rights: parseFloat(getComputedStyle(document.querySelector('[data-i18n="foot.rights"]')).fontSize),
+  }))
+  expect(sizes.credit, 'credit is quieter than the rights line').toBeLessThan(sizes.rights)
+
+  // bilingual via the same i18n mechanism as the rest of the footer
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await expect(credit).toHaveText(ui.foot.credit[1])
 })
 
 /* ── 13. PHONE: the new number everywhere, the old one nowhere ─────────────── */

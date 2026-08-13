@@ -619,6 +619,11 @@ export const ui = {
       '© 2026 Semplo Concept — Интериорно студио · Всички права запазени',
       '© 2026 Semplo Concept — Interior studio · All rights reserved',
     ],
+    // quiet studio credit under the © line (links to https://webservices.agency)
+    credit: [
+      'Изработка и поддръжка — webservices.agency',
+      'Designed & maintained by webservices.agency',
+    ],
   },
 }
 

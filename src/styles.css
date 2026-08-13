@@ -1689,6 +1689,19 @@ body.motion .pdetail__panel {
 .foot__contact a:hover {
   color: var(--gold-ink);
 }
+/* studio credit — the quietest line in the footer: a step smaller than the
+   rights line, faint ink (full opacity: --ink-faint is the AA-verified floor;
+   dimming it further would fail the contrast audit), brass on hover like the
+   contact links. Tokens only, so both themes follow. */
+a.foot__credit {
+  /* element+class, so it out-ties the `.foot__col a` colour above */
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+.foot__credit:hover {
+  color: var(--gold-ink);
+}
 @media (max-width: 720px) {
   .foot {
     grid-template-columns: 1fr;
