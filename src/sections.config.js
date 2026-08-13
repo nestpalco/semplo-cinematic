@@ -143,12 +143,11 @@ export const ambients = [
  */
 export const projects = [
   {
-    id: 'house-tryavna',
-    titleBg: 'Къща Трявна', titleEn: 'Tryavna House',
-    // year from the plan sheets' title block (ДАТА: 4.8.2026). NB: the same
-    // title block names the project "Къща Троян" — kept "Трявна" as briefed;
-    // if the sheets are right and the town is Troyan, fix the four names here.
-    metaBg: 'Трявна · 2026', metaEn: 'Tryavna · 2026',
+    id: 'house-troyan',
+    titleBg: 'Къща Троян', titleEn: 'Troyan House',
+    // name and year confirmed against the plan sheets' title block
+    // (ОБЕКТ: Къща Троян, ДАТА: 4.8.2026)
+    metaBg: 'Троян · 2026', metaEn: 'Troyan · 2026',
     span: 'wide',
     panoramas: [
       { file: 'living', bg: 'Дневна', en: 'Living room' },
@@ -649,10 +648,10 @@ export const motion = {
 
   // 360° viewer: degrees of gentle scroll-linked yaw as the block passes through
   // the overlay viewport (0 in reduced-motion — drag always works).
-  // 61, not 70: this is the one scroll-linked effect whose window is fixed by
-  // the overlay viewport, so the global 15% slow-down (SPEED.distance in
-  // motion.js) has to come off the TRAVEL instead — 70 / 1.15 ≈ 61.
-  panoScrollYaw: 61,
+  // 51, not 70: this is the one scroll-linked effect whose window is fixed by
+  // the overlay viewport, so the global scroll slow-down (SPEED.distance = 1.38
+  // in motion.js) has to come off the TRAVEL instead — 70 / 1.38 ≈ 51.
+  panoScrollYaw: 51,
 
   // ── PATTERN B: scroll-scrubbed video (desktop, motion-ok only) ──────────
   scrub: {

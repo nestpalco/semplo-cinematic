@@ -47,16 +47,19 @@ const EPS = motion.scrub.seekEpsilon
  *              itself is unchanged, it just takes 15% more scrolling to play
  *              out. Feeds the pin lengths AND every native scroll window.
  *
- * Everything is currently 15% slower than the previous tuning: reveal and scrub
- * were 1.1 (→ 1.1 × 1.15 = 1.265), and distance is the new dial at 1.15.
+ * Current tuning (2026-08-13): the SCROLL dials took a further ×1.20 on top of
+ * the earlier ×1.15 pass — scrub 1.265 × 1.20 = 1.518, distance 1.15 × 1.20 =
+ * 1.38 — per the client's "scroll effects 20% slower". `reveal` stays at the
+ * ×1.15 tuning (1.1 × 1.15 = 1.265): once-only reveal durations are not scroll
+ * effects and were not asked to change.
  *
  * DRIFT is the inverse, for the handful of effects whose scroll window is fixed
  * by the viewport and therefore CANNOT be widened (the ambient-strip and
- * statement parallaxes travel across one full pass by definition). There,
- * "15% slower" has to come off the TRAVEL instead — same idea, other lever.
+ * statement parallaxes travel across one full pass by definition). There, the
+ * slow-down has to come off the TRAVEL instead — same idea, other lever.
  * The 360° viewer's scroll-yaw is the same case; it lives in
  * sections.config.js as motion.panoScrollYaw. */
-const SPEED = { reveal: 1.265, scrub: 1.265, distance: 1.15 }
+const SPEED = { reveal: 1.265, scrub: 1.518, distance: 1.38 }
 const DRIFT = +(1 / SPEED.distance).toFixed(4)
 
 /* Pin lengths in viewport-heights — deliberately TIGHT so the page doesn't get
