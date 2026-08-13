@@ -98,52 +98,31 @@
   "gallery/32.jpg": {
     "was": "Перално_02.jpg"
   },
-  "sketches/01.jpg": {
-    "was": "A.02.1 План разпределение - обзавеждане.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/02.jpg": {
-    "was": "A.02.2 Софити.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/03.jpg": {
-    "was": "A.02.3 Oсветление.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/04.jpg": {
-    "was": "A.02.4 План Управление осветление.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/05.jpg": {
-    "was": "A.02.5 План Ел. Панели.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/06.jpg": {
-    "was": "A.02.6 План Подови настилки.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/07.jpg": {
-    "was": "A.02.7 План Финиши стени и тавани.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/08.jpg": {
-    "was": "A.03.1 1. План Разпределение - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/09.jpg": {
-    "was": "A.03.2 1. План Софити - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/10.jpg": {
-    "was": "A.03.3 1. План Осветление -Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/11.jpg": {
-    "was": "A.03.4 1. План Управление осветление- Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/12.jpg": {
-    "was": "A.03.5 1. План Ел. панели - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/13.jpg": {
-    "was": "A.03.6 1. План Настилки - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
-  "sketches/14.jpg": {
-    "was": "A.03.7 1. План Финиши стени и тавани - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px)"
-  },
   "panoramas/living.jpeg": {
     "was": "living.jpeg (as delivered, 1600×800 — low-res, see README note)"
   },
   "panoramas/bedroom.jpeg": {
     "was": "bedroom.jpeg (as delivered, 1600×800 — low-res, see README note)"
+  },
+  "sketches/01.jpg": {
+    "was": "A.02.1 План разпределение - обзавеждане.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/02.jpg": {
+    "was": "A.03.1 1. План Разпределение - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/03.jpg": {
+    "was": "A.02.3 Oсветление.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/04.jpg": {
+    "was": "A.03.3 1. План Осветление -Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/05.jpg": {
+    "was": "A.02.6 План Подови настилки.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/06.jpg": {
+    "was": "A.03.6 1. План Настилки - Първи етаж.pdf (page 1, rendered 260dpi, footer title block cropped out — client name redacted → 3000px; PDF source in Google Drive)"
+  },
+  "sketches/(not published)": {
+    "was": "8 further sheets (софити ×2, управление осветление ×2, ел. панели ×2, финиши ×2) curated out on 2026-08-13 — all 14 source PDFs live in Google Drive, not the repo"
   }
 }

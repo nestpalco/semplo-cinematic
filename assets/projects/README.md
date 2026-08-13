@@ -53,10 +53,13 @@ block and its room switcher all follow from the folder + that one entry.
 - **Gallery order** is filename order — number them `01.jpg, 02.jpg, …`.
 - **Sketches that arrive as PDFs** must be rendered to images (the pipeline
   publishes images only). Render each page at high resolution (≈3000px wide
-  for an A2 sheet keeps dimension text readable in the click-to-zoom view)
-  and park the original PDFs in `sketches/pdf-originals/` — the optimizer
-  only reads images directly in `sketches/`, so anything in a subfolder
-  stays unpublished but versioned for re-rendering.
+  for an A2 sheet keeps dimension text readable in the click-to-zoom view),
+  and crop the title block if it carries client-identifying details before
+  the image lands in `sketches/`. The source PDFs themselves are NOT kept in
+  the repo — they live in the studio's Google Drive; restore from there if a
+  sheet ever needs re-rendering. (Should you need a temporary holding spot,
+  the optimizer only reads images directly in `sketches/`, so a subfolder
+  there is never published.)
 - **Panorama files** must be ~2:1 equirectangular, ideally 4096px wide or
   more (e.g. 8000×4000 — the pipeline never upscales, so a small source like
   1600×800 will render soft in the viewer); name them after the room in
