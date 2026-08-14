@@ -677,6 +677,151 @@ test('360° room switcher: room label, chips, texture swap, bilingual', async ({
   expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
+/* ── 4f. PANORAMA CHROME: badge + drag hint legible over ANY imagery ────────
+   The badge/hint/chips sit over a photograph, so the page-wide contrast audit
+   skips them (no static ground to measure). Instead, their frosted pill must
+   guarantee AA on its own: text vs (pill composited over pure white) AND
+   (pill over pure black) — the two worst panoramas possible. Also: hint is
+   top-centre and bilingual, fades after the first drag (the badge does NOT),
+   and neither collides with the room chips or the overlay's close button. */
+test('360° chrome: badge + drag hint legible, no collisions, hint fades on drag', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+
+  const iPano = projects.findIndex((p) => (p.panoramas || []).length)
+  expect(iPano, 'a project with a 360° room exists').toBeGreaterThan(-1)
+  const card = page.locator('.project').nth(iPano)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(400)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+
+  const badge = page.locator('.pdetail__pano-badge')
+  const hint = page.locator('.pdetail__pano-hint')
+  await expect(badge).toBeVisible()
+  await expect(hint).toBeVisible()
+  await expect(hint).toHaveText(ui.pano.hint[0]) // BG on first load
+
+  // geometry — measured wherever the overlay happens to sit (ScrollTrigger
+  // refreshes on lazy image loads make a scripted scroll position unreliable);
+  // the close-button check below projects to the worst case instead
+  const boxes = await page.evaluate(() => {
+    const b = (sel) => {
+      const el = document.querySelector(sel)
+      if (!el) return null
+      const r = el.getBoundingClientRect()
+      return { x: r.x, y: r.y, w: r.width, h: r.height }
+    }
+    return {
+      pano: b('.pdetail__pano'),
+      badge: b('.pdetail__pano-badge'),
+      hint: b('.pdetail__pano-hint'),
+      close: b('.pdetail__close'),
+      chips: b('.pdetail__pano-rooms'),
+    }
+  })
+  const overlap = (a, c) =>
+    a && c && a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h
+  const cx = (r) => r.x + r.w / 2
+  expect(Math.abs(cx(boxes.hint) - cx(boxes.pano)), 'hint is horizontally centred').toBeLessThan(2)
+  expect(boxes.hint.y - boxes.pano.y, 'hint sits in the top band').toBeLessThan(80)
+  expect(boxes.badge.y - boxes.pano.y, 'badge sits top-left').toBeLessThan(40)
+  expect(overlap(boxes.hint, boxes.badge), 'hint clears the badge').toBe(false)
+  // the close button is FIXED to the viewport; the chrome gets closest to it
+  // when scrolling puts the pano's top edge at the viewport's top edge —
+  // project badge/hint into that worst case rather than depending on scroll
+  const atTop = (r) => ({ ...r, y: r.y - boxes.pano.y })
+  expect(overlap(atTop(boxes.hint), boxes.close), 'hint clears the close button').toBe(false)
+  expect(overlap(atTop(boxes.badge), boxes.close), 'badge clears the close button').toBe(false)
+  if (boxes.chips) {
+    expect(overlap(boxes.hint, boxes.chips), 'hint clears the room chips').toBe(false)
+    expect(overlap(boxes.badge, boxes.chips), 'badge clears the room chips').toBe(false)
+  }
+
+  // worst-case contrast in BOTH themes (the pill is theme-constant, verify it)
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate((t) => {
+      document.documentElement.dataset.theme = t
+    }, theme)
+    await page.waitForTimeout(300)
+    const rows = await page.evaluate(() => {
+      const px = (c) => {
+        const n = (String(c).match(/[-\d.]+/g) || ['0', '0', '0']).map(Number)
+        return { r: n[0] || 0, g: n[1] || 0, b: n[2] || 0, a: n.length > 3 ? n[3] : 1 }
+      }
+      const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
+      const lum = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+      const flat = (fg, bg) => ({
+        r: fg.r * fg.a + bg.r * (1 - fg.a),
+        g: fg.g * fg.a + bg.g * (1 - fg.a),
+        b: fg.b * fg.a + bg.b * (1 - fg.a),
+        a: 1,
+      })
+      const ratio = (a, b) => {
+        const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p)
+        return (hi + 0.05) / (lo + 0.05)
+      }
+      const grounds = [
+        { r: 255, g: 255, b: 255, a: 1 }, // an all-white panorama behind the pill
+        { r: 0, g: 0, b: 0, a: 1 }, // an all-black one
+      ]
+      const SEL = [
+        '.pdetail__pano-badge',
+        '.pdetail__pano-hint',
+        '.pdetail__pano-room:not(.is-active)',
+        '.pdetail__pano-room.is-active',
+      ]
+      return SEL.filter((s) => document.querySelector(s)).map((s) => {
+        const cs = getComputedStyle(document.querySelector(s))
+        const pill = px(cs.backgroundColor)
+        const fg = px(cs.color)
+        const worst = Math.min(
+          ...grounds.map((g) => {
+            const bg = flat(pill, g)
+            return ratio(flat(fg, bg), bg)
+          })
+        )
+        return { sel: s, worst: +worst.toFixed(2) }
+      })
+    })
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+    for (const row of rows) {
+      expect(row.worst, `${theme}: ${row.sel} worst-case ${row.worst}:1 (need 4.5)`)
+        .toBeGreaterThanOrEqual(4.5)
+    }
+  }
+
+  // first drag: hint fades out, badge stays fully present
+  const stage = page.locator('[data-pano-stage]')
+  await expect(page.locator('.pano-canvas')).toHaveCount(1, { timeout: 20_000 })
+  const sb = await stage.boundingBox()
+  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(sb.x + sb.width / 2 + 60, sb.y + sb.height / 2, { steps: 4 })
+  await page.mouse.up()
+  await expect(stage).toHaveClass(/is-touched/)
+  await expect(hint).toHaveCSS('opacity', '0')
+  expect(await badge.evaluate((el) => getComputedStyle(el).opacity), 'badge does not dim').toBe('1')
+
+  // bilingual: reopen in EN → the hint speaks English (and is back for the
+  // fresh overlay, since the first-drag fade is per-open)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+  await revealNav(page)
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await card.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
+  await card.click()
+  await expect(page.locator('.pdetail')).toBeVisible()
+  await expect(hint).toBeVisible()
+  await expect(hint).toHaveText(ui.pano.hint[1])
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(600)
+
+  expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
 /* ── 5. CATALOGUES: 5 cards, all downloads internal (no old-site links) ────── */
 test('catalogues grid renders, all downloads internal', async ({ page }) => {
   await ready(page)
