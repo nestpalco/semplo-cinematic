@@ -18,7 +18,7 @@ const USING_TEST_KEY = captcha.testKeys.includes(captcha.sitekey)
 
 const PHONE = '+359 894 880 088'
 const TEL = 'tel:+359894880088'
-const WORDMARK = 'Semplo Concept'
+const WORDMARK = 'SEMPLO DESIGN'
 
 /* ── shared helpers ───────────────────────────────────────────────────────── */
 
@@ -1156,8 +1156,8 @@ test('mobile: project film strips advance with scroll', async ({ page }, info) =
   expect(Math.abs(trace.backShift), 'and returns to frame 1').toBeLessThan(5)
 })
 
-/* ── 12. WORDMARK: "Semplo Concept" everywhere, and it still fits the bar ──── */
-test('wordmark reads "Semplo Concept" everywhere and fits the nav', async ({ page }, info) => {
+/* ── 12. WORDMARK: "SEMPLO DESIGN" everywhere, and it still fits the bar ──── */
+test('wordmark reads "SEMPLO DESIGN" everywhere and fits the nav', async ({ page }, info) => {
   await ready(page)
 
   await expect(page.locator('.nav__logo')).toHaveText(WORDMARK)
@@ -1177,11 +1177,12 @@ test('wordmark reads "Semplo Concept" everywhere and fits the nav', async ({ pag
   const ld = await page.evaluate(() => JSON.parse(document.querySelector('[data-ld-business]').textContent))
   expect(ld.name).toBe(WORDMARK)
 
-  // "Semplo" must never appear WITHOUT "Concept" following it in visible chrome
+  // "Semplo" must never appear WITHOUT "Design" following it in visible chrome
+  // (any casing — catches a stale "Semplo Concept" as well as a bare "Semplo")
   const bare = await page.evaluate(() =>
     ['.nav__logo', '.foot__brand', '.loader__mark', '[data-i18n="foot.rights"]']
       .map((s) => document.querySelector(s)?.textContent || '')
-      .filter((t) => /Semplo(?!\s+Concept)/.test(t))
+      .filter((t) => /semplo(?!\s*design)/i.test(t))
   )
   expect(bare, `bare "Semplo" left in: ${bare.join(' | ')}`).toHaveLength(0)
 

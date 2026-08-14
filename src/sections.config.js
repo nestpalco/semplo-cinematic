@@ -254,8 +254,8 @@ export const interludes = [
  * it, take the hex after the colon in `!1s…`, convert to decimal.
  */
 export const business = {
-  name: 'Semplo Concept',
-  legalName: 'Semplo Concept',
+  name: 'SEMPLO DESIGN',
+  legalName: 'SEMPLO DESIGN',
   /* ── CANONICAL DOMAIN — the one base URL for the whole site ───────────────
    * Read by src/schema.js (JSON-LD `url` + `@id` + `image`) and mirrored by
    * hand in four static places that cannot import config:
@@ -345,9 +345,9 @@ export const reviews = {
       rating: 5,
       date: '2026-05-18',
       textBg:
-        'Работихме със Semplo Concept по цялостния проект на апартамента ни. Изслушаха ни, предложиха решения, за които не бяхме се сетили, и спазиха срока. Резултатът е точно домът, който си представяхме.',
+        'Работихме със SEMPLO DESIGN по цялостния проект на апартамента ни. Изслушаха ни, предложиха решения, за които не бяхме се сетили, и спазиха срока. Резултатът е точно домът, който си представяхме.',
       textEn:
-        'We worked with Semplo Concept on the complete design of our apartment. They listened, proposed solutions we had never thought of, and kept to the schedule. The result is exactly the home we pictured.',
+        'We worked with SEMPLO DESIGN on the complete design of our apartment. They listened, proposed solutions we had never thought of, and kept to the schedule. The result is exactly the home we pictured.',
     },
     {
       todo: true, // TODO: replace with a real Google review, then delete this key
@@ -439,7 +439,7 @@ export const captcha = {
 
 // UI / chrome copy, bilingual as [bg, en].
 export const ui = {
-  brand: ['Semplo Concept', 'Semplo Concept'],
+  brand: ['SEMPLO DESIGN', 'SEMPLO DESIGN'],
   tagline: ['Интериорно студио', 'Interior studio'],
   nav: {
     work: ['Проекти', 'Work'],
@@ -616,8 +616,8 @@ export const ui = {
   },
   foot: {
     rights: [
-      '© 2026 Semplo Concept — Интериорно студио · Всички права запазени',
-      '© 2026 Semplo Concept — Interior studio · All rights reserved',
+      '© 2026 SEMPLO DESIGN — Интериорно студио · Всички права запазени',
+      '© 2026 SEMPLO DESIGN — Interior studio · All rights reserved',
     ],
     // quiet studio credit under the © line (links to https://webservices.agency)
     credit: [

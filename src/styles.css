@@ -232,14 +232,17 @@ body.reduced .nav {
   align-items: baseline;
   gap: 0.7rem;
 }
-/* "Semplo Concept" is 14 characters where the old wordmark was 6, and at 390px
-   the bar also carries BG·EN, the theme switch and the burger. Same typographic
-   treatment (Fraunces 500, near-neutral tracking) — the SIZE simply gives way on
-   narrow bars so the mark never crowds the language toggle. 1.5rem is unchanged
-   from ~500px up, which is every desktop. (e2e asserts the gap at 390px.) */
+/* "SEMPLO DESIGN" is 13 characters but ALL-CAPS, which sets wider than the old
+   mixed-case mark, and at 390px the bar also carries BG·EN, the theme switch
+   and the burger. Same typographic treatment (Fraunces 500, near-neutral
+   tracking) — the SIZE simply gives way on narrow bars so the mark never
+   crowds the language toggle — while the lang/theme/burger controls are
+   flex:none, so the mark can never crush their tap targets either. 1.5rem
+   from ~615px up, which is every desktop. (e2e asserts the gap and the
+   34px theme-switch target at 390px.) */
 .nav__logo {
   font-family: var(--serif);
-  font-size: clamp(1.06rem, 3.9vw, 1.5rem);
+  font-size: clamp(1rem, 3.9vw, 1.5rem);
   font-weight: 500;
   letter-spacing: 0.01em;
   white-space: nowrap;
@@ -277,6 +280,7 @@ body.reduced .nav {
 .lang {
   display: flex;
   align-items: center;
+  flex: none; /* a tap target, never squeezed by a long wordmark */
   gap: 0.35rem;
   font-size: 0.8rem;
   letter-spacing: 0.1em;
@@ -313,6 +317,7 @@ body.reduced .nav {
 .themetog {
   display: grid;
   place-items: center;
+  flex: none; /* keep the 34px tap target — flex must not shrink it */
   width: 34px;
   height: 34px;
   margin: 0 0 0 0.9rem;
@@ -2135,6 +2140,7 @@ a.foot__credit {
 .nav__burger {
   display: none;
   position: relative;
+  flex: none; /* keep the 40px tap target — flex must not shrink it */
   width: 40px;
   height: 40px;
   margin: -8px -8px -8px 0; /* larger tap target without shifting layout */
@@ -2164,6 +2170,10 @@ body.nav-open .nav__burger span:nth-child(3) { transform: translateY(-6px) rotat
 }
 @media (max-width: 620px) {
   .nav__burger { display: block; }
+  /* the ALL-CAPS wordmark + three unshrinkable controls need the slack: a
+     tighter flex gap keeps everything inside a 360px bar (nothing overlaps
+     down to ~360; the e2e asserts clearances at 390) */
+  .nav { gap: 0.75rem; }
   .lang { margin-left: auto; margin-right: 0.6rem; } /* lang stays in the bar (right) */
   /* links become a dropdown panel under the bar */
   .nav__links {

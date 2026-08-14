@@ -1,4 +1,4 @@
-# Semplo Concept — https://semplodesign.com/
+# SEMPLO DESIGN — https://semplodesign.com/
 #
 # One public page, nothing private, no crawl traps: allow everything.
 # `public/` is copied to the web root verbatim by Vite, so this is served at
