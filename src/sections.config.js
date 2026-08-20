@@ -396,19 +396,18 @@ export const reviews = {
  * whether or not they open the dialog — we load this one only on open.
  *
  * ── HOW IT IS ENFORCED ───────────────────────────────────────────────────
- * Netlify Forms cannot validate Turnstile, so the dialog POSTs to `endpoint`
- * (netlify/functions/enquiry.mjs) instead of straight to Netlify. That function
+ * The dialog POSTs to `endpoint` (netlify/functions/enquiry.mjs). That function
  * checks the honeypot, verifies the token against Cloudflare with the SECRET
- * key, and only then forwards the submission into Netlify Forms — so it still
- * lands in the dashboard. The honeypot stays as a second, independent layer.
+ * key, and only then EMAILS the enquiry to the studio over the client's own
+ * SuperHosting SMTP (Reply-To = the enquirer, so the studio just hits Reply).
+ * The honeypot stays as a second, independent layer.
  *
- * LIMITATION, stated plainly: Netlify registers a form by parsing public HTML,
- * so `form-name=contact` is always discoverable and the bare Netlify endpoint
- * stays POST-able. A bot that scrapes this page and submits what it finds hits
- * the function and is blocked; one written specifically against Netlify Forms
- * could skip it, and would then meet the honeypot and Netlify's own spam
- * filtering. Closing that last gap means storing submissions in the function
- * rather than in Netlify Forms.
+ * Netlify Forms is deliberately NOT used: its free tier silently stops storing
+ * at 100 submissions/month — enquiries vanishing mid-ad-campaign — and having
+ * dropped it, there is no longer a second, unverified endpoint a bot could
+ * POST around this function. The SMTP credentials live only in Netlify's
+ * environment (SMTP_HOST/SMTP_USER/SMTP_PASS…, scope: Functions — the full
+ * list is documented in the function header and the README).
  *
  * ★ TO GO LIVE (2 minutes, free, no credit card):
  *   1. dash.cloudflare.com → Turnstile → Add site. Domain: semplodesign.com
@@ -515,8 +514,9 @@ export const ui = {
     todo: ['ПРИМЕРЕН ОТЗИВ', 'PLACEHOLDER'],
   },
   // ── Contact form (the modal behind the "Свържете се с нас" button) ──
-  // Field values POSTed to Netlify stay in Bulgarian whatever the UI language,
-  // so the client reads one consistent vocabulary in their dashboard.
+  // Field values POSTed to the function stay in Bulgarian whatever the UI
+  // language, so the studio reads one consistent vocabulary in the enquiry
+  // emails it receives.
   form: {
     open: ['Свържете се с нас', 'Get in touch'],
     title: ['Разкажете ни за проекта', 'Tell us about your project'],
@@ -586,7 +586,8 @@ export const ui = {
       'Проверете връзката си или изключете блокиращите разширения. Или просто ни пишете на',
       'Check your connection or disable blocking extensions. Or simply email us at',
     ],
-    // select options — `value` posted to Netlify is always the Bulgarian label
+    // select options — the `value` that lands in the enquiry email is always
+    // the Bulgarian label
     types: {
       apartment: ['Апартамент', 'Apartment'],
       house: ['Къща', 'House'],

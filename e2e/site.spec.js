@@ -1441,7 +1441,7 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
 })
 
 /* ── 18. CONTACT FORM: opens, validates, submits, closes ──────────────────── */
-test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ page }) => {
+test('enquiry form: email wiring, validation, AJAX success + error', async ({ page }) => {
   const errors = collectErrors(page)
   await fakeTurnstile(page)
   // watch every request to Cloudflare so we can prove the CAPTCHA is lazy
@@ -1467,16 +1467,18 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   expect(await page.locator('a.cta__btn').count(), 'the CTA is no longer a mailto link').toBe(0)
   await expect(modal).toBeHidden()
 
-  /* ── Netlify Forms contract: all three parts must be in the DEPLOYED HTML,
-        because form detection happens at build time by parsing it ── */
-  const netlify = await page.evaluate(() => {
+  /* ── wiring contract: the form posts to the verifying + emailing function,
+        carries the honeypot, and has NO Netlify Forms registration — the free
+        tier silently drops submissions past 100/month, so nothing here may
+        ever re-register the form with Netlify ── */
+  const wiring = await page.evaluate(() => {
     const f = document.querySelector('[data-form]')
     return {
       name: f.getAttribute('name'),
       method: (f.getAttribute('method') || '').toUpperCase(),
       dataNetlify: f.getAttribute('data-netlify'),
       honeypotAttr: f.getAttribute('netlify-honeypot'),
-      formName: f.querySelector('input[name="form-name"]')?.value,
+      formName: f.querySelector('input[name="form-name"]'),
       hasPot: !!f.querySelector('input[name="bot-field"]'),
       potVisible: (() => {
         const el = f.querySelector('input[name="bot-field"]')
@@ -1486,27 +1488,22 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
       potTabbable: f.querySelector('input[name="bot-field"]').tabIndex >= 0,
       action: f.getAttribute('action'),
       fields: [...f.elements]
-        .filter(
-          (e) =>
-            e.name &&
-            !['form-name', 'bot-field', 'cf-turnstile-response'].includes(e.name)
-        )
+        .filter((e) => e.name && !['bot-field', 'cf-turnstile-response'].includes(e.name))
         .map((e) => e.name),
     }
   })
-  expect(netlify.name).toBe('contact')
-  expect(netlify.method).toBe('POST')
-  // posts to the VERIFYING FUNCTION, not straight at Netlify's form endpoint —
-  // Netlify Forms cannot validate a Turnstile token
-  expect(netlify.action, 'form posts to the Turnstile-verifying function').toBe(captcha.endpoint)
-  expect(netlify.dataNetlify).toBe('true')
-  expect(netlify.honeypotAttr).toBe('bot-field')
-  expect(netlify.formName, 'hidden form-name is required for AJAX POSTs').toBe('contact')
-  expect(netlify.hasPot).toBe(true)
-  expect(netlify.potVisible, 'honeypot must be invisible to humans').toBe(false)
-  expect(netlify.potTabbable, 'honeypot must be out of the tab order').toBe(false)
+  expect(wiring.name).toBe('contact')
+  expect(wiring.method).toBe('POST')
+  // posts to the function that verifies Turnstile and emails the studio
+  expect(wiring.action, 'form posts to the verifying + emailing function').toBe(captcha.endpoint)
+  expect(wiring.dataNetlify, 'no Netlify Forms registration (100/month cap)').toBeNull()
+  expect(wiring.honeypotAttr, 'no netlify-honeypot attribute either').toBeNull()
+  expect(wiring.formName, 'no hidden form-name — nothing for Netlify to store').toBeNull()
+  expect(wiring.hasPot, 'the honeypot itself stays — the function checks it').toBe(true)
+  expect(wiring.potVisible, 'honeypot must be invisible to humans').toBe(false)
+  expect(wiring.potTabbable, 'honeypot must be out of the tab order').toBe(false)
   // the qualifying fields a studio actually needs
-  expect(netlify.fields).toEqual([
+  expect(wiring.fields).toEqual([
     'name', 'email', 'phone', 'size-m2', 'project-type', 'project-stage', 'timeline',
     'budget', 'message',
   ])
@@ -1640,12 +1637,12 @@ test('enquiry form: Netlify wiring, validation, AJAX success + error', async ({ 
   const post = page.waitForRequest(ourPost)
   await page.locator('[data-form-submit]').click()
   const req = await post
-  // the payload Netlify needs: url-encoded, form-name included, honeypot empty.
-  // Parse it rather than string-matching — `+` is an encoded space here, which
-  // decodeURIComponent would leave as a literal plus.
+  // the payload the function turns into the enquiry email: url-encoded, all
+  // fields present, honeypot empty. Parse it rather than string-matching —
+  // `+` is an encoded space here, which decodeURIComponent would leave as a
+  // literal plus.
   expect(req.headers()['content-type']).toContain('application/x-www-form-urlencoded')
   const sent = new URLSearchParams(req.postData() || '')
-  expect(sent.get('form-name'), 'Netlify needs form-name in an AJAX POST').toBe('contact')
   expect(sent.get('name')).toBe('Иван Тестов')
   expect(sent.get('email')).toBe('ivan@example.com')
   expect(sent.get('phone')).toBe('+359 888 123 456')
@@ -1866,7 +1863,7 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
   await ready(page)
   await openEnquiry(page)
 
-  // BG labels + placeholders, and BG option VALUES (what lands in Netlify)
+  // BG labels + placeholders, and BG option VALUES (what lands in the email)
   await expect(page.locator('label[for="cf-type"]')).toHaveText('Тип проект')
   expect(await page.getAttribute('#cf-name', 'placeholder')).toBe('Име и фамилия')
   const values = await page.locator('#cf-type option').evaluateAll((o) =>

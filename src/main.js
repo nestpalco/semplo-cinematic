@@ -1062,18 +1062,18 @@ function motionlessFallback() {
   })
 }
 
-/* ── 12. ENQUIRY FORM overlay (Netlify Forms, AJAX) ────────────────────────
+/* ── 12. ENQUIRY FORM overlay (emailed by the function, AJAX) ──────────────
  * The "Свържете се с нас" button used to be a mailto: link — a dead end on any
  * machine without a configured mail client, and it captured nothing. It now
- * opens the form that ships STATICALLY in index.html (Netlify only registers
- * forms it can find in the deployed HTML at build time — a JS-injected form is
- * never registered, so this module deliberately does not build the markup).
+ * opens the form that ships statically in index.html; this module only wires
+ * up open/close, validation and the AJAX POST.
  *
  * Submission is AJAX so the visitor stays on the page: POST the form
- * url-encoded to its own action, including the hidden `form-name` field Netlify
- * requires for non-native submissions. Locally (`vite preview`) there is no
- * Netlify handler, so the POST fails and the error state shows — that is the
- * error path working, not a bug.
+ * url-encoded to its own action — netlify/functions/enquiry.mjs, which verifies
+ * the Turnstile token and EMAILS the enquiry to the studio (not Netlify Forms;
+ * its free tier silently drops submissions past 100/month). Locally
+ * (`vite preview`) there is no functions runtime, so the POST fails and the
+ * error state shows — that is the error path working, not a bug.
  *
  * Accessibility: role="dialog" + aria-modal, focus moves in on open and back to
  * the opener on close, Tab is trapped inside the panel, ESC and a backdrop click
@@ -1336,8 +1336,8 @@ function motionlessFallback() {
         const res = await fetch(form.getAttribute('action') || '/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          // FormData → url-encoded keeps the hidden form-name field Netlify
-          // needs, the honeypot, and Turnstile's cf-turnstile-response input
+          // FormData → url-encoded keeps the honeypot and Turnstile's
+          // cf-turnstile-response input in the payload the function checks
           body: new URLSearchParams(new FormData(form)).toString(),
         })
         if (!res.ok) {

@@ -7,17 +7,19 @@
     "assets": "node scripts/optimize-videos.mjs && node scripts/optimize-projects.mjs && node scripts/optimize-social.mjs",
     "optimize:projects": "node scripts/optimize-projects.mjs",
     "optimize:social": "node scripts/optimize-social.mjs",
-    "predev": "npm run assets",
+    "check:assets": "node scripts/check-assets.mjs",
+    "predev": "node scripts/check-assets.mjs",
     "dev": "vite",
     "optimize:videos": "node scripts/optimize-videos.mjs",
     "optimize:scenes": "node scripts/optimize-scenes.mjs",
-    "prebuild": "npm run assets",
+    "prebuild": "node scripts/check-assets.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "vite build && playwright test"
   },
   "dependencies": {
     "gsap": "^3.15.0",
+    "nodemailer": "^9.0.5",
     "three": "^0.185.1"
   },
   "devDependencies": {
