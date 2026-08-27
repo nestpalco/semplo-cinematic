@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SEMPLO DESIGN — Apache config for SuperHosting cPanel (public_html).
+#
+# Lives in public/ so `vite build` copies it verbatim into dist/, and the whole
+# dist/ folder can be uploaded to public_html as-is. This replaces what Netlify
+# used to do at the edge: the www→apex canonical redirect, HTTPS enforcement,
+# caching for the committed media, and the security headers.
+# ─────────────────────────────────────────────────────────────────────────────
+
+Options -Indexes
+AddDefaultCharset utf-8
+
+# ── CANONICAL HOST: everything → https://semplodesign.com (apex, one hop) ────
+# Mirrors `business.url` in src/sections.config.js: apex is canonical, www is
+# a redirect. AutoSSL covers both hosts, so redirecting after the TLS handshake
+# is safe. Rule 1 catches www (http OR https) straight to https apex; rule 2
+# catches plain-http apex.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [R=301,L]
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+# ── SECURITY HEADERS (site-wide; `always` covers error responses too) ────────
+<IfModule mod_headers.c>
+  # AutoSSL is provisioned and auto-renews; no includeSubDomains — mail./cpanel.
+  # subdomains are SuperHosting's, not ours to promise for.
+  Header always set Strict-Transport-Security "max-age=31536000"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+</IfModule>
+
+# ── CACHING ──────────────────────────────────────────────────────────────────
+# The committed media (videos, project images, panoramas, scenes, photos,
+# social card) is NOT content-hashed — a re-optimize can change bytes under the
+# same name — so it gets 30 days, not immutable. Vite's /assets/ bundles ARE
+# hashed → a year + immutable. HTML revalidates on every load so a deploy is
+# picked up immediately.
+<IfModule mod_setenvif.c>
+  SetEnvIf Request_URI "^/(videos|projects|panoramas|scenes|photos|studio|social)/" SEMPLO_MEDIA
+  SetEnvIf Request_URI "^/assets/" SEMPLO_HASHED
+  SetEnvIf Request_URI "^/catalogs/" SEMPLO_DOC
+</IfModule>
+<IfModule mod_headers.c>
+  Header set Cache-Control "public, max-age=2592000" env=SEMPLO_MEDIA
+  Header set Cache-Control "public, max-age=31536000, immutable" env=SEMPLO_HASHED
+  # catalogue PDFs get replaced under the same name — revalidate daily
+  Header set Cache-Control "public, max-age=86400" env=SEMPLO_DOC
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
+# ── COMPRESSION for text assets (media is already compressed) ────────────────
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml
+  AddOutputFilterByType DEFLATE application/javascript application/json image/svg+xml
+</IfModule>
+
+# ── MIME types Apache builds sometimes miss ──────────────────────────────────
+<IfModule mod_mime.c>
+  AddType image/webp .webp
+  AddType video/mp4 .mp4
+  AddType application/javascript .mjs
+</IfModule>
+
+# never serve dotfiles (this file itself is protected by cPanel's defaults,
+# but be explicit)
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>

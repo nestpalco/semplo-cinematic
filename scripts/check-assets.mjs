@@ -3,8 +3,8 @@
  *  SEMPLO — config ↔ committed-assets contract check (the build gate).
  * ─────────────────────────────────────────────────────────────────────────
  *  The optimized media in public/ is COMMITTED (not rebuilt on deploy — the
- *  ffmpeg/sharp passes ate Netlify's free build minutes), so the deploy build
- *  is `vite build` alone. This script is what still fails the build LOUDLY
+ *  ffmpeg/sharp passes are far too heavy to run per-deploy), so the deploy
+ *  build is `vite build` alone. This script is what still fails the build LOUDLY
  *  when the committed output has drifted from the config or the manifests:
  *
  *    • every video slot (hero + ambients) has a manifest entry, and every

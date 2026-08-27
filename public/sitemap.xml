@@ -15,9 +15,7 @@
   <changefreq> and <priority> are omitted on purpose: Google ignores both.
 
   Every <loc> mirrors `business.url` in src/sections.config.js. The e2e suite
-  compares them and fails if they drift. DNS still points at the old WordPress
-  install, so these URLs are correct for the future live site and will not
-  resolve until the domain is switched to Netlify.
+  compares them and fails if they drift.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>

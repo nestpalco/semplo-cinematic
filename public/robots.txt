@@ -2,15 +2,14 @@
 #
 # One public page, nothing private, no crawl traps: allow everything.
 # `public/` is copied to the web root verbatim by Vite, so this is served at
-# /robots.txt on both the custom domain and the *.netlify.app address.
+# /robots.txt on the live domain (SuperHosting, public_html).
 #
 # The Sitemap line below mirrors `business.url` in src/sections.config.js. The
 # e2e suite compares them and fails if they drift.
 #
 # NOTE: a Sitemap: URL must be absolute, and it names the CANONICAL host on
-# purpose. While DNS still points at the old WordPress install this file is only
-# reachable at the Netlify address — a crawler that finds it there is still sent
-# to the canonical sitemap, which is what we want indexed.
+# purpose — a crawler that reaches this file through www (before the 301) is
+# still sent to the canonical sitemap, which is what we want indexed.
 
 User-agent: *
 Allow: /

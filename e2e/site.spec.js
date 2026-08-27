@@ -834,7 +834,7 @@ test('catalogues grid renders, all downloads internal', async ({ page }) => {
   // install, so the guard is no longer "any link to that host" — the host is
   // ours. What must never appear is a link to a LEGACY PATH on it: those pages
   // are gone, their content was migrated into this single page, and a visitor
-  // sent there would land on a 404 once DNS switches to Netlify.
+  // sent there would land on a 404 on the live site.
   const legacy = await page.evaluate(() =>
     [...document.querySelectorAll('a[href]')]
       .map((a) => a.href)
@@ -1390,7 +1390,7 @@ test('review schema hangs off the LocalBusiness entity', async ({ page }) => {
 
   expect(ld['@type']).toBe('HomeAndConstructionBusiness')
   // absolute on the canonical domain, so the same entity is identified however
-  // the page is reached (custom domain, *.netlify.app, deploy preview)
+  // the page is reached (live domain, www before the 301, local preview)
   expect(ld['@id'], 'one stable entity id the reviews attach to').toBe(`${SITE}#business`)
   expect(ld.geo).toMatchObject({ latitude: business.geo.lat, longitude: business.geo.lng })
   expect(ld.hasMap).toBe(business.map.link)
@@ -1452,8 +1452,7 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
   await ready(page)
 
   // LAZY LOAD: not one byte of third-party CAPTCHA for a visitor who never
-  // opens the form. This is the whole reason we did not use Netlify's built-in
-  // reCAPTCHA, which injects its script into the published HTML.
+  // opens the form — the script is fetched only when the dialog opens.
   expect(capReqs, `CAPTCHA requested on page load:\n${capReqs.join('\n')}`).toHaveLength(0)
 
   const modal = page.locator('[data-form-modal]')
@@ -1467,10 +1466,11 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
   expect(await page.locator('a.cta__btn').count(), 'the CTA is no longer a mailto link').toBe(0)
   await expect(modal).toBeHidden()
 
-  /* ── wiring contract: the form posts to the verifying + emailing function,
-        carries the honeypot, and has NO Netlify Forms registration — the free
-        tier silently drops submissions past 100/month, so nothing here may
-        ever re-register the form with Netlify ── */
+  /* ── wiring contract: the form posts to the verifying + emailing endpoint
+        (public/api/enquiry.php), carries the honeypot, and has NO hosted-form
+        registration — Netlify Forms' free tier silently dropped submissions
+        past 100/month, so nothing may ever re-register the form with a
+        third-party form service ── */
   const wiring = await page.evaluate(() => {
     const f = document.querySelector('[data-form]')
     return {
@@ -1494,12 +1494,12 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
   })
   expect(wiring.name).toBe('contact')
   expect(wiring.method).toBe('POST')
-  // posts to the function that verifies Turnstile and emails the studio
-  expect(wiring.action, 'form posts to the verifying + emailing function').toBe(captcha.endpoint)
-  expect(wiring.dataNetlify, 'no Netlify Forms registration (100/month cap)').toBeNull()
+  // posts to the endpoint that verifies Turnstile and emails the studio
+  expect(wiring.action, 'form posts to the verifying + emailing endpoint').toBe(captcha.endpoint)
+  expect(wiring.dataNetlify, 'no hosted-form registration (data-netlify)').toBeNull()
   expect(wiring.honeypotAttr, 'no netlify-honeypot attribute either').toBeNull()
-  expect(wiring.formName, 'no hidden form-name — nothing for Netlify to store').toBeNull()
-  expect(wiring.hasPot, 'the honeypot itself stays — the function checks it').toBe(true)
+  expect(wiring.formName, 'no hidden form-name — nothing for a form service to store').toBeNull()
+  expect(wiring.hasPot, 'the honeypot itself stays — the endpoint checks it').toBe(true)
   expect(wiring.potVisible, 'honeypot must be invisible to humans').toBe(false)
   expect(wiring.potTabbable, 'honeypot must be out of the tab order').toBe(false)
   // the qualifying fields a studio actually needs
@@ -1663,9 +1663,9 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
   await page.waitForTimeout(600)
   await expect(modal).toBeHidden()
 
-  /* ── the FUNCTION rejecting the token (403) gets the CAPTCHA message ──
+  /* ── the ENDPOINT rejecting the token (403) gets the CAPTCHA message ──
      This is the real-world case: the token was spent, expired, or forged, so
-     netlify/functions/enquiry.mjs answers 403 { error: 'captcha' }. It must not
+     public/api/enquiry.php answers 403 { error: 'captcha' }. It must not
      read as a generic "something went wrong". */
   await page.unrouteAll()
   await page.route(ours, async (route) => {
@@ -1729,10 +1729,7 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
  * copy against the config value, so a change made in one place and forgotten in
  * another fails here instead of shipping. It also fetches each URL it finds —
  * with the canonical origin rewritten to the local preview — so a listed file
- * that isn't actually in the deploy is caught too.
- *
- * The URLs do not resolve on the public internet yet (DNS still points at the
- * old WordPress install); that is orthogonal to whether they are correct. */
+ * that isn't actually in the deploy is caught too. */
 test('canonical domain is applied consistently and every listed URL exists', async ({
   page,
   request,
@@ -1973,4 +1970,43 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
     await page.locator('[data-turnstile] input[name="cf-turnstile-response"]').count(),
     'the previous widget was removed, not stacked'
   ).toBe(1)
+})
+
+/* ── 21. cPANEL DEPLOY ARTEFACTS: dist/ is upload-ready for public_html ─────
+ * The deploy is "copy dist/ into public_html", so everything the server needs
+ * must actually be IN dist/: the Apache config (redirects, headers, caching)
+ * and the PHP enquiry endpoint the form posts to. Vite copies public/
+ * verbatim — dotfiles included — but if that ever changes (or the files are
+ * moved out of public/), the deploy silently loses its redirects and its form
+ * backend. This pins the contract. */
+test('dist carries the cPanel artefacts: .htaccess + the PHP enquiry endpoint', async () => {
+  // the endpoint the form posts to is a real file at the same path in dist/
+  expect(captcha.endpoint, 'endpoint is the PHP script, site-relative').toBe('/api/enquiry.php')
+  expect(fs.existsSync('dist/api/enquiry.php'), 'dist/api/enquiry.php is in the build').toBe(true)
+  const php = fs.readFileSync('dist/api/enquiry.php', 'utf8')
+  expect(php, 'endpoint verifies Turnstile server-side').toContain('turnstile/v0/siteverify')
+  expect(php, 'endpoint checks the honeypot').toContain('bot-field')
+  expect(php, 'secrets load from OUTSIDE public_html, never inline').toContain('semplo-private')
+  for (const secretish of ['0x4AAAAAAEE', 'SECRET-KEY-HERE']) {
+    expect(php.includes(secretish), `no key material in the deployed PHP (${secretish})`).toBe(false)
+  }
+
+  expect(fs.existsSync('dist/.htaccess'), 'dist/.htaccess is in the build').toBe(true)
+  const ht = fs.readFileSync('dist/.htaccess', 'utf8')
+  // canonical host: www → apex, http → https (mirrors business.url = apex)
+  expect(ht, 'www→apex redirect').toContain('^www\\.')
+  expect(ht, 'https enforcement').toContain('%{HTTPS}')
+  // the security headers Netlify used to be responsible for
+  for (const h of [
+    'Strict-Transport-Security',
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+  ]) {
+    expect(ht, `${h} header is set`).toContain(h)
+  }
+  // cache policy covers the committed media and Vite's hashed bundles
+  expect(ht, 'media caching rule').toContain('videos|projects|panoramas')
+  expect(ht, 'hashed-bundle caching rule').toContain('immutable')
 })

@@ -8,11 +8,9 @@
       name="description"
       content="SEMPLO DESIGN — интериорно студио за спокойни, премиум пространства. Избрани проекти, завършени интериори. A calm, photography-first interior studio — selected work, finished interiors."
     />
-    <!-- CANONICAL. One page, one URL. This is the live domain the Netlify site
-         will answer on; DNS still points at the old WordPress install, so it
-         does not resolve yet. Declaring it now is the point: until the switch
-         the site is reachable at its *.netlify.app address, and this keeps that
-         copy from competing with the real domain in the index.
+    <!-- CANONICAL. One page, one URL. DNS points at SuperHosting, where the
+         built site lives in public_html; the .htaccess 301s www and plain
+         http to exactly this origin, so canonical, redirects and reality agree.
          Mirrors `business.url` in src/sections.config.js — the e2e suite fails
          if the two ever disagree. -->
     <link rel="canonical" href="https://semplodesign.com/" />
@@ -314,14 +312,15 @@
     </main>
 
     <!-- ═══════════════ ENQUIRY FORM OVERLAY (emails the studio) ═══════════
-         The form POSTs to netlify/functions/enquiry.mjs, which checks the
+         The form POSTs to /api/enquiry.php (public/api/enquiry.php — same
+         SuperHosting server as the studio's mailbox), which checks the
          honeypot, verifies the Turnstile token, and EMAILS the enquiry to the
-         studio over the client's own SMTP (Reply-To = the enquirer). It does
-         NOT use Netlify Forms: the free tier silently stops storing at 100
-         submissions/month — unacceptable during ad campaigns — so there is no
-         data-netlify attribute and no hidden form-name field, and nothing here
-         must ever re-register the form with Netlify. The honeypot input stays:
-         our function checks it itself. -->
+         studio via local mail() (Reply-To = the enquirer). It deliberately
+         uses NO hosted form service (Netlify Forms once silently dropped
+         submissions past its 100/month free cap): there is no data-netlify
+         attribute and no hidden form-name field, and nothing here must ever
+         re-register the form with a third party. The honeypot input stays:
+         our endpoint checks it itself. -->
     <div class="cform" data-form-modal hidden role="dialog" aria-modal="true"
          aria-labelledby="cform-title">
       <div class="cform__backdrop" data-form-backdrop></div>
@@ -340,14 +339,16 @@
             Отговаряме в рамките на един работен ден. Полетата със звездичка са задължителни.
           </p>
 
-          <!-- action is the VERIFYING + SENDING function: it checks the
+          <!-- action is the VERIFYING + SENDING endpoint: it checks the
                honeypot, verifies the Turnstile token with the secret key, and
-               only then emails the enquiry to the studio. -->
+               only then emails the enquiry to the studio. Mirrors
+               `captcha.endpoint` in src/sections.config.js — the e2e suite
+               fails if the two disagree. -->
           <form
             class="cform__form"
             name="contact"
             method="POST"
-            action="/.netlify/functions/enquiry"
+            action="/api/enquiry.php"
             data-form
           >
             <!-- honeypot: off-screen, never focusable, no autofill. A bot fills

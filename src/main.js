@@ -1069,11 +1069,12 @@ function motionlessFallback() {
  * up open/close, validation and the AJAX POST.
  *
  * Submission is AJAX so the visitor stays on the page: POST the form
- * url-encoded to its own action — netlify/functions/enquiry.mjs, which verifies
- * the Turnstile token and EMAILS the enquiry to the studio (not Netlify Forms;
- * its free tier silently drops submissions past 100/month). Locally
- * (`vite preview`) there is no functions runtime, so the POST fails and the
- * error state shows — that is the error path working, not a bug.
+ * url-encoded to its own action — /api/enquiry.php, which verifies the
+ * Turnstile token and EMAILS the enquiry to the studio via the server's local
+ * mail system (no hosted form service; Netlify Forms once silently dropped
+ * submissions past its free cap, which is why the form self-hosts). Locally
+ * (`vite preview`) there is no PHP runtime, so the POST fails and the error
+ * state shows — that is the error path working, not a bug.
  *
  * Accessibility: role="dialog" + aria-modal, focus moves in on open and back to
  * the opener on close, Tab is trapped inside the panel, ESC and a backdrop click
@@ -1139,7 +1140,8 @@ function motionlessFallback() {
       console.warn(
         `[semplo] Turnstile is using Cloudflare's TEST site key (${captcha.sitekey}) — the ` +
           `enquiry form is NOT protected. Replace \`captcha.sitekey\` in src/sections.config.js ` +
-          `with the real key and set TURNSTILE_SECRET_KEY in Netlify.`
+          `with the real key and set turnstile_secret in the server config ` +
+          `(semplo-private/enquiry.config.php — see server/enquiry.config.example.php).`
       )
     }
 
@@ -1318,7 +1320,7 @@ function motionlessFallback() {
 
       /* CAPTCHA gate, client side. This is a courtesy check so the visitor gets
        * a useful message instead of a bounced POST — the ACTUAL enforcement is
-       * the token verification in netlify/functions/enquiry.mjs, which a client
+       * the token verification in public/api/enquiry.php, which a client
        * cannot skip by editing this file. */
       if (!capToken()) {
         // distinguish "blocked/never loaded" from "just not finished yet"
