@@ -1467,10 +1467,11 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
   await expect(modal).toBeHidden()
 
   /* ── wiring contract: the form posts to the verifying + emailing endpoint
-        (public/api/enquiry.php), carries the honeypot, and has NO hosted-form
-        registration — Netlify Forms' free tier silently dropped submissions
-        past 100/month, so nothing may ever re-register the form with a
-        third-party form service ── */
+        (api/enquiry.js, the Vercel function), carries the honeypot, and has
+        NO hosted-form registration — the hosted form service we once relied
+        on silently dropped submissions past 100/month, so nothing may ever
+        re-register the form with a third-party form service (the legacy
+        data-netlify / netlify-honeypot attributes are exactly that) ── */
   const wiring = await page.evaluate(() => {
     const f = document.querySelector('[data-form]')
     return {
@@ -1665,8 +1666,8 @@ test('enquiry form: email wiring, validation, AJAX success + error', async ({ pa
 
   /* ── the ENDPOINT rejecting the token (403) gets the CAPTCHA message ──
      This is the real-world case: the token was spent, expired, or forged, so
-     public/api/enquiry.php answers 403 { error: 'captcha' }. It must not
-     read as a generic "something went wrong". */
+     api/enquiry.js answers 403 { error: 'captcha' }. It must not read as a
+     generic "something went wrong". */
   await page.unrouteAll()
   await page.route(ours, async (route) => {
     if (route.request().method() !== 'POST') return route.continue()
@@ -1972,20 +1973,72 @@ test('enquiry form: bilingual labels, trapped Tab, both themes', async ({ page }
   ).toBe(1)
 })
 
-/* ── 21. cPANEL DEPLOY ARTEFACTS: dist/ is upload-ready for public_html ─────
- * The deploy is "copy dist/ into public_html", so everything the server needs
- * must actually be IN dist/: the Apache config (redirects, headers, caching)
- * and the PHP enquiry endpoint the form posts to. Vite copies public/
- * verbatim — dotfiles included — but if that ever changes (or the files are
- * moved out of public/), the deploy silently loses its redirects and its form
- * backend. This pins the contract. */
-test('dist carries the cPanel artefacts: .htaccess + the PHP enquiry endpoint', async () => {
-  // the endpoint the form posts to is a real file at the same path in dist/
-  expect(captcha.endpoint, 'endpoint is the PHP script, site-relative').toBe('/api/enquiry.php')
+/* ── 21. VERCEL DEPLOY ARTEFACTS: function + config carry the contract ──────
+ * The deploy is "Vercel builds dist/ and mounts api/", so the serverless
+ * function the form posts to and the vercel.json that owns redirects,
+ * security headers and caching must actually exist and keep their promises —
+ * otherwise a deploy silently loses its form backend or its headers. This
+ * pins the contract. */
+test('Vercel artefacts: api/enquiry.js + vercel.json carry the deploy contract', async () => {
+  // the endpoint the form posts to is the serverless function's route
+  expect(captcha.endpoint, 'endpoint is the Vercel function, site-relative').toBe('/api/enquiry')
+  expect(fs.existsSync('api/enquiry.js'), 'api/enquiry.js exists at the repo root').toBe(true)
+  const fn = fs.readFileSync('api/enquiry.js', 'utf8')
+  expect(fn, 'endpoint verifies Turnstile server-side').toContain('turnstile/v0/siteverify')
+  expect(fn, 'endpoint checks the honeypot').toContain('bot-field')
+  expect(fn, 'endpoint emails over SMTP').toContain('nodemailer')
+  expect(fn, 'secrets come from the environment, never inline').toContain('TURNSTILE_SECRET_KEY')
+  for (const secretish of ['0x4AAAAAAEE', 'SECRET-KEY-HERE']) {
+    expect(fn.includes(secretish), `no key material in the function (${secretish})`).toBe(false)
+  }
+
+  const vc = JSON.parse(fs.readFileSync('vercel.json', 'utf8'))
+  expect(vc.outputDirectory, 'static build output is dist/').toBe('dist')
+  /* CRITICAL: the media optimizers are LOCAL-ONLY — optimized output is
+   * committed. The build command must never grow an optimizer pass. */
+  expect(vc.buildCommand, 'build is vite build only, never the optimizers').toBe('npm run build')
+  for (const banned of ['optimize', 'assets', 'ffmpeg', 'sharp']) {
+    expect(
+      (vc.buildCommand || '').includes(banned),
+      `no media-optimizer pass in the Vercel build (${banned})`
+    ).toBe(false)
+  }
+  // canonical host: www → apex, permanent (Vercel upgrades http → https itself)
+  const wwwRule = (vc.redirects || []).find((r) =>
+    (r.has || []).some((h) => h.type === 'host' && h.value === 'www.semplodesign.com')
+  )
+  expect(wwwRule, 'www→apex redirect rule exists').toBeTruthy()
+  expect(wwwRule.destination, 'redirect lands on the apex origin').toContain('https://semplodesign.com')
+  expect(wwwRule.permanent, 'redirect is permanent').toBe(true)
+  // the security headers the .htaccess used to be responsible for
+  const allHeaders = (vc.headers || []).flatMap((h) => h.headers.map((x) => x.key))
+  for (const h of [
+    'Strict-Transport-Security',
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Referrer-Policy',
+    'Permissions-Policy',
+  ]) {
+    expect(allHeaders, `${h} header is set`).toContain(h)
+  }
+  // cache policy covers the committed media and Vite's hashed bundles
+  const headerSources = (vc.headers || []).map((h) => h.source).join('\n')
+  expect(headerSources, 'media caching rule').toContain('videos|projects|panoramas')
+  const cacheValues = (vc.headers || []).flatMap((h) => h.headers.map((x) => x.value)).join('\n')
+  expect(cacheValues, 'hashed-bundle caching rule').toContain('immutable')
+})
+
+/* ── 22. cPANEL FALLBACK ARTEFACTS: dist/ stays upload-ready for public_html ─
+ * SuperHosting/cPanel is the tested fallback deploy ("copy dist/ into
+ * public_html"), so the Apache config and the PHP enquiry endpoint must keep
+ * shipping inside dist/. Vite copies public/ verbatim — dotfiles included —
+ * but if that ever changes (or the files are moved out of public/), the
+ * fallback silently loses its redirects and its form backend. */
+test('dist carries the cPanel fallback: .htaccess + the PHP enquiry endpoint', async () => {
   expect(fs.existsSync('dist/api/enquiry.php'), 'dist/api/enquiry.php is in the build').toBe(true)
   const php = fs.readFileSync('dist/api/enquiry.php', 'utf8')
-  expect(php, 'endpoint verifies Turnstile server-side').toContain('turnstile/v0/siteverify')
-  expect(php, 'endpoint checks the honeypot').toContain('bot-field')
+  expect(php, 'fallback verifies Turnstile server-side').toContain('turnstile/v0/siteverify')
+  expect(php, 'fallback checks the honeypot').toContain('bot-field')
   expect(php, 'secrets load from OUTSIDE public_html, never inline').toContain('semplo-private')
   for (const secretish of ['0x4AAAAAAEE', 'SECRET-KEY-HERE']) {
     expect(php.includes(secretish), `no key material in the deployed PHP (${secretish})`).toBe(false)
@@ -1996,7 +2049,6 @@ test('dist carries the cPanel artefacts: .htaccess + the PHP enquiry endpoint', 
   // canonical host: www → apex, http → https (mirrors business.url = apex)
   expect(ht, 'www→apex redirect').toContain('^www\\.')
   expect(ht, 'https enforcement').toContain('%{HTTPS}')
-  // the security headers Netlify used to be responsible for
   for (const h of [
     'Strict-Transport-Security',
     'X-Content-Type-Options',
@@ -2006,7 +2058,6 @@ test('dist carries the cPanel artefacts: .htaccess + the PHP enquiry endpoint', 
   ]) {
     expect(ht, `${h} header is set`).toContain(h)
   }
-  // cache policy covers the committed media and Vite's hashed bundles
   expect(ht, 'media caching rule').toContain('videos|projects|panoramas')
   expect(ht, 'hashed-bundle caching rule').toContain('immutable')
 })

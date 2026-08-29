@@ -266,10 +266,11 @@ export const business = {
    * The e2e suite compares all of them against this value, so a change here
    * that isn't mirrored fails the build rather than shipping quietly.
    *
-   * DNS points at SuperHosting, where the site is deployed to public_html and
-   * AutoSSL already covers semplodesign.com and www. The .htaccess in public/
-   * 301s www (and plain http) to this exact origin, so the canonical, the
-   * redirect target and every mirrored copy agree.
+   * DNS (managed at SuperHosting) points the web records at Vercel, which
+   * provisions certificates for semplodesign.com and www. vercel.json 301s
+   * www to this exact origin (Vercel itself upgrades plain http), so the
+   * canonical, the redirect target and every mirrored copy agree. The
+   * .htaccess in public/ keeps the same policy for the cPanel fallback.
    * Trailing slash included — it is the homepage, and every mirrored copy uses
    * the identical string so nothing has to normalise it. */
   url: 'https://semplodesign.com/',
@@ -394,27 +395,28 @@ export const reviews = {
  * the dialog opens — a visitor who never enquires never pays for it.
  *
  * ── HOW IT IS ENFORCED ───────────────────────────────────────────────────
- * The dialog POSTs to `endpoint` (public/api/enquiry.php, running on the same
- * SuperHosting server that hosts the site AND the studio's mailbox). That
- * script checks the honeypot, verifies the token against Cloudflare with the
- * SECRET key, and only then EMAILS the enquiry to the studio via the server's
- * local mail system (Reply-To = the enquirer, so the studio just hits Reply).
- * The honeypot stays as a second, independent layer.
+ * The dialog POSTs to `endpoint` (api/enquiry.js, a Vercel serverless
+ * function). That function checks the honeypot, verifies the token against
+ * Cloudflare with the SECRET key, and only then EMAILS the enquiry to the
+ * studio over SuperHosting's SMTP (Reply-To = the enquirer, so the studio
+ * just hits Reply). The honeypot stays as a second, independent layer.
  *
- * A hosted form service is deliberately NOT used (Netlify Forms' free tier
- * silently stopped storing at 100 submissions/month — enquiries vanishing
- * mid-ad-campaign — which is what pushed the form to self-hosted email), and
- * there is no second, unverified endpoint a bot could POST around this script.
- * The secret lives only in a config file OUTSIDE public_html
- * (/home/semplode/semplo-private/enquiry.config.php — template in
- * server/enquiry.config.example.php, details in the script header and README).
+ * A hosted form service is deliberately NOT used (the free tier of the one we
+ * once relied on silently stopped storing at 100 submissions/month —
+ * enquiries vanishing mid-ad-campaign — which is what pushed the form to
+ * self-hosted email), and there is no second, unverified endpoint a bot could
+ * POST around this function. The secret lives only in Vercel environment
+ * variables, never in this repo (details in api/enquiry.js and the README).
+ * public/api/enquiry.php is the tested SuperHosting/cPanel fallback of the
+ * same contract (secrets outside public_html — see
+ * server/enquiry.config.example.php).
  *
  * ★ TO GO LIVE (2 minutes, free, no credit card):
  *   1. dash.cloudflare.com → Turnstile → Add site. Domain: semplodesign.com
  *      (add localhost too if you want to test locally). Widget mode: Managed.
  *   2. Paste the SITE key over `sitekey` below. It is public — safe to commit.
- *   3. Put the SECRET key in /home/semplode/semplo-private/enquiry.config.php
- *      on the server as `turnstile_secret`. Never commit it.
+ *   3. Put the SECRET key in Vercel → Project → Settings → Environment
+ *      Variables as TURNSTILE_SECRET_KEY. Never commit it.
  * Until step 2 is done this holds Cloudflare's documented ALWAYS-PASSES TEST
  * key: it renders a real widget on any domain (localhost included) and always
  * issues a valid token, so the design and the e2e suite work out of the box —
@@ -423,16 +425,18 @@ export const reviews = {
 export const captcha = {
   provider: 'turnstile',
   // SEMPLO's live Turnstile site key. Public by design (the SECRET key is the
-  // half that must stay private — it lives only in the server-side config file
-  // outside public_html and is never in this repo).
+  // half that must stay private — it lives only in Vercel's environment
+  // variables and is never in this repo).
   sitekey: '0x4AAAAAAEEhCNbT9NBnI65P',
   // Cloudflare's documented dummy keys — recognised so we can warn on them.
   //   1x…AA always passes · 2x…AB always fails · 3x…FF forces a challenge
   testKeys: ['1x00000000000000000000AA', '2x00000000000000000000AB', '3x00000000000000000000FF'],
   scriptSrc: 'https://challenges.cloudflare.com/turnstile/v0/api.js',
-  // The verifying + emailing endpoint. public/api/enquiry.php ships inside the
-  // static build, so the path needs no rewrite rules — it is simply a file.
-  endpoint: '/api/enquiry.php',
+  // The verifying + emailing endpoint: the Vercel serverless function in
+  // api/enquiry.js, deployed alongside the static build. (The cPanel fallback
+  // lives at /api/enquiry.php inside dist/ — switch this path if the site
+  // ever moves back to SuperHosting.)
+  endpoint: '/api/enquiry',
 }
 
 // UI / chrome copy, bilingual as [bg, en].

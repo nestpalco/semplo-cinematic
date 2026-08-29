@@ -312,15 +312,15 @@
     </main>
 
     <!-- ═══════════════ ENQUIRY FORM OVERLAY (emails the studio) ═══════════
-         The form POSTs to /api/enquiry.php (public/api/enquiry.php — same
-         SuperHosting server as the studio's mailbox), which checks the
-         honeypot, verifies the Turnstile token, and EMAILS the enquiry to the
-         studio via local mail() (Reply-To = the enquirer). It deliberately
-         uses NO hosted form service (Netlify Forms once silently dropped
-         submissions past its 100/month free cap): there is no data-netlify
-         attribute and no hidden form-name field, and nothing here must ever
-         re-register the form with a third party. The honeypot input stays:
-         our endpoint checks it itself. -->
+         The form POSTs to /api/enquiry (the Vercel serverless function in
+         api/enquiry.js), which checks the honeypot, verifies the Turnstile
+         token, and EMAILS the enquiry to the studio over SMTP (Reply-To =
+         the enquirer). It deliberately uses NO hosted form service (the one
+         we once relied on silently dropped submissions past its 100/month
+         free cap): there is no hosted-form registration attribute and no
+         hidden form-name field, and nothing here must ever re-register the
+         form with a third party. The honeypot input stays: our endpoint
+         checks it itself. -->
     <div class="cform" data-form-modal hidden role="dialog" aria-modal="true"
          aria-labelledby="cform-title">
       <div class="cform__backdrop" data-form-backdrop></div>
@@ -348,7 +348,7 @@
             class="cform__form"
             name="contact"
             method="POST"
-            action="/api/enquiry.php"
+            action="/api/enquiry"
             data-form
           >
             <!-- honeypot: off-screen, never focusable, no autofill. A bot fills

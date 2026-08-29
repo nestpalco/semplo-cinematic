@@ -1,10 +1,12 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# SEMPLO DESIGN — Apache config for SuperHosting cPanel (public_html).
+# SEMPLO DESIGN — Apache config for the SuperHosting cPanel FALLBACK deploy.
 #
-# Lives in public/ so `vite build` copies it verbatim into dist/, and the whole
-# dist/ folder can be uploaded to public_html as-is. This replaces what Netlify
-# used to do at the edge: the www→apex canonical redirect, HTTPS enforcement,
-# caching for the committed media, and the security headers.
+# The live deploy target is Vercel, where vercel.json owns all of this and
+# Apache never sees this file. It lives in public/ so `vite build` copies it
+# verbatim into dist/, keeping the whole dist/ folder upload-ready for
+# public_html if the site ever falls back: the www→apex canonical redirect,
+# HTTPS enforcement, caching for the committed media, and the security
+# headers. Keep it in step with vercel.json.
 # ─────────────────────────────────────────────────────────────────────────────
 
 Options -Indexes

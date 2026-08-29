@@ -2,8 +2,10 @@
 
 Single-page bilingual (BG/EN) site for the SEMPLO interior studio: signature
 hero video, ambient loops, projects gallery with 360° rooms, catalogues,
-reviews, and an enquiry form. Vite + GSAP + Three.js, deployed as a static
-build (plus one PHP endpoint) to the client's SuperHosting cPanel account.
+reviews, and an enquiry form. Vite + GSAP + Three.js, deployed to **Vercel**
+as a static build plus one serverless function (`api/enquiry.js`). A tested
+SuperHosting/cPanel fallback (static upload + PHP endpoint) stays in the repo
+— see the fallback section at the end.
 
 ---
 
@@ -11,7 +13,9 @@ build (plus one PHP endpoint) to the client's SuperHosting cPanel account.
 
 **The deploy build is `vite build` only. Optimized media is COMMITTED and is
 NOT regenerated on deploy.** The ffmpeg/sharp passes are far too heavy to run
-per-deploy, so they run locally — never in the build hook.
+per-deploy, so they run locally — never in the build hook. `vercel.json` pins
+`buildCommand` to `npm run build`; the e2e suite fails if an optimizer pass
+ever sneaks into it.
 
 Before every push/deploy:
 
@@ -45,43 +49,63 @@ still exist — that case is exactly what step 1 is for.
 | `npm run check:assets` | the config ↔ committed-assets contract check on its own |
 | `npm run test:e2e` | `vite build` + Playwright e2e suite |
 
-## Enquiry form → email (self-hosted PHP endpoint)
+## Enquiry form → email (Vercel serverless function)
 
-The form POSTs to `/api/enquiry.php` (`public/api/enquiry.php` — shipped
-inside the static build), which checks the honeypot, verifies the Cloudflare
-Turnstile token, and **emails the enquiry to the studio** via PHP `mail()`
-(Reply-To = the enquirer, so the studio just hits Reply). `mail()` rather than
-SMTP because the script runs on the same SuperHosting server as the mailbox:
-local Exim delivery, no credentials on disk. No hosted form service is used
-(Netlify Forms once silently dropped submissions past its 100/month free cap)
-— do not re-add `data-netlify` / `form-name` to the form.
+The form POSTs to `/api/enquiry` (`api/enquiry.js`, deployed by Vercel
+alongside the static build), which checks the honeypot, verifies the
+Cloudflare Turnstile token, and **emails the enquiry to the studio** over
+SuperHosting's SMTP via nodemailer (Reply-To = the enquirer, so the studio
+just hits Reply). No hosted form service is used (the one we once relied on
+silently dropped submissions past its 100/month free cap) — do not re-add
+hosted-form registration attributes / `form-name` to the form.
 
-Secrets live in a config file **outside `public_html`**, never in this repo —
-the endpoint **fails closed** (bilingual error + mailto fallback in the
-dialog) if it is missing:
+Secrets live in **Vercel environment variables**, never in this repo — the
+endpoint **fails closed** (bilingual error + mailto fallback in the dialog)
+if any are missing:
 
-```
-/home/semplode/semplo-private/enquiry.config.php   (chmod 600)
-```
+| variable | value |
+| --- | --- |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret key |
+| `SMTP_HOST` | the SuperHosting mail server, e.g. `serverNN.superhosting.bg` (cPanel → Email → Connect Devices). **Not** `semplodesign.com` — that name now resolves to Vercel. |
+| `SMTP_PORT` | `465` (default if unset; `587` also works) |
+| `SMTP_USER` | full mailbox address, e.g. `enquiry@semplodesign.com` |
+| `SMTP_PASS` | that mailbox's password |
+| `ENQUIRY_TO` | where enquiries land (defaults to `SMTP_USER`) |
 
-Template: `server/enquiry.config.example.php`. Keys: `turnstile_secret`
-(Cloudflare Turnstile secret), `to` (the studio's mailbox), `from` (an address
-on a domain of this cPanel account, e.g. `enquiry@semplodesign.com`).
+## Deploying to Vercel
 
-## Deploying to SuperHosting (cPanel)
+`vercel.json` carries the whole deploy contract: `buildCommand: npm run build`
+(contract check + `vite build` — **never** the media optimizers, see the
+checklist above), `outputDirectory: dist`, the www→apex 308 redirect (Vercel
+upgrades http→https itself), the security headers (HSTS, nosniff,
+X-Frame-Options, Referrer-Policy, Permissions-Policy), and the cache policy
+for the committed media / hashed bundles / HTML.
 
 1. `npm run test:e2e` (builds `dist/` and runs the full suite).
-2. Upload the **contents of `dist/`** (including `.htaccess` and
-   `api/enquiry.php`) to `/home/semplode/public_html/`. Delete stale files on
-   the server that are no longer in `dist/` — mirroring, not merging.
-3. One-time: create `/home/semplode/semplo-private/enquiry.config.php` from
-   the template above.
+2. Push to `main` — Vercel builds and deploys automatically.
+3. One-time: set the environment variables above, add the
+   `semplodesign.com` + `www.semplodesign.com` domains, and point DNS at
+   Vercel (keep the MX/SPF records at SuperHosting — the mailbox stays there).
 4. Smoke-test: `https://semplodesign.com/` loads over HTTPS; `http://` and
-   `www.` both 301 to it; submit a real enquiry through the form and check the
-   studio mailbox (and that Reply goes to the enquirer).
+   `www.` both redirect to it; submit a real enquiry through the form and
+   check the studio mailbox (and that Reply goes to the enquirer).
 
-`public/.htaccess` carries the canonical www→apex + HTTPS redirects, the
-security headers, and the cache policy for the committed media.
+## Fallback: SuperHosting (cPanel)
+
+The previous deploy target, kept tested and upload-ready. `dist/` still
+carries `.htaccess` (redirects, headers, caching) and `api/enquiry.php` (the
+PHP `mail()` twin of the serverless function — same gates, same JSON
+contract; the e2e suite pins both). To fall back:
+
+1. Switch `captcha.endpoint` in `src/sections.config.js` to
+   `'/api/enquiry.php'` and rebuild.
+2. Upload the **contents of `dist/`** to `/home/semplode/public_html/` —
+   mirroring, not merging.
+3. One-time: create `/home/semplode/semplo-private/enquiry.config.php`
+   (chmod 600) from `server/enquiry.config.example.php` — keys:
+   `turnstile_secret`, `to`, `from` (an address on a domain of the cPanel
+   account).
+4. Point the DNS A records back at SuperHosting.
 
 ## Asset pipeline (local)
 

@@ -5,9 +5,9 @@
  * ─────────────────────────────────────────────────────────────────────────
  *  POST /api/enquiry.php   (url-encoded, straight from the dialog)
  *
- *  Direct port of the retired Netlify function (netlify/functions/enquiry.mjs,
- *  see git history): same gates, same JSON contract, same email. This script
- *  is the enforcement point AND the delivery mechanism:
+ *  SuperHosting/cPanel FALLBACK twin of the live Vercel function
+ *  (api/enquiry.js): same gates, same JSON contract, same email. Keep the two
+ *  in step. This script is the enforcement point AND the delivery mechanism:
  *
  *    1. HONEYPOT   `bot-field` filled → accept with 200 and discard. A bot is
  *                  told nothing; a 403 would just teach it to retry differently.
