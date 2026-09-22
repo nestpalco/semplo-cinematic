@@ -26,6 +26,14 @@ gitignored (generated output); `public/sitemap.xml` is committed like the rest
 of `public/` but never edited by hand. Shared chrome (BG/EN, light/dark,
 burger, tel/mailto links) lives in `src/chrome.js`, imported by both runtimes.
 
+**Removed project (2026-09-22, client request):** "Апартамент София"
+(`sofia-apartment`) is no longer in the config, the grid, the sitemap or the
+prev/next ring. Its assets were not deleted — they sit in
+`archived/projects/sofia-apartment/` (see `assets/projects/README.md` for how
+to restore them). The homepage's no-JS gallery, the decorative photo strip
+and the "material" background texture now use frames from the remaining
+projects.
+
 Why `/portfolio/` and not `/projects/`: `/projects/<id>/…` already serves the
 committed media, the Vercel cache rule gives that prefix a 30-day max-age
 (wrong for HTML), and the retired WordPress site used `/projects/` (the e2e
@@ -56,6 +64,13 @@ Before every push/deploy:
 3. **Never re-add `public/videos/` or `public/projects/` to `.gitignore`.**
 4. Run `npm run test:e2e` (builds, then runs the Playwright suite across
    desktop / mobile / reduced-motion).
+5. **🚫 NO PLACEHOLDER BADGES IN PRODUCTION.** The dashed "ПРИМЕРЕН ТЕКСТ /
+   PLACEHOLDER TEXT" badges (`todo: [...]` on project entries, `todo: true` on
+   reviews in `src/sections.config.js`) are deliberately KEPT on the
+   `portfolio-preview` branch — the client uses them to see what copy is
+   still missing. They must be gone before anything merges to `main` or
+   deploys to production: replace the placeholder copy and delete every
+   `todo` key. `grep -n "todo:" src/sections.config.js` must come back empty.
 
 The contract check cannot detect a *re-exported* source whose stale outputs
 still exist — that case is exactly what step 1 is for.

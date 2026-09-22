@@ -93,12 +93,14 @@ portfolio field is missing.
   shown uncropped with click-to-zoom.
 - **Deleting**: remove the files AND (for panoramas) the config label, or the
   build will fail on the missing file — that guardrail is deliberate.
-- `sofia-apartment/source-manifest.json` maps every migrated photo to its
-  original URL on the old semplodesign.com WordPress site (the `was` field is
-  the pre-2026-08 flat filename). New projects don't need a source manifest.
-- `sofia-apartment/sketches/` currently holds generated PLACEHOLDERS
-  (labelled as such on their face) — replace with the real drawings, keeping
-  the numbered names.
+- **Removed 2026-09-22 (client request): `sofia-apartment`** ("Апартамент
+  София", the flagship apartment migrated from the old WordPress site). Its
+  32 gallery photos, 4 panoramas, placeholder sketches and
+  `source-manifest.json` (ours → theirs URL map) are parked in
+  `../../archived/projects/sofia-apartment/` — outside this folder, so the
+  optimizer, the pages and the sitemap ignore it. To bring it back: move the
+  folder to `assets/projects/sofia-apartment/`, re-add its config entry, run
+  `npm run optimize:projects`. New projects don't need a source manifest.
 - `villa-grivitsa/` is ONE project for the VIP HALL **and** the WINE BAR (same
   building — client decision 2026-09-16). Its gallery (14) was curated from
   the merged deck in `_source/presentation.pdf`, ordered hall → bar; the

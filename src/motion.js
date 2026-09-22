@@ -197,7 +197,7 @@ const ALIVE = {
       </g>
     </svg>`,
   material: `
-    <img class="alive-bg__tex" src="/projects/sofia-apartment/gallery/10-900.webp" alt="" loading="lazy"
+    <img class="alive-bg__tex" src="/projects/house-troyan/gallery/01-900.webp" alt="" loading="lazy"
          decoding="async" data-speed="0.8" />
     <div class="alive-bg__wash" data-speed="1.5"></div>`,
   geometry: `

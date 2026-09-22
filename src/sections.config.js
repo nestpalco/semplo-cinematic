@@ -135,11 +135,11 @@ export const ambients = [
  *      uncropped, click-to-zoom to the 3000px variant.
  *   `span`: 'wide' | null — gallery card size hint.
  *
- * REAL SEMPLO imagery, harvested from semplodesign.com/projects/. Their
- * portfolio is ONE flagship apartment presented room by room, so it is ONE
- * project here — its gallery runs living → dining/kitchen → attic bedroom →
- * home office (see assets/projects/sofia-apartment/source-manifest.json for
- * the ours → theirs mapping of every photo).
+ * The original flagship apartment harvested from semplodesign.com/projects/
+ * ("Апартамент София", sofia-apartment) was REMOVED at the client's request on
+ * 2026-09-22; its 32 photos, 4 panoramas and source manifest are parked in
+ * archived/projects/sofia-apartment/ (outside the build) in case they want it
+ * back — restore = move the folder back under assets/projects/ + re-add an entry.
  *
  * ── PORTFOLIO PAGE FIELDS (added 2026-09-16, pass 1) ──────────────────────
  * Every entry also feeds /portfolio/ (the card) and /portfolio/<id>/ (the
@@ -362,36 +362,6 @@ export const projects = [
       'За SEMPLO Concept всеки интериор е цялостен процес, в който концепцията, материалите, мебелите и изпълнението се развиват като една обща идея. Предлагаме пълна услуга — от интериорното и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме всеки специфичен детайл с прецизност и контрол върху качеството във всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
     realizationEn:
       'For SEMPLO Concept every interior is a single process in which the concept, the materials, the furniture and the execution evolve as one idea. We offer a complete service — from interior and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise every specific detail with precision and control over quality at every stage. SEMPLO Concept — from idea to a fully finished interior.',
-  },
-  {
-    id: 'sofia-apartment',
-    titleBg: 'Апартамент София', titleEn: 'Sofia Apartment',
-    category: 'apartment',
-    locationBg: 'гр. София', locationEn: 'Sofia',
-    area: 120, // TODO: placeholder — confirm the real area with the client
-    updated: '2026-09-16',
-    panoramas: [
-      { file: 'living', bg: 'Дневна', en: 'Living room' },
-      { file: 'hallway', bg: 'Коридор', en: 'Hallway' },
-      { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
-      { file: 'office', bg: 'Кабинет', en: 'Home office' },
-    ],
-    // TODO: sketches/01..03.jpg are generated PLACEHOLDERS — replace with the
-    // real drawings (currently shown nowhere: the client dropped the tabs).
-    // TODO: no client docx for this project yet — placeholder copy, badged
-    todo: ['card', 'concept', 'realization', 'area'],
-    cardBg: 'Мрамор, мед и дъб — градски апартамент, подреден около светлината.',
-    cardEn: 'Marble, copper and oak — a city apartment arranged around the light.',
-    conceptTitleBg: 'Мрамор, мед и дъб',
-    conceptTitleEn: 'Marble, copper and oak',
-    conceptBg:
-      'Дневната е подредена около медийната стена от мрамор, трапезарията — около каменна маса върху месингова основа. Спалнята се събира под линията на покрива, а кабинетът остава тих в края на деня. Една палитра, проведена през всяко помещение.',
-    conceptEn:
-      'The living room is arranged around a marble media wall, the dining room around a stone table on a brass base. The bedroom gathers under the roofline and the study stays quiet at the end of the day. One palette, carried through every room.',
-    realizationBg:
-      'Проектирахме и изпълнихме интериора изцяло — от разпределението и осветлението до мебелите по поръчка, изработени в нашата работилница.',
-    realizationEn:
-      'We designed and delivered the interior in full — from the layout and lighting to the bespoke furniture made in our own workshop.',
   },
 ]
 
@@ -1027,13 +997,13 @@ export const catalogs = [
 
 /* Horizontal photo strip (PATTERN C) for the portfolio/contact section.
  * Paths into public/projects/<id>/gallery/ (900 variants — they render ~300px
- * tall). One frame per room-suite of the apartment: living, dining, bedroom,
- * office. */
+ * tall). One frame per project: the three featured ones + Gravity House
+ * (was four rooms of sofia-apartment until that project was removed 2026-09-22). */
 export const strips = {
   portfolio: [
-    '/projects/sofia-apartment/gallery/01-900.webp',
-    '/projects/sofia-apartment/gallery/09-900.webp',
-    '/projects/sofia-apartment/gallery/17-900.webp',
-    '/projects/sofia-apartment/gallery/25-900.webp',
+    '/projects/hillside/gallery/01-900.webp',
+    '/projects/villa-grivitsa/gallery/01-900.webp',
+    '/projects/house-troyan/gallery/01-900.webp',
+    '/projects/gravity-house/gallery/01-900.webp',
   ],
 }
