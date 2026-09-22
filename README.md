@@ -1,11 +1,35 @@
 # SEMPLO DESIGN — semplodesign.com
 
-Single-page bilingual (BG/EN) site for the SEMPLO interior studio: signature
-hero video, ambient loops, projects gallery with 360° rooms, catalogues,
-reviews, and an enquiry form. Vite + GSAP + Three.js, deployed to **Vercel**
-as a static build plus one serverless function (`api/enquiry.js`). A tested
-SuperHosting/cPanel fallback (static upload + PHP endpoint) stays in the repo
-— see the fallback section at the end.
+Bilingual (BG/EN) site for the SEMPLO interior studio: a single-page HOMEPAGE
+(signature hero video, ambient loops, selected projects with 360° rooms,
+catalogues, reviews, enquiry form) plus a PORTFOLIO section — `/portfolio/`
+(the full, filterable project grid) and `/portfolio/<id>/` (one page per
+project). Vite + GSAP + Three.js, deployed to **Vercel** as a static build
+plus one serverless function (`api/enquiry.js`). A tested SuperHosting/cPanel
+fallback (static upload + PHP endpoint) stays in the repo — see the fallback
+section at the end.
+
+## Pages
+
+| URL | source | runtime |
+| --- | --- | --- |
+| `/` | `index.html` (hand-written) | `src/main.js` |
+| `/portfolio/` | **generated** from config → `portfolio/index.html` | `src/page.js` |
+| `/portfolio/<id>/` | **generated** from config → `portfolio/<id>/index.html` | `src/page.js` |
+
+The portfolio pages are static HTML written by `scripts/build-pages.mjs` from
+`src/sections.config.js` (`projects`, `portfolio`, `ui`, `business`) and
+`src/projects.manifest.json`. The Vite plugin in `vite.config.js` regenerates
+them — and `public/sitemap.xml` — before every build and dev start, and again
+whenever the config changes while the dev server runs. `portfolio/` is
+gitignored (generated output); `public/sitemap.xml` is committed like the rest
+of `public/` but never edited by hand. Shared chrome (BG/EN, light/dark,
+burger, tel/mailto links) lives in `src/chrome.js`, imported by both runtimes.
+
+Why `/portfolio/` and not `/projects/`: `/projects/<id>/…` already serves the
+committed media, the Vercel cache rule gives that prefix a 30-day max-age
+(wrong for HTML), and the retired WordPress site used `/projects/` (the e2e
+suite treats links to it as legacy 404s).
 
 ---
 
@@ -46,8 +70,35 @@ still exist — that case is exactly what step 1 is for.
 | `npm run build` | contract check + `vite build` (all a deploy ever runs) |
 | `npm run assets` | **local only** — ffmpeg + sharp: videos, project images, social card |
 | `npm run optimize:videos` / `optimize:projects` / `optimize:social` | the individual optimizers |
-| `npm run check:assets` | the config ↔ committed-assets contract check on its own |
-| `npm run test:e2e` | `vite build` + Playwright e2e suite |
+| `npm run check:assets` | the config ↔ committed-assets contract check on its own (incl. the portfolio fields) |
+| `node scripts/build-pages.mjs` | regenerate the portfolio pages + sitemap by hand (the Vite plugin does this automatically) |
+| `npm run test:e2e` | `vite build` + Playwright e2e suite (`e2e/site.spec.js` homepage, `e2e/portfolio.spec.js` portfolio pages) |
+
+## Homepage "Избрани проекти" — the three featured clips
+
+The homepage shows THREE featured projects as full-bleed scroll-scrubbed
+video sections (`featured` in `src/sections.config.js`), each linking to its
+`/portfolio/<id>/` page, followed by a "Разгледайте всички проекти →" link.
+The client is delivering the animated clips; until each lands the optimizer
+encodes a placeholder and marks the manifest entry `placeholder`. To swap in
+a real clip, drop it at the exact name below and run `npm run optimize:videos`
+(then commit `public/videos/` + `src/videos.manifest.json`) — no config edit:
+
+| featured slot | drop the client's file at |
+| --- | --- |
+| HILL SIDE | `assets/videos/featured-hillside.mp4` |
+| Вила Гривица | `assets/videos/featured-villa-grivitsa.mp4` |
+| Къща Троян | `assets/videos/featured-house-troyan.mp4` |
+
+If a delivered clip carries a corner watermark, set that slot's
+`cropWatermark` (0.08 trims the Kling mark; 0 for a clean file). If its first
+frames are unusable (the HILL SIDE clip slides in from off-frame black), set
+`trimStart` (seconds) to drop that head — frame 0 is the poster and the frame
+a scrubbed section rests on. The manifest records both (`placeholder`,
+`trimStart`) so you can see at a glance what was encoded.
+
+Delivered so far: **HILL SIDE** (2026-09-16). Villa Grivitsa and Troyan
+House still run on placeholders.
 
 ## Enquiry form → email (Vercel serverless function)
 
@@ -114,7 +165,9 @@ output to `public/` (also committed — see the checklist above):
 
 - `assets/videos/` → `public/videos/` + `src/videos.manifest.json` (ffmpeg)
 - `assets/projects/<id>/{gallery,sketches,panoramas}/` → `public/projects/`
-  + `src/projects.manifest.json` (sharp)
+  + `src/projects.manifest.json` (sharp); also `public/projects/<id>/og.jpg`,
+  the 1200×630 JPEG social card for `/portfolio/<id>/` (cut from the
+  project's `cover`, or its first gallery photo)
 - `public/videos/hero-poster.webp` → `public/social/og-card.jpg` (sharp)
 
 `scripts/check-assets.mjs` (the `prebuild`/`predev` hook) verifies every

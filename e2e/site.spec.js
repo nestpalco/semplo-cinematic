@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test'
 import fs from 'node:fs'
 import sharp from 'sharp'
 import { businessLd, publishable } from '../src/schema.js'
-import { business, reviews, catalogs, captcha, ui, projects, strips } from '../src/sections.config.js'
+import {
+  business, reviews, catalogs, captcha, ui, projects, strips, portfolio, featured,
+} from '../src/sections.config.js'
 
 // what assets each project actually has (emitted by scripts/optimize-projects.mjs
 // walking assets/projects/<id>/) — the page builds itself from this + the config
@@ -28,11 +30,13 @@ function collectErrors(page) {
     if (m.type() !== 'error') return
     // failed-resource messages carry no URL in text() — pull it from location()
     const url = m.location()?.url || ''
-    // Resource failures on THIRD-PARTY hosts are outside the deploy and flake
-    // the suite (observed: fonts.gstatic.com intermittently 404s two Inter
-    // woff2 subsets — Google's CDN, correct <link>, fallback fonts cover it).
-    // Same-origin resource failures and every non-resource error still count.
-    if (m.text().startsWith('Failed to load resource') && url && !url.includes('localhost')) return
+    // Errors raised BY THIRD-PARTY SCRIPTS are outside the deploy and flake
+    // the suite: fonts.gstatic.com intermittently 404s two Inter woff2 subsets
+    // (fallback fonts cover it), and the Google Maps embed's own code logs CORS
+    // / "google is not defined" errors from inside its iframe on some runs.
+    // Anything our own code logs (same-origin location, or none) still counts,
+    // and so does every uncaught page error.
+    if (url && !url.includes('localhost')) return
     errors.push(`console.error: ${m.text()} [${url || 'no url'}]`)
   })
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`))
@@ -237,7 +241,7 @@ async function contrastFailures(page) {
       '.nav__logo', '.nav__tag', '.nav__links a', '.lang__btn',
       '.interlude__eyebrow', '.interlude__title', '.interlude__body',
       '.studio__num', '.studio__stat-label',
-      '.projects__eyebrow', '.projects__title', '.project__title', '.project__sub',
+      '.projects__eyebrow', '.projects__title', '.projects__more-link',
       '.catcard__cat', '.catcard__title', '.catcard__dl', '.catcard__size', '.catcard__doc',
       '.cta__eyebrow', '.cta__title', '.cta__text', '.cta__btn', '.cta__contacts',
       '.cta__contacts a', '.cta__maplink', '.foot__brand', '.foot__center span',
@@ -383,194 +387,89 @@ test('BG ↔ EN toggle swaps nav + section titles', async ({ page }) => {
   expect(await heroTitle.textContent()).toBe(bg)
 })
 
-/* ── 4. PROJECT overlay opens + closes ────────────────────────────────────── */
-test('project overlay opens (360° block present) and closes', async ({ page }) => {
-  const errors = collectErrors(page)
-  await ready(page)
-  await page.locator('.project').first().scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await page.locator('.project').first().click()
-  const overlay = page.locator('.pdetail')
-  await expect(overlay).toBeVisible()
-  await expect(page.locator('.pdetail__title')).not.toBeEmpty()
-  expect(await page.locator('[data-pano-stage]').count()).toBeGreaterThan(0)
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-  await expect(overlay).toBeHidden()
-  expect(await page.evaluate(() => document.body.classList.contains('is-locked'))).toBe(false)
-  expect(errors, errors.join('\n')).toHaveLength(0)
-})
-
-/* ── 4b. PROJECT TABS: Проект ⇄ Галерия, gallery default, keyboard, zoom ──── */
-test('project tabs: gallery opens selected, sketches switchable, zoom works', async ({ page }) => {
+/* ── 4. SELECTED PROJECTS: three featured scrubbed-video sections → pages ──
+ * The card film strips + the detail overlay were retired 2026-09-16: each
+ * project has its own page now, and the homepage shows THREE featured clips
+ * (the distinctive scroll-scrub presentation the client asked to keep). */
+test('selected projects: three featured video sections link to the portfolio', async ({ page }, info) => {
   const errors = collectErrors(page)
   await ready(page)
 
-  const iSk = projects.findIndex((p) => pmanifest[p.id]?.sketches.length)
-  expect(iSk, 'at least one project has sketches in its folder').toBeGreaterThan(-1)
-  const card = page.locator('.project').nth(iSk)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
+  // the renamed section
+  await expect(page.locator('#work .projects__title')).toHaveText(ui.projects.title[0])
+  expect(ui.projects.title[0]).toBe('Избрани проекти')
+  expect(ui.projects.title[1]).toBe('Selected projects')
 
-  /* proper tab semantics, GALLERY selected by default (the finished work is
-     the payoff; Проект is the deeper dive) */
-  const tabs = page.locator('.pdetail__tabs')
-  await expect(tabs).toBeVisible()
-  expect(await tabs.getAttribute('role')).toBe('tablist')
-  expect(await tabs.getAttribute('aria-label')).toBeTruthy()
-  const tabP = page.locator('#pdetail-tab-project')
-  const tabG = page.locator('#pdetail-tab-gallery')
-  await expect(tabP).toHaveText('Проект')
-  await expect(tabG).toHaveText('Галерия')
-  for (const [t, sel] of [[tabP, false], [tabG, true]]) {
-    expect(await t.getAttribute('role')).toBe('tab')
-    expect(await t.getAttribute('aria-selected')).toBe(String(sel))
-    // roving tabindex: only the selected tab is in the page tab order
-    expect(await t.getAttribute('tabindex')).toBe(sel ? '0' : '-1')
+  const feats = page.locator('[data-featured]')
+  await expect(feats).toHaveCount(featured.length)
+  expect(featured.length, 'exactly three featured projects').toBe(3)
+  const shape = await feats.evaluateAll((els) =>
+    els.map((el) => ({
+      id: el.dataset.id,
+      video: !!el.querySelector('[data-ambient-video]'),
+      poster: el.querySelector('.ambient__poster')?.getAttribute('src'),
+      title: el.querySelector('.featured__title')?.textContent.trim(),
+      link: el.querySelector('.featured__link')?.getAttribute('href'),
+      hit: el.querySelector('.featured__hit')?.getAttribute('href'),
+      dark: el.hasAttribute('data-dark'),
+      lazy: el.querySelector('video')?.getAttribute('preload'),
+    }))
+  )
+  shape.forEach((s, i) => {
+    const f = featured[i]
+    const p = projects.find((x) => x.id === f.project)
+    expect(p, `featured slot ${f.id} names a configured project`).toBeTruthy()
+    expect(s.id).toBe(f.id)
+    expect(s.video, 'each is a video section').toBe(true)
+    expect(s.poster).toMatch(new RegExp(`^/videos/${f.id}-poster`))
+    expect(s.title, 'the project title is overlaid').toBe(p.titleBg)
+    expect(s.link, 'links to the project page').toBe(`${portfolio.path}${p.id}/`)
+    expect(s.hit, 'the whole section is clickable').toBe(s.link)
+    expect(s.dark, 'nav goes over-media on it').toBe(true)
+    // markup ships preload="none"; desktop-motion eager-loads SCRUB clips on
+    // purpose (motion.js eagerLoad), everywhere else they stay lazy
+    expect(s.lazy, 'clip is lazy unless the desktop scrub eager-loads it').toBe(
+      info.project.name === 'desktop' ? 'auto' : 'none'
+    )
+  })
+  // the old cards + overlay are gone for good
+  expect(await page.locator('.project, .pdetail, [data-project], [data-strip], .gallery').count()).toBe(0)
+  // "view all" → the portfolio page
+  const more = page.locator('.projects__more-link')
+  expect(await more.getAttribute('href')).toBe(portfolio.path)
+  await expect(more).toHaveText(ui.projects.more[0])
+
+  // desktop: each featured clip is pinned + scrubbed exactly like the ambients
+  if (info.project.name === 'desktop') {
+    expect(await page.locator('.pin-spacer [data-featured]').count(), 'featured clips pin').toBe(featured.length)
+  } else {
+    expect(await page.locator('.pin-spacer').count(), 'no pins off desktop-motion').toBe(0)
   }
-  expect(await tabG.getAttribute('aria-controls')).toBe('pdetail-panel-gallery')
-  const panelG = page.locator('#pdetail-panel-gallery')
-  const panelP = page.locator('#pdetail-panel-project')
-  await expect(panelG).toBeVisible()
-  await expect(panelP).toBeHidden()
-  expect(await panelG.getAttribute('role')).toBe('tabpanel')
-  expect(await panelG.getAttribute('aria-labelledby')).toBe('pdetail-tab-gallery')
-  expect(
-    await panelG.locator('.pdetail__frame').count(),
-    'gallery panel holds the full photo sequence'
-  ).toBe(pmanifest[projects[iSk].id].gallery.length)
 
-  /* the 360° block is SHARED chrome above the switchable panels — visible when
-     the project opens, never hidden behind a tab */
-  const panoAboveTabsContent = await page.evaluate(() => {
-    const pano = document.querySelector('.pdetail__pano')
-    const panel = document.querySelector('.pdetail__panel')
-    return pano && panel
-      ? !!(pano.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING)
-      : null
-  })
-  expect(panoAboveTabsContent, '360° sits above the tab panels, not inside one').toBe(true)
-
-  /* switch to Проект: sketches appear, gallery hides, aria follows */
-  await tabP.click()
-  await page.waitForTimeout(450)
-  await expect(panelP).toBeVisible()
-  await expect(panelG).toBeHidden()
-  // the switch glides the fresh panel up under the sticky bar — and LANDS
-  // there (a native smooth scroll gets cancelled by the ScrollTrigger
-  // refreshes that still-loading gallery images fire; the gsap glide doesn't)
-  await page.waitForFunction(
-    () => {
-      const s = document.querySelector('[data-pdetail-scroll]')
-      const panel = document.querySelector('#pdetail-panel-project')
-      const tabs = document.querySelector('.pdetail__tabs')
-      // a panel shorter than the viewport clamps the scroll — allow that
-      const want = Math.min(
-        panel.offsetTop - tabs.offsetHeight,
-        s.scrollHeight - s.clientHeight
-      )
-      return Math.abs(s.scrollTop - want) < 4
-    },
-    null,
-    { timeout: 5000 }
-  )
-  expect(await tabP.getAttribute('aria-selected')).toBe('true')
-  expect(await tabG.getAttribute('aria-selected')).toBe('false')
-  const sk = panelP.locator('.pdetail__sketch img')
-  await expect(sk).toHaveCount(pmanifest[projects[iSk].id].sketches.length)
-  expect(await sk.first().getAttribute('loading'), 'sketches lazy-load').toBe('lazy')
-  expect(await sk.first().getAttribute('src')).toMatch(/^\/projects\/.+\/sketches\/.+-1000\.webp$/)
-  // drawings are contained, not cropped: the img keeps its own aspect ratio
-  await sk.first().evaluate((img) =>
-    img.complete && img.naturalWidth
-      ? null
-      : new Promise((r) => { img.onload = r; img.onerror = r })
-  )
-  const fit = await sk.first().evaluate((img) => {
-    const r = img.getBoundingClientRect()
-    return { drawn: +(r.width / r.height).toFixed(2), natural: +(img.naturalWidth / img.naturalHeight).toFixed(2) }
-  })
-  expect(Math.abs(fit.drawn - fit.natural), 'sketch aspect ratio preserved').toBeLessThan(0.05)
-
-  /* click-to-zoom: swaps in the 3000px variant; ESC leaves the zoom first,
-     the overlay only on a second press */
-  const zoomBtn = panelP.locator('[data-sketch-zoom]').first()
-  const fig = panelP.locator('.pdetail__sketch').first()
-  await zoomBtn.click()
-  await expect(fig).toHaveClass(/is-zoomed/)
-  expect(await zoomBtn.getAttribute('aria-pressed')).toBe('true')
-  expect(await sk.first().getAttribute('src')).toMatch(/-3000\.webp$/)
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(250)
-  await expect(fig).not.toHaveClass(/is-zoomed/)
-  await expect(page.locator('.pdetail'), 'first ESC only leaves the zoom').toBeVisible()
-
-  /* arrow keys move selection (automatic activation) */
-  await tabP.focus()
-  await page.keyboard.press('ArrowRight')
-  await page.waitForTimeout(450)
-  expect(await tabG.getAttribute('aria-selected')).toBe('true')
-  await expect(panelG).toBeVisible()
-  await expect(panelP).toBeHidden()
-  expect(
-    await page.evaluate(() => document.activeElement?.id),
-    'focus follows the arrow'
-  ).toBe('pdetail-tab-gallery')
-
-  /* bilingual labels */
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-  await expect(page.locator('.pdetail')).toBeHidden()
-  await revealNav(page)
+  // bilingual
   await page.locator('.lang__btn[data-lang="en"]').click()
   await page.waitForTimeout(300)
-  await card.scrollIntoViewIfNeeded()
+  await expect(page.locator('#work .projects__title')).toHaveText(ui.projects.title[1])
+  await expect(feats.first().locator('.featured__title')).toHaveText(
+    projects.find((x) => x.id === featured[0].project).titleEn
+  )
+  await expect(more).toHaveText(ui.projects.more[1])
+  await page.locator('.lang__btn[data-lang="bg"]').click()
   await page.waitForTimeout(300)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-  await expect(tabP).toHaveText('Project')
-  await expect(tabG).toHaveText('Gallery')
-  expect(
-    await panelP.locator('[data-sketch-zoom]').first().getAttribute('aria-label')
-  ).toBe(ui.projects.zoomIn[1])
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
 
-  expect(errors, errors.join('\n')).toHaveLength(0)
-})
-
-/* ── 4c. EMPTY SKETCHES: no tab, no panel chrome — the overlay as before ─────
- * SKIPS while every configured project has sketches (currently true: the one
- * real project has them). It re-activates automatically the moment a project
- * without a sketches/ folder lands — typically project #2. */
-test('project without sketches shows no tab bar, just the sequence', async ({ page }) => {
-  const iBare = projects.findIndex((p) => !(pmanifest[p.id]?.sketches || []).length)
-  test.skip(iBare === -1, 'every configured project currently has sketches')
-  const errors = collectErrors(page)
-  await ready(page)
-
-  const card = page.locator('.project').nth(iBare)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-
-  await expect(page.locator('.pdetail__tabs')).toBeHidden()
-  expect(await page.locator('.pdetail__panel').count(), 'no tabpanel semantics either').toBe(0)
-  expect(await page.locator('.pdetail__sketch').count()).toBe(0)
-  expect(await page.locator('.pdetail__frame').count()).toBe(
-    pmanifest[projects[iBare].id].gallery.length
-  )
-  // the 360° block still leads the sequence, when the project has rooms
-  expect(await page.locator('[data-pano-stage]').count()).toBe(
-    projects[iBare].panoramas?.length ? 1 : 0
-  )
-
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-  await expect(page.locator('.pdetail')).toBeHidden()
+  // the featured link really goes to the project's page. Its caption reveals
+  // when the section ENTERS — on desktop that is the pin point (section top at
+  // the viewport top, like the ambient captions), so scroll it exactly there
+  // and let the rise-in play before clicking
+  await feats.first().evaluate((el) => {
+    document.documentElement.style.scrollBehavior = 'auto'
+    window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY + 2)
+  })
+  await page.waitForTimeout(1800)
+  await expect(feats.first().locator('.featured__link')).toBeVisible({ timeout: 5000 })
+  await feats.first().locator('.featured__link').click()
+  await page.waitForSelector('body.is-ready', { timeout: 15_000 })
+  expect(new URL(page.url()).pathname).toBe(`${portfolio.path}${featured[0].project}/`)
   expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
@@ -607,219 +506,6 @@ test('every project asset in the manifest is deployed in all its sizes', async (
   for (const src of strips.portfolio) {
     expect((await request.get(src)).status(), `${src} (strips.portfolio) missing`).toBe(200)
   }
-})
-
-/* ── 4e. PANORAMA ROOMS: label + chip switcher swap the texture in place ───── */
-test('360° room switcher: room label, chips, texture swap, bilingual', async ({ page }) => {
-  const errors = collectErrors(page)
-  await ready(page)
-
-  const iMulti = projects.findIndex((p) => (p.panoramas || []).length > 1)
-  expect(iMulti, 'a project with several 360° rooms exists').toBeGreaterThan(-1)
-  const p = projects[iMulti]
-  const card = page.locator('.project').nth(iMulti)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-
-  // the badge names the current room, in the active language
-  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[0].bg)
-  // one chip per room, in config order, first one active
-  const chips = page.locator('[data-pano-jump]')
-  await expect(chips).toHaveCount(p.panoramas.length)
-  expect((await chips.allTextContents()).map((t) => t.trim())).toEqual(
-    p.panoramas.map((r) => r.bg)
-  )
-  expect(await chips.first().getAttribute('aria-pressed')).toBe('true')
-  expect(
-    await page.locator('.pdetail__pano-rooms').getAttribute('aria-label'),
-    'switcher is named for screen readers'
-  ).toBeTruthy()
-
-  // the viewer shows the FIRST room (data-src records the mapped texture;
-  // desktop loads 4096, mobile 2048 — Three.js + texture arrive lazily)
-  const stage = page.locator('[data-pano-stage]')
-  await expect(stage).toHaveAttribute(
-    'data-src',
-    new RegExp(`/panoramas/${p.panoramas[0].file}-(4096|2048)\\.webp$`),
-    { timeout: 20_000 }
-  )
-
-  // switching rooms: chip state, badge label and the texture all follow
-  await chips.nth(1).click()
-  expect(await chips.nth(1).getAttribute('aria-pressed')).toBe('true')
-  expect(await chips.first().getAttribute('aria-pressed')).toBe('false')
-  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[1].bg)
-  await expect(stage).toHaveAttribute(
-    'data-src',
-    new RegExp(`/panoramas/${p.panoramas[1].file}-(4096|2048)\\.webp$`),
-    { timeout: 20_000 }
-  )
-
-  // bilingual: reopen in EN → chips and the badge label speak English
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-  await revealNav(page)
-  await page.locator('.lang__btn[data-lang="en"]').click()
-  await page.waitForTimeout(300)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(300)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-  await expect(page.locator('[data-pano-room]')).toHaveText(p.panoramas[0].en)
-  expect((await chips.allTextContents()).map((t) => t.trim())).toEqual(
-    p.panoramas.map((r) => r.en)
-  )
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-
-  expect(errors, errors.join('\n')).toHaveLength(0)
-})
-
-/* ── 4f. PANORAMA CHROME: badge + drag hint legible over ANY imagery ────────
-   The badge/hint/chips sit over a photograph, so the page-wide contrast audit
-   skips them (no static ground to measure). Instead, their frosted pill must
-   guarantee AA on its own: text vs (pill composited over pure white) AND
-   (pill over pure black) — the two worst panoramas possible. Also: hint is
-   top-centre and bilingual, fades after the first drag (the badge does NOT),
-   and neither collides with the room chips or the overlay's close button. */
-test('360° chrome: badge + drag hint legible, no collisions, hint fades on drag', async ({ page }) => {
-  const errors = collectErrors(page)
-  await ready(page)
-
-  const iPano = projects.findIndex((p) => (p.panoramas || []).length)
-  expect(iPano, 'a project with a 360° room exists').toBeGreaterThan(-1)
-  const card = page.locator('.project').nth(iPano)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(400)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-
-  const badge = page.locator('.pdetail__pano-badge')
-  const hint = page.locator('.pdetail__pano-hint')
-  await expect(badge).toBeVisible()
-  await expect(hint).toBeVisible()
-  await expect(hint).toHaveText(ui.pano.hint[0]) // BG on first load
-
-  // geometry — measured wherever the overlay happens to sit (ScrollTrigger
-  // refreshes on lazy image loads make a scripted scroll position unreliable);
-  // the close-button check below projects to the worst case instead
-  const boxes = await page.evaluate(() => {
-    const b = (sel) => {
-      const el = document.querySelector(sel)
-      if (!el) return null
-      const r = el.getBoundingClientRect()
-      return { x: r.x, y: r.y, w: r.width, h: r.height }
-    }
-    return {
-      pano: b('.pdetail__pano'),
-      badge: b('.pdetail__pano-badge'),
-      hint: b('.pdetail__pano-hint'),
-      close: b('.pdetail__close'),
-      chips: b('.pdetail__pano-rooms'),
-    }
-  })
-  const overlap = (a, c) =>
-    a && c && a.x < c.x + c.w && c.x < a.x + a.w && a.y < c.y + c.h && c.y < a.y + a.h
-  const cx = (r) => r.x + r.w / 2
-  expect(Math.abs(cx(boxes.hint) - cx(boxes.pano)), 'hint is horizontally centred').toBeLessThan(2)
-  expect(boxes.hint.y - boxes.pano.y, 'hint sits in the top band').toBeLessThan(80)
-  expect(boxes.badge.y - boxes.pano.y, 'badge sits top-left').toBeLessThan(40)
-  expect(overlap(boxes.hint, boxes.badge), 'hint clears the badge').toBe(false)
-  // the close button is FIXED to the viewport; the chrome gets closest to it
-  // when scrolling puts the pano's top edge at the viewport's top edge —
-  // project badge/hint into that worst case rather than depending on scroll
-  const atTop = (r) => ({ ...r, y: r.y - boxes.pano.y })
-  expect(overlap(atTop(boxes.hint), boxes.close), 'hint clears the close button').toBe(false)
-  expect(overlap(atTop(boxes.badge), boxes.close), 'badge clears the close button').toBe(false)
-  if (boxes.chips) {
-    expect(overlap(boxes.hint, boxes.chips), 'hint clears the room chips').toBe(false)
-    expect(overlap(boxes.badge, boxes.chips), 'badge clears the room chips').toBe(false)
-  }
-
-  // worst-case contrast in BOTH themes (the pill is theme-constant, verify it)
-  for (const theme of ['light', 'dark']) {
-    await page.evaluate((t) => {
-      document.documentElement.dataset.theme = t
-    }, theme)
-    await page.waitForTimeout(300)
-    const rows = await page.evaluate(() => {
-      const px = (c) => {
-        const n = (String(c).match(/[-\d.]+/g) || ['0', '0', '0']).map(Number)
-        return { r: n[0] || 0, g: n[1] || 0, b: n[2] || 0, a: n.length > 3 ? n[3] : 1 }
-      }
-      const lin = (v) => ((v /= 255) <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4))
-      const lum = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
-      const flat = (fg, bg) => ({
-        r: fg.r * fg.a + bg.r * (1 - fg.a),
-        g: fg.g * fg.a + bg.g * (1 - fg.a),
-        b: fg.b * fg.a + bg.b * (1 - fg.a),
-        a: 1,
-      })
-      const ratio = (a, b) => {
-        const [hi, lo] = [lum(a), lum(b)].sort((p, q) => q - p)
-        return (hi + 0.05) / (lo + 0.05)
-      }
-      const grounds = [
-        { r: 255, g: 255, b: 255, a: 1 }, // an all-white panorama behind the pill
-        { r: 0, g: 0, b: 0, a: 1 }, // an all-black one
-      ]
-      const SEL = [
-        '.pdetail__pano-badge',
-        '.pdetail__pano-hint',
-        '.pdetail__pano-room:not(.is-active)',
-        '.pdetail__pano-room.is-active',
-      ]
-      return SEL.filter((s) => document.querySelector(s)).map((s) => {
-        const cs = getComputedStyle(document.querySelector(s))
-        const pill = px(cs.backgroundColor)
-        const fg = px(cs.color)
-        const worst = Math.min(
-          ...grounds.map((g) => {
-            const bg = flat(pill, g)
-            return ratio(flat(fg, bg), bg)
-          })
-        )
-        return { sel: s, worst: +worst.toFixed(2) }
-      })
-    })
-    expect(rows.length).toBeGreaterThanOrEqual(3)
-    for (const row of rows) {
-      expect(row.worst, `${theme}: ${row.sel} worst-case ${row.worst}:1 (need 4.5)`)
-        .toBeGreaterThanOrEqual(4.5)
-    }
-  }
-
-  // first drag: hint fades out, badge stays fully present
-  const stage = page.locator('[data-pano-stage]')
-  await expect(page.locator('.pano-canvas')).toHaveCount(1, { timeout: 20_000 })
-  const sb = await stage.boundingBox()
-  await page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2)
-  await page.mouse.down()
-  await page.mouse.move(sb.x + sb.width / 2 + 60, sb.y + sb.height / 2, { steps: 4 })
-  await page.mouse.up()
-  await expect(stage).toHaveClass(/is-touched/)
-  await expect(hint).toHaveCSS('opacity', '0')
-  expect(await badge.evaluate((el) => getComputedStyle(el).opacity), 'badge does not dim').toBe('1')
-
-  // bilingual: reopen in EN → the hint speaks English (and is back for the
-  // fresh overlay, since the first-drag fade is per-open)
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-  await revealNav(page)
-  await page.locator('.lang__btn[data-lang="en"]').click()
-  await page.waitForTimeout(300)
-  await card.scrollIntoViewIfNeeded()
-  await page.waitForTimeout(300)
-  await card.click()
-  await expect(page.locator('.pdetail')).toBeVisible()
-  await expect(hint).toBeVisible()
-  await expect(hint).toHaveText(ui.pano.hint[1])
-  await page.keyboard.press('Escape')
-  await page.waitForTimeout(600)
-
-  expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
 /* ── 5. CATALOGUES: 5 cards, all downloads internal (no old-site links) ────── */
@@ -889,7 +575,7 @@ test('full scroll: no horizontal overflow, nothing left hidden', async ({ page }
   const stuck = await page.evaluate(() => {
     const sel =
       '.interlude__title, .interlude__body, .projects__title, .cta__title, .cta__contacts,' +
-      '.catcard, .foot, .studio__stat, .studio__media, .project__title,' +
+      '.catcard, .foot, .studio__stat, .studio__media, .projects__more-link,' +
       '.reviews__title, .reviews__agg, .review, .review__text'
     const out = []
     for (const el of document.querySelectorAll(sel)) {
@@ -1082,11 +768,16 @@ test('contrast: all section + nav text passes AA in light AND dark', async ({ pa
   })
   await page.waitForTimeout(200)
 
+  // the click that opened the dialog left the pointer over the CTA button, so
+  // it sits in :hover with its own 0.4s background/colour transition — park the
+  // mouse first, and give a theme flip clearly more than that to settle
+  await page.mouse.move(2, 2)
+  await page.waitForTimeout(500)
   for (const theme of ['light', 'dark']) {
     await page.evaluate((t) => {
       document.documentElement.dataset.theme = t
     }, theme)
-    await page.waitForTimeout(500) // let the cross-fade land
+    await page.waitForTimeout(900) // let every colour transition land
     const { audited, failures } = await contrastFailures(page)
     // guard against a vacuous pass: if the reveals had not fired, everything
     // would be skipped as "not shown" and the audit would trivially succeed
@@ -1100,60 +791,6 @@ test('contrast: all section + nav text passes AA in light AND dark', async ({ pa
       `${theme} theme — ${failures.length}/${audited} AA failure(s):\n${detail}`
     ).toHaveLength(0)
   }
-})
-
-/* ── 11. MOBILE film strips: scroll-linked, stepped, reversible ───────────── */
-test('mobile: project film strips advance with scroll', async ({ page }, info) => {
-  test.skip(info.project.name !== 'mobile', 'mobile-only')
-  await ready(page)
-
-  await expect(page.locator('.project').first()).toHaveClass(/is-stepped/)
-
-  const trace = await page.evaluate(async () => {
-    document.documentElement.style.scrollBehavior = 'auto' // see scrollWholePage
-    const card = document.querySelector('.project')
-    const strip = card.querySelector('[data-strip]')
-    const n = strip.children.length
-    const top = card.getBoundingClientRect().top + window.scrollY
-    const read = () => Number(getComputedStyle(strip).getPropertyValue('--frame')) || 0
-    const shift = () =>
-      Math.round(new DOMMatrixReadOnly(getComputedStyle(strip).transform).m41)
-
-    const frames = []
-    for (
-      let y = Math.max(0, top - window.innerHeight);
-      y <= top + card.offsetHeight + 80;
-      y += 40
-    ) {
-      window.scrollTo(0, y)
-      await new Promise((r) => setTimeout(r, 60))
-      frames.push(read())
-    }
-    const atEnd = read()
-    await new Promise((r) => setTimeout(r, 800)) // let the CSS glide settle
-    const endShift = shift()
-
-    // scroll back well above the card — it must step back to frame 1
-    window.scrollTo(0, Math.max(0, top - window.innerHeight - 400))
-    await new Promise((r) => setTimeout(r, 600))
-    return { n, frames, atEnd, endShift, back: read(), backShift: shift() }
-  })
-
-  expect(trace.n, 'strip has multiple frames').toBeGreaterThan(1)
-  const distinct = [...new Set(trace.frames)]
-  expect(
-    distinct.length,
-    `advanced through ${distinct.length} frame(s): ${trace.frames.join(',')}`
-  ).toBeGreaterThanOrEqual(3)
-  // scroll-linked and ordered: never jumps backwards while scrolling down
-  for (let i = 1; i < trace.frames.length; i++) {
-    expect(trace.frames[i], `frame regressed at step ${i}: ${trace.frames.join(',')}`)
-      .toBeGreaterThanOrEqual(trace.frames[i - 1])
-  }
-  expect(trace.atEnd, 'rests on the last frame past the card').toBe(trace.n - 1)
-  expect(trace.endShift, 'strip really translated').toBeLessThan(-50)
-  expect(trace.back, 'steps back when scrolled back up').toBe(0)
-  expect(Math.abs(trace.backShift), 'and returns to frame 1').toBeLessThan(5)
 })
 
 /* ── 12. WORDMARK: "SEMPLO DESIGN" everywhere, and it still fits the bar ──── */
@@ -1843,7 +1480,17 @@ test('canonical domain is applied consistently and every listed URL exists', asy
       `${SITE_ORIGIN}/catalogs/${c.id}.pdf`
     )
   }
-  expect(locs.length, 'homepage + one entry per catalogue, nothing stale').toBe(1 + catalogs.length)
+  // …and the portfolio page + one URL per project page (scripts/build-pages.mjs
+  // writes the sitemap from the same config, so this is the same contract)
+  expect(locs, 'the portfolio page is listed').toContain(`${SITE_ORIGIN}${portfolio.path}`)
+  for (const p of projects)
+    expect(locs, `project page ${p.id} is missing from the sitemap`).toContain(
+      `${SITE_ORIGIN}${portfolio.path}${p.id}/`
+    )
+  expect(
+    locs.length,
+    'homepage + portfolio + one per project + one per catalogue, nothing stale'
+  ).toBe(2 + projects.length + catalogs.length)
   // anchors are positions on this page, not URLs — they must not be listed
   expect(locs.filter((l) => l.includes('#')), 'no anchor URLs in the sitemap').toHaveLength(0)
   expect(new Set(locs).size, 'no duplicate <loc>').toBe(locs.length)

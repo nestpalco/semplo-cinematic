@@ -1,0 +1,159 @@
+{
+  "source": "_source/presentation.pdf — the MERGED VIP HALL + WINE BAR deck (gitignored; original in the studio's Drive). Curated 2026-09-16 from 21 unique renders: 6 VIP HALL + 8 WINE BAR, ordered hall → bar.",
+  "gallery": {
+    "01.jpg": {
+      "pdf_page": 1,
+      "px": [
+        2688,
+        1512
+      ],
+      "note": "VIP HALL — overview with the VILLA GRIVITSA wall"
+    },
+    "02.jpg": {
+      "pdf_page": 4,
+      "px": [
+        2304,
+        1296
+      ],
+      "note": "VIP HALL — dining side"
+    },
+    "03.jpg": {
+      "pdf_page": 6,
+      "px": [
+        2304,
+        1296
+      ],
+      "note": "VIP HALL — window side"
+    },
+    "04.jpg": {
+      "pdf_page": 5,
+      "px": [
+        2304,
+        1296
+      ],
+      "note": "VIP HALL — lounge corner"
+    },
+    "05.jpg": {
+      "pdf_page": 7,
+      "px": [
+        2304,
+        1296
+      ],
+      "note": "VIP HALL — event setup (floral arch)"
+    },
+    "06.jpg": {
+      "pdf_page": 10,
+      "px": [
+        2304,
+        1296
+      ],
+      "note": "VIP HALL — sideboard corner"
+    },
+    "07.jpg": {
+      "pdf_page": 12,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — entrance arch + sign"
+    },
+    "08.jpg": {
+      "pdf_page": 12,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — wine-wall dining"
+    },
+    "09.jpg": {
+      "pdf_page": 14,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — long table"
+    },
+    "10.jpg": {
+      "pdf_page": 15,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — bar counter"
+    },
+    "11.jpg": {
+      "pdf_page": 16,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — bar + spiral stair"
+    },
+    "12.jpg": {
+      "pdf_page": 12,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — stair booth"
+    },
+    "13.jpg": {
+      "pdf_page": 18,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — barrel lounge"
+    },
+    "14.jpg": {
+      "pdf_page": 24,
+      "px": [
+        1920,
+        1080
+      ],
+      "note": "WINE BAR — lounge overview"
+    }
+  },
+  "sketches": {},
+  "materials": {
+    "01.jpg": {
+      "pdf_page": 2,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x",
+      "note": "VIP HALL mood board"
+    },
+    "02.jpg": {
+      "pdf_page": 13,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x",
+      "note": "WINE BAR mood board (was winebar-grivitsa/materials/01.jpg)"
+    }
+  },
+  "panoramas": {
+    "_source": "email 'Вила Гривица' (office@semplohome.com, 2026-09-21): six Homestyler panorama ZIPs on Drive, each = spherical.jpg (8000×4000 equirect) + six 2000×2000 cube faces (front/back/left/right/top/bottom — the auto 'detail renders' the client said to ignore). Curated 2026-09-22 to one viewpoint per space; the raw ZIPs are not kept in the repo.",
+    "vip-hall.jpg": {
+      "zip": "ВИП зала-2-9-21-2026, 12_38_00 PM.zip",
+      "file": "spherical.jpg",
+      "px": [
+        8000,
+        4000
+      ],
+      "note": "VIP HALL — camera mid-hall between the two table groups: VILLA GRIVITSA wall, both window rows, floral arch, least distortion. Rejected: ВИП зала-3 (camera low near the entrance end, carpet fills the lower hemisphere), ВИП зала-4 (camera inside the sofa), ВИП зала-5 (camera inside the entrance planter)."
+    },
+    "wine-bar.jpg": {
+      "zip": "Winery room-2-9-21-2026, 1_16_11 PM.zip",
+      "file": "spherical.jpg",
+      "px": [
+        8000,
+        4000
+      ],
+      "note": "WINE BAR — lounge with the Chesterfields, wine display arch and barrel side tables. Rejected: Winery room-4 (spherical.jpg is 8000×2195, not a 2:1 sphere; camera at floor level inside the bottle shelf)."
+    }
+  }
+}

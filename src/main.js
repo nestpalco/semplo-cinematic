@@ -1,6 +1,8 @@
 import {
   hero,
   ambients,
+  featured,
+  portfolio,
   projects,
   interludes,
   strips,
@@ -12,8 +14,16 @@ import {
   motion,
 } from './sections.config.js'
 import { businessLd } from './schema.js'
+import {
+  chrome,
+  dig,
+  applyLang,
+  storedLang,
+  initTheme,
+  initBurger,
+  initContactLinks,
+} from './chrome.js'
 import manifest from './videos.manifest.json'
-import pmanifest from './projects.manifest.json'
 
 /* ──────────────────────────────────────────────────────────────────────────
  * SEMPLO — calm, photography-first page. ONE signature moment, native scroll.
@@ -83,105 +93,15 @@ const motionReady = prefersReduced
         motionlessFallback() // scrub videos must still move: play them forward
       })
 
-/* ── 1. Bilingual UI ──────────────────────────────────────────────────────── */
+/* ── 1 + 1b. Bilingual UI + Light / Dark theme ─────────────────────────────
+ * Both live in src/chrome.js now (shared with the /portfolio/ pages). This
+ * module keeps a local `lang` mirror for the many closures below that read
+ * it; chrome.js fires `semplo:lang` after every switch. */
 let lang = 'bg'
-const dig = (p) => p.split('.').reduce((o, k) => (o ? o[k] : undefined), ui)
-function applyLang(next) {
-  lang = next
-  const idx = lang === 'bg' ? 0 : 1
-  document.documentElement.lang = lang
-  document.querySelectorAll('[data-i18n]').forEach((el) => {
-    const v = dig(el.dataset.i18n)
-    if (Array.isArray(v)) el.textContent = v[idx]
-  })
-  document.querySelectorAll('[data-bg][data-en]').forEach((el) => {
-    el.textContent = lang === 'bg' ? el.dataset.bg : el.dataset.en
-  })
-  document.querySelectorAll('[data-i18n-aria]').forEach((el) => {
-    const v = dig(el.dataset.i18nAria)
-    if (Array.isArray(v)) el.setAttribute('aria-label', v[idx])
-  })
-  // form placeholders (from ui.form) and per-element aria pairs (used by the
-  // review star rows, whose label carries an interpolated rating)
-  document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
-    const v = dig(el.dataset.i18nPh)
-    if (Array.isArray(v)) el.placeholder = v[idx]
-  })
-  document.querySelectorAll('[data-aria-bg][data-aria-en]').forEach((el) => {
-    el.setAttribute('aria-label', lang === 'bg' ? el.dataset.ariaBg : el.dataset.ariaEn)
-  })
-  document.querySelectorAll('.lang__btn').forEach((b) => {
-    const on = b.dataset.lang === lang
-    b.classList.toggle('is-active', on)
-    b.setAttribute('aria-pressed', String(on))
-  })
-  syncThemeBtn() // the theme switch's accessible name is bilingual too
-  // motion layer listens: scrub-linked SplitText titles must re-split new text
-  document.dispatchEvent(new Event('semplo:lang'))
-}
-document
-  .querySelectorAll('.lang__btn')
-  .forEach((b) => b.addEventListener('click', () => applyLang(b.dataset.lang)))
-
-/* ── 1b. Light / Dark theme ────────────────────────────────────────────────
- * The whole site is themed by ONE attribute — <html data-theme="light|dark">
- * — which every colour token in styles.css hangs off, so nav (both its states),
- * sections, footer, project overlay, catalogues grid and the map all follow
- * without a single per-component branch here.
- *
- * Precedence: a stored choice > the OS preference. The inline boot script in
- * index.html already resolved that before first paint (no flash); this block
- * owns the toggle, persistence, and — while the visitor has made no explicit
- * choice — keeps following later OS changes. */
-const THEME_KEY = 'semplo:theme'
-const darkMQ = matchMedia('(prefers-color-scheme: dark)')
-const themeBtn = document.querySelector('[data-theme-toggle]')
-const themeMeta = document.querySelector('meta[name="theme-color"]')
-let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-let themeAnimT = 0
-
-const storedTheme = () => {
-  try {
-    const v = localStorage.getItem(THEME_KEY)
-    return v === 'light' || v === 'dark' ? v : null
-  } catch {
-    return null // private mode / blocked storage — theming still works, just per-visit
-  }
-}
-
-function syncThemeBtn() {
-  if (!themeBtn) return
-  const idx = lang === 'bg' ? 0 : 1
-  const label = theme === 'dark' ? ui.theme.toLight[idx] : ui.theme.toDark[idx]
-  themeBtn.setAttribute('aria-label', label)
-  themeBtn.title = label
-  themeBtn.setAttribute('aria-pressed', String(theme === 'dark'))
-}
-
-function applyTheme(next, { persist = true } = {}) {
-  theme = next === 'dark' ? 'dark' : 'light'
-  const root = document.documentElement
-  // brief colour-only cross-fade so surfaces glide rather than snap
-  if (!prefersReduced) {
-    root.classList.add('theme-anim')
-    clearTimeout(themeAnimT)
-    themeAnimT = setTimeout(() => root.classList.remove('theme-anim'), 420)
-  }
-  root.dataset.theme = theme
-  if (themeMeta) themeMeta.content = theme === 'dark' ? '#121110' : '#f3f1ec'
-  if (persist) {
-    try {
-      localStorage.setItem(THEME_KEY, theme)
-    } catch {}
-  }
-  syncThemeBtn()
-}
-
-themeBtn?.addEventListener('click', () => applyTheme(theme === 'dark' ? 'light' : 'dark'))
-darkMQ.addEventListener('change', (e) => {
-  if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light', { persist: false })
+document.addEventListener('semplo:lang', () => {
+  lang = chrome.lang
 })
-syncThemeBtn()
+initTheme({ prefersReduced })
 
 /* ── 2. Templates ─────────────────────────────────────────────────────────── */
 const posterFor = (m) => `/videos/${isMobile && m.posterMobile ? m.posterMobile : m.poster}`
@@ -277,50 +197,52 @@ function interludeHTML(t) {
     </section>`
 }
 
-/* project assets resolve through src/projects.manifest.json (emitted by
- * scripts/optimize-projects.mjs walking assets/projects/<id>/): the config
- * entry carries copy + panorama labels, the manifest carries what files exist */
-const pAsset = (pid, type, name, w) => `/projects/${pid}/${type}/${name}-${w}.webp`
-const galleryOf = (p) => pmanifest[p.id]?.gallery || []
-const sketchesOf = (p) => pmanifest[p.id]?.sketches || []
+/* ── PROJECTS — "Избрани проекти": three FEATURED video sections ──────────
+ * Each featured slot is a full-bleed scroll-scrubbed clip (PATTERN B — the
+ * same `data-ambient` mechanics as the ambient strips: lazy load, scrub on
+ * desktop, autoplay-while-visible on mobile) carrying the project's category,
+ * title and a link to its /portfolio/<id>/ page. The whole section links out;
+ * the full portfolio lives on its own page (the "view all" link below). The
+ * old card film strips + the detail overlay were retired 2026-09-16 — the
+ * detail pages replaced them. */
+function featuredHTML(f) {
+  const p = projects.find((x) => x.id === f.project)
+  const m = manifest[f.id]
+  if (!p || !m) return ''
+  const poster = posterFor(m)
+  const href = `${portfolio.path}${p.id}/`
+  const cat = ui.portfolio.types[p.category] || ['', '']
+  return `
+    <section class="ambient featured" data-ambient data-featured data-id="${f.id}" data-dark
+             aria-labelledby="featured-${p.id}">
+      <div class="ambient__media" data-parallax>
+        <img class="ambient__poster" src="${poster}" alt="" aria-hidden="true" />
+        <video class="ambient__video" data-ambient-video muted playsinline loop preload="none"
+               disablepictureinpicture poster="${poster}"></video>
+      </div>
+      <figcaption class="ambient__cap featured__cap">
+        <span class="ambient__eyebrow" data-bg="${cat[0]}" data-en="${cat[1]}">${cat[0]}</span>
+        <span class="ambient__line featured__title" id="featured-${p.id}"
+              data-bg="${p.titleBg}" data-en="${p.titleEn}">${p.titleBg}</span>
+        <a class="featured__link" href="${href}" data-i18n="projects.view">${ui.projects.view[0]}</a>
+      </figcaption>
+      <a class="featured__hit" href="${href}" tabindex="-1" aria-hidden="true"></a>
+    </section>`
+}
 
 function projectsHTML() {
-  // PATTERN C: every card is a uniform BIG cover holding a horizontal film
-  // strip of its first frames. Scroll advances the strip rightward (motion.js);
-  // without the motion layer the strip simply shows frame 1 (overflow hidden).
-  const K = motion.stripFrames
-  const cards = projects
-    .map((p, i) => {
-      const imgs = galleryOf(p)
-        .slice(0, K)
-        .map(
-          (n, k) =>
-            `<img src="${pAsset(p.id, 'gallery', n, k === 0 && isMobile ? 900 : 1600)}" alt=""
-                  loading="${k === 0 && i === 0 ? 'eager' : 'lazy'}" decoding="async" />`
-        )
-        .join('')
-      return `
-      <button class="project" type="button" data-project="${i}" aria-haspopup="dialog">
-        <span class="project__media">
-          <span class="project__strip" data-strip>${imgs}</span>
-          <span class="project__view" aria-hidden="true" data-i18n="projects.view">${ui.projects.view[0]}</span>
-        </span>
-        <span class="project__meta">
-          <span class="project__title" data-bg="${p.titleBg}" data-en="${p.titleEn}">${p.titleBg}</span>
-          <span class="project__sub" data-bg="${p.metaBg}" data-en="${p.metaEn}">${p.metaBg}</span>
-        </span>
-      </button>`
-    })
-    .join('')
   return `
     <section class="projects" id="work">
       <header class="projects__head" data-interlude>
         <div class="interlude__inner">
-          <p class="projects__eyebrow" data-i18n="projects.eyebrow">Избрани проекти</p>
-          <h2 class="projects__title" data-i18n="projects.title">Завършени интериори.</h2>
+          <p class="projects__eyebrow" data-i18n="projects.eyebrow">${ui.projects.eyebrow[0]}</p>
+          <h2 class="projects__title" data-i18n="projects.title">${ui.projects.title[0]}</h2>
         </div>
       </header>
-      <div class="gallery">${cards}</div>
+      ${featured.map(featuredHTML).join('')}
+      <div class="projects__more">
+        <a class="projects__more-link" href="${portfolio.path}" data-i18n="projects.more">${ui.projects.more[0]}</a>
+      </div>
     </section>`
 }
 
@@ -372,16 +294,9 @@ document.querySelectorAll('[data-hstrip]').forEach((el) => {
     .join('')}</div>`
 })
 
-/* ── Contact details: one source of truth ─────────────────────────────────
- * The visible strings already come from `ui.contact` (which mirrors `business`)
- * via data-i18n, but hrefs can't. Rewrite every tel:/mailto: from `business` so
- * a changed number can never leave a stale link behind. */
-{
-  document.querySelectorAll('a[href^="tel:"]').forEach((a) => (a.href = `tel:${business.tel}`))
-  document
-    .querySelectorAll('a[href^="mailto:"]')
-    .forEach((a) => (a.href = `mailto:${business.email}`))
-}
+/* ── Contact details: one source of truth (tel:/mailto: hrefs from `business`,
+ * see chrome.js) ── */
+initContactLinks()
 
 /* ── ОТЗИВИ — review cards from config ────────────────────────────────────
  * Google's review text is only available through the billed Places API, so the
@@ -468,7 +383,8 @@ document.querySelectorAll('[data-hstrip]').forEach((el) => {
   }
 }
 
-applyLang('bg')
+// a language chosen on another page (the portfolio) is remembered — see chrome.js
+applyLang(storedLang() || 'bg')
 
 /* ── Pin-aware smooth anchor scrolling ─────────────────────────────────────
  * Raw #hash jumps land wrong once sections are pinned (pin-spacers shift real
@@ -513,32 +429,8 @@ document.querySelectorAll('a[href^="#"]').forEach((a) => {
   })
 })
 
-/* ── Compact-nav hamburger (mobile, ≤620px) — opens the links as a dropdown.
- * The language toggle stays in the bar (always reachable); this panel just
- * holds the nav links. Closes on link choice, ESC, or scroll. ── */
-{
-  const burger = document.querySelector('[data-burger]')
-  if (burger) {
-    const setOpen = (open) => {
-      document.body.classList.toggle('nav-open', open)
-      burger.setAttribute('aria-expanded', String(open))
-    }
-    burger.addEventListener('click', () => setOpen(!document.body.classList.contains('nav-open')))
-    document.querySelectorAll('.nav__links a').forEach((a) =>
-      a.addEventListener('click', () => setOpen(false))
-    )
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') setOpen(false)
-    })
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (document.body.classList.contains('nav-open')) setOpen(false)
-      },
-      { passive: true }
-    )
-  }
-}
+/* ── Compact-nav hamburger (mobile, ≤620px) — see chrome.js ── */
+initBurger()
 
 /* ── 4. Reveal once the hero poster has decoded (no flash) ────────────────── */
 let revealed = false
@@ -639,7 +531,8 @@ if (!prefersReduced) {
  *    still handled by the lazy IO in §5, well before entry). Everything else
  *    (mobile, reduced-off ambient3) keeps autoplay-while-visible. */
 const isScrubSlot = (sec) =>
-  scrubDesktop && [hero, ...ambients].some((s) => s.scrubVideo && s.id === sec.dataset.id)
+  scrubDesktop &&
+  [hero, ...ambients, ...featured].some((s) => s.scrubVideo && s.id === sec.dataset.id)
 function enableAmbientAutoplay(includeScrubSlots) {
   const io = new IntersectionObserver(
     (entries) => {
@@ -744,323 +637,9 @@ function motionlessFallback() {
   }
 }
 
-/* ── 11. PROJECTS — detail overlay (tabs: process work ⇄ finished photos) ──
- * Projects WITH `sketches` get a two-tab bar — Проект (sketches/plans) and
- * Галерия (the photo sequence). The GALLERY opens selected: the finished
- * photography is the payoff and the one view every project has; the process
- * drawings are the deeper dive. Projects without sketches show no bar at all.
- *
- * The 360° panorama is deliberately NOT a tab: it sits as a SHARED block
- * between the tab bar and the switchable panel, so it is on screen the moment
- * the overlay opens (no hunting) and never vanishes on a tab switch. The tab
- * bar is sticky, and switching scrolls the fresh panel up under it so the
- * change is always visible. */
-{
-  const overlay = document.createElement('div')
-  overlay.className = 'pdetail'
-  overlay.hidden = true
-  overlay.setAttribute('role', 'dialog')
-  overlay.setAttribute('aria-modal', 'true')
-  overlay.innerHTML = `
-    <button class="pdetail__close" type="button" data-pdetail-close
-            data-i18n-aria="projects.close" aria-label="Close">
-      <span aria-hidden="true">✕</span>
-    </button>
-    <div class="pdetail__scroll" data-pdetail-scroll tabindex="0">
-      <header class="pdetail__head">
-        <p class="pdetail__meta" data-pdetail-meta></p>
-        <h2 class="pdetail__title" data-pdetail-title></h2>
-        <p class="pdetail__blurb" data-pdetail-blurb></p>
-      </header>
-      <div class="pdetail__tabs" data-pdetail-tabs role="tablist"
-           data-i18n-aria="projects.tabs" aria-label="${ui.projects.tabs[0]}" hidden>
-        <button class="pdetail__tab" type="button" role="tab" data-tab="project"
-                id="pdetail-tab-project" aria-controls="pdetail-panel-project"
-                aria-selected="false" tabindex="-1"
-                data-i18n="projects.tabProject">${ui.projects.tabProject[0]}</button>
-        <button class="pdetail__tab" type="button" role="tab" data-tab="gallery"
-                id="pdetail-tab-gallery" aria-controls="pdetail-panel-gallery"
-                aria-selected="true" tabindex="0"
-                data-i18n="projects.tabGallery">${ui.projects.tabGallery[0]}</button>
-      </div>
-      <div class="pdetail__seq" data-pdetail-seq></div>
-    </div>`
-  document.body.appendChild(overlay)
-
-  const elClose = overlay.querySelector('[data-pdetail-close]')
-  const elScroll = overlay.querySelector('[data-pdetail-scroll]')
-  const elMeta = overlay.querySelector('[data-pdetail-meta]')
-  const elTitle = overlay.querySelector('[data-pdetail-title]')
-  const elBlurb = overlay.querySelector('[data-pdetail-blurb]')
-  const elSeq = overlay.querySelector('[data-pdetail-seq]')
-  const elTabs = overlay.querySelector('[data-pdetail-tabs]')
-  const tabBtns = [...elTabs.querySelectorAll('[role="tab"]')]
-  let lastFocus = null
-  let pano = null // live 360° viewer instance for the open project
-  let panoRoom = 0 // index into the open project's `panoramas` config list
-  let overlayCleanup = null // motion-layer teardown for the open project
-  let openToken = 0 // guards async pano setup against a fast close/reopen
-
-  const roomSrc = (p, i) =>
-    pAsset(p.id, 'panoramas', p.panoramas[i].file, isMobile ? 2048 : 4096)
-
-  /* The 360° viewer: Three.js + ONE texture load, only here — never on the
-   * main page. Works in every mode; auto-yaw is off under reduced-motion. */
-  async function setupPano(p, token) {
-    const stageEl = overlay.querySelector('[data-pano-stage]')
-    if (!stageEl) return
-    try {
-      const { createPano } = await import('./pano.js')
-      if (token !== openToken || overlay.hidden) return // closed while loading
-      pano = createPano(stageEl, {
-        // panoRoom, not 0: the visitor may have picked a room while Three.js
-        // was still downloading — honour the choice they already made
-        src: roomSrc(p, panoRoom),
-        scroller: elScroll,
-        scrollYawDeg: motion.panoScrollYaw,
-        autoYaw: !prefersReduced,
-      })
-    } catch {} // viewer is an enhancement — the photo sequence still stands
-  }
-
-  /* room switcher: one viewer, textures swapped in place (never N canvases) */
-  function selectRoom(p, i) {
-    panoRoom = i
-    const room = p.panoramas[i]
-    const label = overlay.querySelector('[data-pano-room]')
-    if (label) {
-      label.dataset.bg = room.bg
-      label.dataset.en = room.en
-      label.textContent = lang === 'bg' ? room.bg : room.en
-    }
-    overlay.querySelectorAll('[data-pano-jump]').forEach((b, k) => {
-      b.classList.toggle('is-active', k === i)
-      b.setAttribute('aria-pressed', String(k === i))
-    })
-    pano?.setSource(roomSrc(p, i)) // no instance yet → setupPano honours panoRoom
-  }
-
-  /* ── tabs: Проект (sketches) ⇄ Галерия (photos) ─────────────────────────
-   * WAI-ARIA tabs with roving tabindex + arrow keys; selection follows focus
-   * (automatic activation). Panels are hidden/shown; a switch scrolls the
-   * fresh panel up under the sticky bar so the change is always on screen. */
-  function selectTab(name, { scroll = false } = {}) {
-    tabBtns.forEach((b) => {
-      const on = b.dataset.tab === name
-      b.setAttribute('aria-selected', String(on))
-      b.tabIndex = on ? 0 : -1
-      b.classList.toggle('is-active', on)
-    })
-    overlay.querySelectorAll('[data-pdetail-panel]').forEach((panel) => {
-      panel.hidden = panel.dataset.pdetailPanel !== name
-    })
-    if (scroll) {
-      // refresh FIRST: ScrollTrigger.refresh() writes the scroller's position
-      // back while re-measuring, which cancels an in-flight smooth scrollTo
-      motionMod?.refreshOverlay?.() // re-measure the gallery parallax triggers
-      const panel = overlay.querySelector(`[data-pdetail-panel="${name}"]`)
-      if (panel) {
-        // put the panel's first content just under the sticky bar; the shared
-        // pano block glides out above so the switch is visible immediately
-        const top = Math.max(0, panel.offsetTop - elTabs.offsetHeight)
-        if (!prefersReduced && motionMod?.scrollOverlayTo) {
-          // gsap glide — a native smooth scroll here gets cancelled by the
-          // ScrollTrigger.refresh() that still-loading gallery images fire
-          motionMod.scrollOverlayTo(elScroll, top)
-        } else {
-          elScroll.scrollTo({ top, behavior: prefersReduced ? 'auto' : 'smooth' })
-        }
-      }
-    }
-  }
-  tabBtns.forEach((btn, i) => {
-    btn.addEventListener('click', () => selectTab(btn.dataset.tab, { scroll: true }))
-    btn.addEventListener('keydown', (e) => {
-      const dir = { ArrowRight: 1, ArrowLeft: -1, Home: 0, End: 0 }
-      if (!(e.key in dir)) return
-      e.preventDefault()
-      const to =
-        e.key === 'Home' ? 0
-        : e.key === 'End' ? tabBtns.length - 1
-        : (i + dir[e.key] + tabBtns.length) % tabBtns.length
-      tabBtns[to].focus()
-      selectTab(tabBtns[to].dataset.tab, { scroll: true })
-    })
-  })
-
-  /* click-to-zoom for sketches: fit view ⇄ pannable 3000px view (drawings
-   * carry fine linework — "readable" means reachable at full size) */
-  const zoomedSketch = () => overlay.querySelector('.pdetail__sketch.is-zoomed')
-  function setZoom(fig, on) {
-    const btn = fig.querySelector('[data-sketch-zoom]')
-    const img = fig.querySelector('img')
-    if (on && img.dataset.zoomSrc && img.src !== img.dataset.zoomSrc) img.src = img.dataset.zoomSrc
-    fig.classList.toggle('is-zoomed', on)
-    btn.setAttribute('aria-pressed', String(on))
-    const label = on ? ui.projects.zoomOut : ui.projects.zoomIn
-    btn.dataset.ariaBg = label[0]
-    btn.dataset.ariaEn = label[1]
-    btn.setAttribute('aria-label', label[lang === 'bg' ? 0 : 1])
-  }
-  let openedProject = null // config entry of the open overlay (for room clicks)
-  elSeq.addEventListener('click', (e) => {
-    const jump = e.target.closest('[data-pano-jump]')
-    if (jump && openedProject) return selectRoom(openedProject, +jump.dataset.panoJump)
-    const btn = e.target.closest('[data-sketch-zoom]')
-    if (!btn) return
-    const fig = btn.closest('.pdetail__sketch')
-    setZoom(fig, !fig.classList.contains('is-zoomed'))
-  })
-
-  function openProject(i) {
-    const p = projects[i]
-    if (!p) return
-    const t = (bg, en) => (lang === 'bg' ? bg : en)
-    const token = ++openToken
-    elMeta.textContent = t(p.metaBg, p.metaEn)
-    elTitle.textContent = t(p.titleBg, p.titleEn)
-    elBlurb.textContent = t(p.blurbBg, p.blurbEn) || ''
-    elTitle.dataset.bg = p.titleBg; elTitle.dataset.en = p.titleEn
-    elMeta.dataset.bg = p.metaBg; elMeta.dataset.en = p.metaEn
-    elBlurb.dataset.bg = p.blurbBg || ''; elBlurb.dataset.en = p.blurbEn || ''
-
-    const L = lang === 'bg' ? 0 : 1
-    const frames = galleryOf(p)
-      .map(
-        (n) =>
-          `<figure class="pdetail__frame"><img src="${pAsset(p.id, 'gallery', n, 1600)}" alt="" loading="lazy" decoding="async" /></figure>`
-      )
-      .join('')
-    // 360° block: shared between both views — first thing under the tab bar,
-    // so it is on screen when the overlay opens and survives tab switches.
-    // Multi-room projects get a chip switcher; the badge always names the room.
-    const rooms = p.panoramas || []
-    panoRoom = 0
-    const roomChips =
-      rooms.length > 1
-        ? `<div class="pdetail__pano-rooms" role="group"
-                data-i18n-aria="pano.rooms" aria-label="${ui.pano.rooms[L]}">${rooms
-            .map(
-              (r, i) => `
-              <button class="pdetail__pano-room${i === 0 ? ' is-active' : ''}" type="button"
-                      data-pano-jump="${i}" aria-pressed="${i === 0}"
-                      data-bg="${r.bg}" data-en="${r.en}">${lang === 'bg' ? r.bg : r.en}</button>`
-            )
-            .join('')}</div>`
-        : ''
-    const panoBlock = rooms.length
-      ? `<div class="pdetail__pano">
-           <div class="pdetail__pano-stage" data-pano-stage></div>
-           <span class="pdetail__pano-badge"><span data-i18n="pano.badge">${ui.pano.badge[L]}</span> · <span
-                 data-pano-room data-bg="${rooms[0].bg}" data-en="${rooms[0].en}">${lang === 'bg' ? rooms[0].bg : rooms[0].en}</span></span>
-           ${roomChips}
-           <p class="pdetail__pano-hint" data-i18n="pano.hint">${ui.pano.hint[L]}</p>
-         </div>`
-      : ''
-
-    const sketchNames = sketchesOf(p)
-    const hasSketches = sketchNames.length > 0
-    elTabs.hidden = !hasSketches
-    if (hasSketches) {
-      const zoomLabel = ui.projects.zoomIn
-      const sketches = sketchNames
-        .map(
-          (n) => `
-        <figure class="pdetail__sketch">
-          <button class="pdetail__sketch-btn" type="button" data-sketch-zoom
-                  aria-pressed="false" aria-label="${zoomLabel[L]}"
-                  data-aria-bg="${zoomLabel[0]}" data-aria-en="${zoomLabel[1]}">
-            <img src="${pAsset(p.id, 'sketches', n, 1000)}" data-zoom-src="${pAsset(p.id, 'sketches', n, 3000)}"
-                 alt="" loading="lazy" decoding="async" />
-          </button>
-        </figure>`
-        )
-        .join('')
-      elSeq.innerHTML =
-        panoBlock +
-        `<div class="pdetail__panel" id="pdetail-panel-project" data-pdetail-panel="project"
-              role="tabpanel" tabindex="0" aria-labelledby="pdetail-tab-project" hidden>${sketches}</div>` +
-        `<div class="pdetail__panel" id="pdetail-panel-gallery" data-pdetail-panel="gallery"
-              role="tabpanel" tabindex="0" aria-labelledby="pdetail-tab-gallery">${frames}</div>`
-      selectTab('gallery') // the finished work opens; Проект is the deeper dive
-    } else {
-      // no sketches → no tab bar, no panel semantics: the overlay as it was
-      elSeq.innerHTML = panoBlock + frames
-    }
-
-    overlay.setAttribute('aria-label', t(p.titleBg, p.titleEn))
-    openedProject = p
-    lastFocus = document.activeElement
-    overlay.hidden = false
-    document.body.classList.add('is-locked')
-    requestAnimationFrame(() => {
-      overlay.classList.add('is-open')
-      elScroll.scrollTop = 0
-      elClose.focus()
-      if (motionMod) overlayCleanup = motionMod.overlayMotion(elScroll)
-    })
-    if (rooms.length) setupPano(p, token)
-    document.addEventListener('keydown', onKey)
-  }
-  function closeProject() {
-    openToken++ // invalidate any in-flight pano setup
-    overlay.classList.remove('is-open')
-    document.body.classList.remove('is-locked')
-    document.removeEventListener('keydown', onKey)
-    const inst = pano
-    const cleanup = overlayCleanup
-    pano = null
-    overlayCleanup = null
-    let finished = false
-    const done = () => {
-      if (finished) return // transitionend AND the timeout both call this
-      finished = true
-      overlay.hidden = true
-      overlay.removeEventListener('transitionend', done)
-      inst?.destroy() // dispose GL context, texture, listeners
-      cleanup?.() // revert overlay ScrollTriggers
-      if (lastFocus && lastFocus.focus) lastFocus.focus()
-    }
-    overlay.addEventListener('transitionend', done)
-    setTimeout(done, 450) // fallback if no transition fires
-  }
-  function onKey(e) {
-    if (e.key === 'Escape') {
-      // a zoomed sketch swallows the first ESC (zoom out, stay in the overlay)
-      const z = zoomedSketch()
-      if (z) return setZoom(z, false)
-      return closeProject()
-    }
-    if (e.key === 'Tab') {
-      // focus trap across everything focusable in the overlay (close button,
-      // visible tabs — roving tabindex keeps unselected ones out — and the
-      // zoom buttons of whichever panel is shown)
-      // getClientRects, not offsetParent: the close button is position:fixed,
-      // which reports offsetParent === null even while perfectly visible
-      const f = [...overlay.querySelectorAll('button, [tabindex="0"]')].filter(
-        (el) => !el.closest('[hidden]') && el.tabIndex >= 0 && el.getClientRects().length > 0
-      )
-      if (!f.length) return
-      const first = f[0]
-      const last = f[f.length - 1]
-      if (!overlay.contains(document.activeElement)) {
-        e.preventDefault(); first.focus()
-      } else if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault(); last.focus()
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault(); first.focus()
-      }
-    }
-  }
-
-  root.querySelectorAll('[data-project]').forEach((btn) =>
-    btn.addEventListener('click', () => openProject(+btn.dataset.project))
-  )
-  elClose.addEventListener('click', closeProject)
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeProject()
-  })
-}
+/* ── 11. (retired 2026-09-16) the project detail overlay — every project now
+ * has its own page at /portfolio/<id>/ (src/page.js); the featured sections
+ * above link straight to them. ── */
 
 /* ── 12. ENQUIRY FORM overlay (emailed by the function, AJAX) ──────────────
  * The "Свържете се с нас" button used to be a mailto: link — a dead end on any

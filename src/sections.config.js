@@ -140,45 +140,335 @@ export const ambients = [
  * project here — its gallery runs living → dining/kitchen → attic bedroom →
  * home office (see assets/projects/sofia-apartment/source-manifest.json for
  * the ours → theirs mapping of every photo).
+ *
+ * ── PORTFOLIO PAGE FIELDS (added 2026-09-16, pass 1) ──────────────────────
+ * Every entry also feeds /portfolio/ (the card) and /portfolio/<id>/ (the
+ * detail page). Both are GENERATED at build time by scripts/build-pages.mjs
+ * from the fields below, so the static HTML carries the copy for crawlers:
+ *   `category`   apartment | house | commercial — drives the filter row and
+ *                the default `type` label (see ui.portfolio.cats / .types).
+ *   `locationBg/En`  the meta row's first item ("София" / "Sofia").
+ *   `typeBg/En`  OPTIONAL override of the category's singular label.
+ *   `area`       OPTIONAL number, square metres. Omit it and the meta row
+ *                simply shows location · type (the client has not supplied
+ *                every area yet — the layout must not depend on it).
+ *   `cover`      OPTIONAL gallery base name for the card cover + social card
+ *                (defaults to the first gallery image).
+ *   `cardBg/En`  the one-line blurb on the portfolio card.
+ *   `conceptTitleBg/En` + `conceptBg/En`   left column of the text block.
+ *   `realizationTitleBg/En` (optional, defaults to ui.portfolio.realization)
+ *   + `realizationBg/En`                    right column ("От концепцията до
+ *                                          реализацията").
+ *   `todo`       list of field groups still holding PLACEHOLDER copy:
+ *                'card' | 'concept' | 'realization' | 'area'. Those are badged
+ *                on the page so nobody mistakes them for client copy. Delete
+ *                the key once the real text is in.
+ *   `updated`    OPTIONAL ISO date → <lastmod> for the page in sitemap.xml.
+ * NO year anywhere on the portfolio pages — the client dropped it (the
+ * homepage `metaBg/En` still carry it for the existing gallery cards only).
  */
 export const projects = [
+  /* ── the three FEATURED projects come first (homepage order = grid order) ── */
+  {
+    id: 'hillside',
+    titleBg: 'Тристаен апартамент в затворен комплекс HILL SIDE',
+    titleEn: 'Two-bedroom apartment in the HILL SIDE gated complex',
+    category: 'apartment',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 90, // Информация.pdf, 2026-09-16
+    updated: '2026-09-16',
+    cardBg:
+      'Изискан съвременен интериор в топла неутрална палитра, съчетаващ естествени текстури, мебели по индивидуален проект и внимателно проектирано осветление.',
+    cardEn:
+      'A refined contemporary interior in a warm neutral palette, combining natural textures, bespoke furniture and carefully designed lighting.',
+    conceptTitleBg: 'Мека елегантност и прецизно балансирани детайли',
+    conceptTitleEn: 'Soft elegance and precisely balanced details',
+    conceptBg:
+      'Интериорът е развит в светла, топла и изискана палитра, в която неутралните тонове са комбинирани с естествено дърво, каменни текстури и деликатни метални акценти. Дневната зона е организирана компактно и функционално, а индивидуално проектираните мебели, осветените витрини и характерните облицовки създават усещане за завършеност. Двете спални продължават същия визуален език с меки линии, интегрирано осветление и мебели по мярка, докато антрето и баните добавят по-декоративен характер чрез огледала, релефни повърхности и внимателно подбрани материали.',
+    conceptEn:
+      'The interior unfolds in a light, warm and refined palette in which neutral tones are combined with natural wood, stone textures and delicate metal accents. The living area is organised compactly and functionally, while the bespoke furniture, lit display cabinets and distinctive wall cladding give a sense of completeness. The two bedrooms continue the same visual language with soft lines, integrated lighting and made-to-measure furniture, while the hallway and bathrooms add a more decorative character through mirrors, relief surfaces and carefully chosen materials.',
+    realizationBg:
+      'За SEMPLO Concept всеки проект е цялостен процес, в който дизайнът и реализацията се развиват заедно. Предлагаме пълна услуга — от интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство позволява всеки детайл да бъде изпълнен като естествено продължение на интериорната концепция — с контрол върху качеството, пропорциите и крайния резултат. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept every project is a single process in which design and execution evolve together. We offer a complete service — from the interior concept and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets every detail be executed as a natural continuation of the interior concept — with control over quality, proportion and the final result. SEMPLO Concept — from idea to a fully finished interior.',
+  },
+  {
+    // ONE project: the VIP HALL and the WINE BAR are the same building (client
+    // decision 2026-09-16; merged deck in _source/, gallery ordered hall → bar)
+    id: 'villa-grivitsa',
+    titleBg: 'Вила Гривица', titleEn: 'Villa Grivitsa',
+    category: 'commercial',
+    locationBg: 'село Гривица', locationEn: 'Grivitsa village',
+    // area: none supplied (Информация.pdf lists no figure) — omitted on purpose
+    updated: '2026-09-22',
+    // 360° — DELIVERED 2026-09-21 (email "Вила Гривица", six Homestyler ZIPs):
+    // one viewpoint kept per space (see source-manifest.json for the rejects)
+    panoramas: [
+      { file: 'vip-hall', bg: 'ВИП зала', en: 'VIP hall' },
+      { file: 'wine-bar', bg: 'Винен бар', en: 'Wine bar' },
+    ],
+    cardBg:
+      'VIP зала и бутиков винен бар под един покрив — топло дърво, кожа, камък и прецизно осветление за дегустации, срещи и специални поводи.',
+    cardEn:
+      'A VIP hall and a boutique wine bar under one roof — warm wood, leather, stone and precise lighting for tastings, meetings and special occasions.',
+    conceptTitleBg: 'Бутикова атмосфера за специални моменти — VIP зала и винен бар',
+    conceptTitleEn: 'A boutique setting for special moments — VIP hall and wine bar',
+    conceptBg:
+      'VIP залата е създадена като изискано пространство за срещи, дегустации и събития — топли дървесни повърхности, светли мебели и зелени текстилни акценти изграждат балансирана и уютна среда, а линейното осветление и декоративните детайли подчертават архитектурата на залата. Винният бар под нея е изграден около усещането за интимност и премиум преживяване: топли дървесни текстури и карамелени кожени мебели, черни каменни повърхности, метални детайли и меко акцентно осветление. Вградените винени композиции и осветените ниши превръщат самата селекция от вина в част от архитектурата, а зоните за дегустация и почивка създават комфортна среда за по-дълъг престой.',
+    conceptEn:
+      'The VIP hall is conceived as a refined space for meetings, tastings and events — warm wood surfaces, light furniture and green textile accents build a balanced, welcoming setting, while the linear lighting and decorative details underline the architecture of the hall. The wine bar below it is built around intimacy and a premium experience: warm wood textures and caramel leather furniture, black stone surfaces, metal details and soft accent lighting. The built-in wine displays and lit niches turn the wine selection itself into part of the architecture, while the tasting and lounge areas create a comfortable setting for a longer stay.',
+    realizationBg:
+      'За SEMPLO Concept търговските и hospitality пространства трябва не просто да изглеждат добре, а да създават преживяване и разпознаваема идентичност. Предлагаме цялостна услуга — от интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели и специфични елементи по индивидуален проект. Така всеки детайл — от винените стелажи и облицовките до осветлението и мебелите — може да бъде реализиран като част от една последователна концепция. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept, commercial and hospitality spaces must not merely look good — they have to create an experience and a recognisable identity. We offer a complete service — from the interior concept and technical design to the selection of materials, the construction works and the production of bespoke furniture and special elements. That way every detail — from the wine racks and wall cladding to the lighting and furniture — can be realised as part of one consistent concept. SEMPLO Concept — from idea to a fully finished interior.',
+  },
   {
     id: 'house-troyan',
     titleBg: 'Къща Троян', titleEn: 'Troyan House',
-    // name and year confirmed against the plan sheets' title block
-    // (ОБЕКТ: Къща Троян, ДАТА: 4.8.2026)
-    metaBg: 'Троян · 2026', metaEn: 'Troyan · 2026',
-    span: 'wide',
+    category: 'house',
+    locationBg: 'Троян', locationEn: 'Troyan',
+    // area: not supplied yet — TODO (the meta row shows a pending badge)
+    updated: '2026-09-16',
     panoramas: [
       { file: 'living', bg: 'Дневна', en: 'Living room' },
       { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
     ],
-    // draft blurb — edit freely
-    blurbBg:
-      'Двуетажна къща с отворена дневна, кухня и трапезария, три спални и гараж — топло дърво, камък и мека светлина в полите на Балкана.',
-    blurbEn:
-      'A two-storey house with an open living, kitchen and dining space, three bedrooms and a garage — warm wood, stone and soft light in the foothills of the Balkan range.',
+    // TODO: no client docx for this project yet — placeholder copy, badged on the page
+    todo: ['card', 'concept', 'realization', 'area'],
+    cardBg: 'Двуетажна къща в полите на Балкана — дърво, камък и мека светлина.',
+    cardEn: 'A two-storey house in the foothills of the Balkan range — wood, stone and soft light.',
+    conceptTitleBg: 'Топло дърво, камък и мека светлина',
+    conceptTitleEn: 'Warm wood, stone and soft light',
+    conceptBg:
+      'Отворена дневна с кухня и трапезария на първия етаж, три спални и баня на втория. Естественият дъб и камъкът водят палитрата, а големите остъклявания рамкират планината и пълнят къщата със светлина през целия ден.',
+    conceptEn:
+      'An open living, kitchen and dining space on the ground floor, three bedrooms and a bathroom above. Natural oak and stone lead the palette, while the large glazing frames the mountain and fills the house with light all day long.',
+    realizationBg:
+      'От първите скици до последния детайл проектът е изпълнен от един екип — проектиране, сухо строителство и мебели по поръчка, изработени по нашите чертежи.',
+    realizationEn:
+      'From the first sketches to the last detail the project was delivered by one team — design, drywall construction and bespoke furniture built to our drawings.',
+  },
+
+  /* ── the rest of the portfolio ── */
+  {
+    id: 'gravity-house',
+    titleBg: 'Къща в жилищен комплекс Gravity Homes & Living',
+    titleEn: 'House in the Gravity Homes & Living complex',
+    category: 'house',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 190,
+    updated: '2026-09-16',
+    cardBg:
+      'Съвременен интериор с премиум излъчване, в който естественото дърво, камъкът, меките текстури и индивидуалните мебели създават балансирана и отличителна атмосфера.',
+    cardEn:
+      'A contemporary interior with a premium feel, where natural wood, stone, soft textures and bespoke furniture create a balanced, distinctive atmosphere.',
+    conceptTitleBg: 'Съвременен лукс с естествен характер',
+    conceptTitleEn: 'Contemporary luxury with a natural character',
+    conceptBg:
+      'Интериорът е изграден в топла и дълбока цветова палитра, в която естественото дърво, камъкът, текстилът и фините метални акценти се допълват в балансирана композиция. Дневната зона обединява кухня, трапезария и кът за почивка, като тъмните дървесни повърхности и каменният остров придават изразителен характер, а меката мебел и скритото осветление внасят визуална лекота и уют. Същият дизайнерски език преминава през спалните, баните, офиса и комуникационните пространства, създавайки цялостен и последователен интериор.',
+    conceptEn:
+      'The interior is built in a warm, deep colour palette in which natural wood, stone, textiles and fine metal accents complement one another in a balanced composition. The living area brings together the kitchen, the dining room and a lounge corner: the dark wood surfaces and the stone island give it an expressive character, while the soft furniture and concealed lighting bring visual lightness and comfort. The same design language runs through the bedrooms, bathrooms, office and circulation spaces, creating a complete, consistent interior.',
+    realizationBg:
+      'За SEMPLO Concept интериорният проект е цялостен процес, в който архитектурата, материалите, мебелите и изпълнението се развиват като една обща концепция. Предлагаме пълна услуга — от интериорното и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме специфичните мебели и детайли с прецизност и контрол върху качеството във всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept an interior project is a single process in which the architecture, the materials, the furniture and the execution evolve as one overall concept. We offer a complete service — from interior and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise the specific furniture and details with precision and control over quality at every stage. SEMPLO Concept — from idea to a fully finished interior.',
+  },
+  {
+    id: 'bimbashov',
+    titleBg: 'Тристаен апартамент в жилищен комплекс Gravity Homes & Living',
+    titleEn: 'Two-bedroom apartment in the Gravity Homes & Living complex',
+    category: 'apartment',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 100,
+    updated: '2026-09-16',
+    cardBg:
+      'Светъл съвременен интериор с минималистична линия, естествени текстури и индивидуално проектирани мебели, създаден с внимание към функционалността, светлината и детайла.',
+    cardEn:
+      'A light contemporary interior with a minimalist line, natural textures and bespoke furniture, designed with care for function, light and detail.',
+    conceptTitleBg: 'Светлина, баланс и съвременна елегантност',
+    conceptTitleEn: 'Light, balance and contemporary elegance',
+    conceptBg:
+      'Интериорът е изграден върху минимализъм, светлина и изтънченост — трите водещи принципа в концепцията на проекта. Светлата неутрална палитра, естествените дървесни текстури и прецизните черни и зелени акценти създават спокойна, модерна и балансирана среда. Индиректното осветление, индивидуално проектираните мебели и внимателно подбраните детайли обединяват отделните помещения в един цялостен визуален език.',
+    conceptEn:
+      'The interior rests on minimalism, light and refinement — the three guiding principles of the project. The light neutral palette, natural wood textures and precise black and green accents create a calm, modern and balanced environment. Indirect lighting, bespoke furniture and carefully chosen details bring the individual rooms together into one coherent visual language.',
+    realizationBg:
+      'За SEMPLO Concept интериорният проект е само началото на процеса. Ние предлагаме цялостна услуга — от интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме мебелите и специфичните интериорни детайли като естествено продължение на проекта, с контрол върху качеството и изпълнението на всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept the interior design is only the beginning of the process. We offer a complete service — from the interior concept and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise the furniture and the specific interior details as a natural continuation of the project, with control over quality and execution at every stage. SEMPLO Concept — from idea to a fully finished interior.',
+  },
+  {
+    id: 'uzunov',
+    titleBg: 'Дневна с кухня и трапезария',
+    titleEn: 'Living room with kitchen and dining',
+    category: 'house',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 65,
+    updated: '2026-09-16',
+    cardBg:
+      'Съвременен интериор в топла неутрална палитра, в който естествените материали, индивидуалните мебели и характерната камина създават хармонично и функционално пространство.',
+    cardEn:
+      'A contemporary interior in a warm neutral palette, where natural materials, bespoke furniture and the distinctive fireplace create a harmonious, functional space.',
+    conceptTitleBg: 'Топъл минимализъм и естествен баланс',
+    conceptTitleEn: 'Warm minimalism and natural balance',
+    conceptBg:
+      'Интериорът е развит в спокойна неутрална палитра от бежово, кремаво и естествени дървесни тонове, подчертани с графични черни акценти. Камината е превърната в централен архитектурен елемент, който добавя характер и същевременно оформя плавен преход между отделните функционални зони. Светлите каменни текстури, индивидуално проектираните мебели и меките обеми създават съвременна среда с усещане за комфорт, лекота и завършеност.',
+    conceptEn:
+      'The interior is developed in a calm neutral palette of beige, cream and natural wood tones, underlined by graphic black accents. The fireplace becomes the central architectural element, adding character while shaping a smooth transition between the functional zones. Light stone textures, bespoke furniture and soft volumes create a contemporary setting with a sense of comfort, lightness and completeness.',
+    realizationBg:
+      'За SEMPLO Concept всеки интериор е цялостен процес, в който дизайнът, материалите и изпълнението се развиват като една обща концепция. Предлагаме пълна услуга — от интериорното и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство позволява специфичните мебели и интериорни детайли да бъдат реализирани с прецизност и контрол върху всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept every interior is a single process in which the design, the materials and the execution evolve as one concept. We offer a complete service — from interior and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets the specific furniture and interior details be realised with precision and control at every stage. SEMPLO Concept — from idea to a fully finished interior.',
+  },
+  {
+    id: 'konna-baza',
+    titleBg: 'Конна база', titleEn: 'Equestrian Base',
+    category: 'apartment', // as typed by the client ("апартамент") — see Информация.pdf
+    locationBg: 'гр. Божурище', locationEn: 'Bozhurishte',
+    area: 45,
+    updated: '2026-09-16',
+    cardBg:
+      'Интериор с характерна комбинация от естествено дърво, наситено зелено и светли неутрални тонове, в който функционалността и индивидуалните мебели създават уютна и отличителна атмосфера.',
+    cardEn:
+      'An interior with a distinctive mix of natural wood, deep green and light neutral tones, where functionality and bespoke furniture create a cosy, characterful atmosphere.',
+    conceptTitleBg: 'Естествени текстури и характерна атмосфера',
+    conceptTitleEn: 'Natural textures and a distinctive atmosphere',
+    conceptBg:
+      'Интериорът е изграден около естествени материали, топли дървесни тонове и наситено зелено, които създават спокойна, елегантна и запомняща се атмосфера. Тъмните стенни повърхности и вертикалните релефни елементи придават дълбочина, докато светлата мебелировка и декоративното осветление балансират композицията. В дневната характерният зелен диван и масивната кръгла маса оформят основните акценти, а в спалнята и банята същият дизайнерски език продължава в по-мека и изчистена интерпретация.',
+    conceptEn:
+      'The interior is built around natural materials, warm wood tones and a deep green that together create a calm, elegant and memorable atmosphere. Dark wall surfaces and vertical relief elements add depth, while the light furnishings and decorative lighting balance the composition. In the living room the signature green sofa and the solid round table form the main accents, and in the bedroom and bathroom the same design language continues in a softer, more restrained interpretation.',
+    realizationBg:
+      'За SEMPLO Concept всеки интериор започва с идея, но завършва с прецизна реализация. Предлагаме цялостна услуга — от разработването на интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме мебелите и специфичните детайли като естествено продължение на дизайна, с контрол върху качеството и изпълнението на всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept every interior begins with an idea but ends with precise execution. We offer a complete service — from developing the interior concept and the technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise the furniture and the specific details as a natural continuation of the design, with control over quality and execution at every stage. SEMPLO Concept — from idea to a fully finished interior.',
+  },
+  {
+    id: 'sofia-2',
+    titleBg: 'Двустаен апартамент', titleEn: 'One-bedroom apartment',
+    category: 'apartment',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 38, // Информация.pdf, 2026-09-16
+    updated: '2026-09-16',
+    cardBg:
+      'Елегантен съвременен интериор в светла неутрална палитра, допълнен от тъмно дърво, зелени каменни акценти и индивидуално проектирани мебели.',
+    cardEn:
+      'An elegant contemporary interior in a light neutral palette, complemented by dark wood, green stone accents and bespoke furniture.',
+    conceptTitleBg: 'Мека елегантност и съвременен лукс',
+    conceptTitleEn: 'Soft elegance and contemporary luxury',
+    conceptBg:
+      'Интериорът е разработен в спокойна кремаво-бежова палитра, комбинирана с естествени дървесни текстури, тъмни акценти и детайли в златист метал. В спалнята интегрираната витрина и декоративните стенни панели създават дълбочина и усещане за премиум завършеност, докато компактната дневна с кухня е организирана функционално и визуално леко. В банята наситеният зелен камък се превръща в основен акцент и придава силен, отличителен характер на пространството.',
+    conceptEn:
+      'The interior is developed in a calm cream-and-beige palette, combined with natural wood textures, dark accents and details in golden metal. In the bedroom the integrated display cabinet and decorative wall panels create depth and a sense of premium finish, while the compact living room with kitchen is organised to be functional and visually light. In the bathroom the deep green stone becomes the main accent and gives the space a strong, distinctive character.',
+    realizationBg:
+      'За SEMPLO Concept всеки интериор е цялостен процес, в който концепцията, материалите, мебелите и изпълнението се развиват като една обща идея. Предлагаме пълна услуга — от интериорното и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме всеки специфичен детайл с прецизност и контрол върху качеството във всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+    realizationEn:
+      'For SEMPLO Concept every interior is a single process in which the concept, the materials, the furniture and the execution evolve as one idea. We offer a complete service — from interior and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise every specific detail with precision and control over quality at every stage. SEMPLO Concept — from idea to a fully finished interior.',
   },
   {
     id: 'sofia-apartment',
     titleBg: 'Апартамент София', titleEn: 'Sofia Apartment',
-    metaBg: 'София · 2023', metaEn: 'Sofia · 2023',
-    span: 'wide',
+    category: 'apartment',
+    locationBg: 'гр. София', locationEn: 'Sofia',
+    area: 120, // TODO: placeholder — confirm the real area with the client
+    updated: '2026-09-16',
     panoramas: [
       { file: 'living', bg: 'Дневна', en: 'Living room' },
       { file: 'hallway', bg: 'Коридор', en: 'Hallway' },
       { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
       { file: 'office', bg: 'Кабинет', en: 'Home office' },
     ],
-    // TODO: sketches/01..03.jpg are generated PLACEHOLDERS (labelled as such
-    // on their face) — replace the files with the real drawings, re-run the
-    // optimizer.
-    blurbBg:
-      'Мрамор, мед и дъб през целия апартамент — дневна около медийната стена, каменна маса върху месингова основа, спалня под линията на покрива и кабинет, който остава тих в края на деня.',
-    blurbEn:
-      'Marble, copper and oak throughout — a living room arranged around the media wall, a stone table on a brass base, a bedroom gathered under the roofline, and a study that stays quiet at the end of the day.',
+    // TODO: sketches/01..03.jpg are generated PLACEHOLDERS — replace with the
+    // real drawings (currently shown nowhere: the client dropped the tabs).
+    // TODO: no client docx for this project yet — placeholder copy, badged
+    todo: ['card', 'concept', 'realization', 'area'],
+    cardBg: 'Мрамор, мед и дъб — градски апартамент, подреден около светлината.',
+    cardEn: 'Marble, copper and oak — a city apartment arranged around the light.',
+    conceptTitleBg: 'Мрамор, мед и дъб',
+    conceptTitleEn: 'Marble, copper and oak',
+    conceptBg:
+      'Дневната е подредена около медийната стена от мрамор, трапезарията — около каменна маса върху месингова основа. Спалнята се събира под линията на покрива, а кабинетът остава тих в края на деня. Една палитра, проведена през всяко помещение.',
+    conceptEn:
+      'The living room is arranged around a marble media wall, the dining room around a stone table on a brass base. The bedroom gathers under the roofline and the study stays quiet at the end of the day. One palette, carried through every room.',
+    realizationBg:
+      'Проектирахме и изпълнихме интериора изцяло — от разпределението и осветлението до мебелите по поръчка, изработени в нашата работилница.',
+    realizationEn:
+      'We designed and delivered the interior in full — from the layout and lighting to the bespoke furniture made in our own workshop.',
   },
 ]
+
+/*
+ * ── FEATURED — the homepage "Избрани проекти" (Selected projects) ─────────
+ * Three projects, each a full-bleed scroll-scrubbed video section (PATTERN B,
+ * the same treatment as the ambient strips — the client specifically wants
+ * this presentation kept) with the project title overlaid and a link to its
+ * /portfolio/<id>/ page. Order here = order on the page.
+ *
+ * VIDEO SLOTS — the client is delivering animated MP4s. Each slot names the
+ * file to DROP INTO assets/videos/ (`src`); until it exists the optimizer
+ * encodes `placeholderSrc` instead and marks the manifest entry
+ * `placeholder`. So the swap is: copy the delivered clip to
+ *     assets/videos/featured-hillside.mp4
+ *     assets/videos/featured-villa-grivitsa.mp4
+ *     assets/videos/featured-house-troyan.mp4
+ * then `npm run optimize:videos` and commit public/videos/ + the manifest.
+ * No config edit needed. If a delivered clip carries a Kling-style watermark,
+ * set its `cropWatermark` to 0.08 (currently set per PLACEHOLDER clip).
+ */
+export const featured = [
+  {
+    id: 'featured-hillside',
+    role: 'featured',
+    project: 'hillside',
+    // DELIVERED 2026-09-16 ("Нели Хил сайд-1.mp4", email "Видео"): 1920×1080,
+    // 60 fps, 15.45 s, H.264, no audio, no watermark — three hard-cut shots
+    // (kitchen → sofa → TV wall), the last with the SEMPLO CONCEPT STORE placard
+    // on the TV (in the render, not an overlay).
+    src: 'featured-hillside.mp4',
+    placeholderSrc: 'kling_20260619_VIDEO_Cinematic__1064_0.mp4', // no longer used — the real clip exists
+    cropWatermark: 0, // clean delivery, full frame (the placeholder needed 0.08)
+    // the camera slides in from off-frame BLACK over the first 11 frames (a
+    // 285px black band down the left edge at frame 0, gone by 0.2s) — and frame
+    // 0 is the poster + the scrub's resting frame, so drop that head
+    trimStart: 0.25,
+    scrubVideo: true,
+  },
+  {
+    id: 'featured-villa-grivitsa',
+    role: 'featured',
+    project: 'villa-grivitsa',
+    src: 'featured-villa-grivitsa.mp4',
+    placeholderSrc: 'semplo-the_living_room.mp4',
+    cropWatermark: 0,
+    scrubVideo: true,
+  },
+  {
+    id: 'featured-house-troyan',
+    role: 'featured',
+    project: 'house-troyan',
+    src: 'featured-house-troyan.mp4',
+    placeholderSrc: 'kling_20260619_VIDEO_A_big_mode_919_0.mp4',
+    cropWatermark: 0.08,
+    scrubVideo: true,
+  },
+]
+
+/*
+ * ── PORTFOLIO — the full-portfolio page + one page per project ─────────────
+ * `path` is the URL root of the generated pages (scripts/build-pages.mjs):
+ *     <path>            the filterable grid of every project above
+ *     <path><id>/       the project's own page (hero slider, meta, text,
+ *                       gallery, 360° block when it has rooms, prev/next)
+ * Deliberately NOT /projects/: that prefix already serves the committed media
+ * (public/projects/<id>/…), the Vercel cache rule gives it a 30-day max-age
+ * (fatal for HTML), and the retired WordPress site used /projects/ too — the
+ * e2e suite treats links to that path as legacy 404s.
+ * `heroFrames` — how many gallery photos the detail hero slider shows (the
+ * full gallery follows below, so the slider stays light).
+ */
+export const portfolio = {
+  path: '/portfolio/',
+  heroFrames: 8,
+  categories: ['apartment', 'house', 'commercial'],
+}
 
 /*
  * Short statement blocks between the media. `bg`/`en` heading, `bodyBg`/`bodyEn`
@@ -460,22 +750,65 @@ export const ui = {
     toDark: ['Тъмен режим', 'Dark mode'],
     toLight: ['Светъл режим', 'Light mode'],
   },
+  // ── homepage "Избрани проекти" — three featured video sections (see `featured`) ──
   projects: {
-    eyebrow: ['Избрани проекти', 'Selected work'],
-    title: ['Завършени интериори.', 'Finished interiors.'],
-    view: ['Разгледай', 'View project'],
-    close: ['Затвори', 'Close'],
-    // detail-overlay tabs (only shown for projects that have `sketches`)
-    tabs: ['Изглед', 'View'], // the tablist's accessible name
-    tabProject: ['Проект', 'Project'], // sketches / plans / visualizations
-    tabGallery: ['Галерия', 'Gallery'], // the finished photography
-    zoomIn: ['Увеличи скицата', 'Zoom the sketch'],
-    zoomOut: ['Намали скицата', 'Zoom back out'],
+    eyebrow: ['Портфолио', 'Portfolio'],
+    title: ['Избрани проекти', 'Selected projects'],
+    view: ['Разгледай проекта', 'View project'], // the link on each featured section
+    more: ['Разгледайте всички проекти', 'View all projects'], // → /portfolio/ (arrow added in CSS)
   },
   pano: {
     badge: ['360°', '360°'],
     hint: ['Влачете, за да разгледате', 'Drag to look around'],
     rooms: ['Изберете стая', 'Choose a room'], // accessible name of the switcher
+  },
+  // ── /portfolio/ + /portfolio/<id>/ (see the `portfolio` export) ──
+  // Section titles agreed with the client 2026-09-16: the homepage keeps
+  // "Избрани проекти / Selected projects", the full portfolio page is
+  // "Интериорни проекти / Interior projects".
+  portfolio: {
+    eyebrow: ['Портфолио', 'Portfolio'],
+    title: ['Интериорни проекти', 'Interior projects'],
+    intro: [
+      'Апартаменти, къщи и търговски пространства — проектирани и изпълнени от SEMPLO DESIGN.',
+      'Apartments, houses and commercial spaces — designed and delivered by SEMPLO DESIGN.',
+    ],
+    filter: ['Филтър по категория', 'Filter by category'], // the row's accessible name
+    all: ['Всички', 'All'],
+    // plural — the filter chips
+    cats: {
+      apartment: ['Апартаменти', 'Apartments'],
+      house: ['Къщи', 'Houses'],
+      commercial: ['Търговски пространства', 'Commercial spaces'],
+    },
+    // singular — the card eyebrow and the detail page's `type` (unless overridden)
+    types: {
+      apartment: ['Апартамент', 'Apartment'],
+      house: ['Къща', 'House'],
+      commercial: ['Търговско пространство', 'Commercial space'],
+    },
+    area: ['{n} кв.м', '{n} m²'], // {n} = the number
+    view: ['Разгледай проекта', 'View project'],
+    empty: ['Все още няма проекти в тази категория.', 'No projects in this category yet.'],
+    // detail page
+    slider: ['Снимки от проекта', 'Project photos'], // the hero carousel's accessible name
+    prev: ['Предишна снимка', 'Previous photo'],
+    next: ['Следваща снимка', 'Next photo'],
+    realization: ['От концепцията до реализацията', 'From concept to realisation'],
+    gallery: ['Галерия', 'Gallery'],
+    pano: ['360° разходка', '360° walkthrough'],
+    other: ['Други проекти', 'Other projects'], // prev/next nav accessible name
+    prevProject: ['Предишен проект', 'Previous project'],
+    nextProject: ['Следващ проект', 'Next project'],
+    allProjects: ['Всички проекти', 'All projects'],
+    ctaTitle: ['Имате подобен проект?', 'Have a project like this?'],
+    ctaText: [
+      'Разкажете ни за пространството — отговаряме в рамките на един работен ден.',
+      'Tell us about the space — we reply within one working day.',
+    ],
+    todo: ['ПРИМЕРЕН ТЕКСТ', 'PLACEHOLDER TEXT'],
+    todoArea: ['ПРИМЕРНА ПЛОЩ', 'PLACEHOLDER AREA'], // area present but unconfirmed
+    todoAreaMissing: ['ПЛОЩ — ОЧАКВА СЕ', 'AREA — PENDING'], // no area supplied yet
   },
   // Real SEMPLO contact details. Phone/email mirror `business` above (which is
   // what the JSON-LD reads) — keep the two in step.
@@ -669,8 +1002,8 @@ export const motion = {
     heroLength: 2.2, // viewport-heights of scroll the PINNED hero scrub occupies
   },
 
-  // ── PATTERN C: frames shown in each gallery card's scroll-linked strip ──
-  stripFrames: 4,
+  // (PATTERN C — the gallery card film strips — was retired 2026-09-16; the
+  // homepage shows three featured scrub-video sections instead, see `featured`.)
 }
 
 /* ── CATALOGUES ────────────────────────────────────────────────────────────

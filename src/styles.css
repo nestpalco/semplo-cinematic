@@ -874,10 +874,102 @@ main {
   position: relative;
   z-index: 1;
   background: var(--paper);
-  padding: clamp(5rem, 14vh, 10rem) var(--gut) clamp(6rem, 16vh, 12rem);
+  /* no side padding: the featured video sections run edge to edge */
+  padding: clamp(5rem, 14vh, 10rem) 0 clamp(6rem, 16vh, 12rem);
 }
 .projects__head {
-  padding: 0 0 clamp(2.5rem, 6vh, 4.5rem);
+  padding: 0 var(--gut) clamp(2.5rem, 6vh, 4.5rem);
+}
+
+/* ── FEATURED project sections (2026-09-16) — three full-bleed scroll-scrubbed
+   clips, each an `.ambient` (same media, parallax, pin + scrub mechanics) that
+   carries the project's category, title and a link to /portfolio/<id>/. The
+   whole section is clickable (.featured__hit); the visible pill is the
+   keyboard/screen-reader link. Text sits over footage → over-media constants. */
+.featured {
+  height: clamp(480px, 84svh, 860px);
+}
+.featured + .featured {
+  margin-top: clamp(0.5rem, 1.5vw, 1rem);
+}
+.featured::after {
+  opacity: 1; /* the generic .ambient rule halves it for caption-less strips */
+  background: linear-gradient(0deg, rgba(18, 16, 13, 0.64) 0%, rgba(18, 16, 13, 0) 58%);
+}
+.featured__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+.featured__cap {
+  right: var(--gut);
+  z-index: 5;
+  gap: 0.75rem;
+  pointer-events: none; /* clicks fall through to .featured__hit … */
+}
+.featured__title {
+  max-width: min(24ch, 100%);
+  font-size: clamp(1.7rem, 3.8vw, 3rem);
+}
+.featured__link {
+  pointer-events: auto; /* … except on the pill itself (keyboard focus target) */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  padding: 0.72rem 1.45rem;
+  border: 1px solid var(--on-media-line);
+  border-radius: 100px;
+  background: rgba(18, 16, 13, 0.24);
+  backdrop-filter: blur(4px);
+  color: var(--on-media);
+  font-size: 0.76rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: background 0.4s var(--ease), color 0.4s var(--ease), border-color 0.4s var(--ease);
+}
+.featured__link::after {
+  content: '→';
+  transition: transform 0.4s var(--ease);
+}
+.featured:hover .featured__link,
+.featured__link:focus-visible {
+  background: var(--on-media);
+  color: var(--on-media-ink);
+  border-color: var(--on-media);
+}
+.featured:hover .featured__link::after {
+  transform: translateX(4px);
+}
+/* "Разгледайте всички проекти →" under the three */
+.projects__more {
+  max-width: 1320px;
+  margin: clamp(2.5rem, 6vh, 4rem) auto 0;
+  padding: 0 var(--gut);
+}
+.projects__more-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.95rem 1.9rem;
+  border: 1px solid var(--ink);
+  border-radius: 100px;
+  color: var(--ink);
+  font-size: 0.85rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: background 0.4s var(--ease), color 0.4s var(--ease);
+}
+.projects__more-link::after {
+  content: '→';
+  transition: transform 0.4s var(--ease);
+}
+.projects__more-link:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+.projects__more-link:hover::after {
+  transform: translateX(4px);
 }
 .projects__head .interlude__inner { max-width: 1320px; }
 .projects__title {
@@ -889,196 +981,8 @@ main {
   line-height: 1.02;
   letter-spacing: -0.018em;
 }
-/* PATTERN C: uniform BIG covers — every card is full-width 16:9 (as large as
-   the old "Living Area" lead card), stacked editorially. Block flow (not grid)
-   so ScrollTrigger can pin each card cleanly via its pin-spacer. */
-.gallery {
-  max-width: 1320px;
-  margin-inline: auto;
-}
-.project + .project {
-  margin-top: clamp(2.2rem, 5vw, 4rem);
-}
-.project {
-  display: block;
-  width: 100%;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.project__media {
-  display: block;
-  position: relative;
-  overflow: hidden;
-  /* capped to ~46vh so the WHOLE card (image + title + meta) fits within the
-     viewport with EXTRA room — the film strip now advances over a wider scroll
-     range (~½ speed, RANGE.card* in motion.js), which needs more head/foot room
-     to keep the card fully visible (no top/bottom clipping) throughout. */
-  height: clamp(280px, 46vh, 480px);
-  background: var(--greige);
-  transition: transform 0.7s var(--ease);
-}
-/* hover scale lives on the WRAPPER — the strip's transform belongs to the
-   motion layer, so CSS must never transition it */
-.project:hover .project__media,
-.project:focus-visible .project__media {
-  transform: scale(1.015);
-}
-/* the film strip: frames side by side; scroll slides it leftward so the
-   visible photo advances rightward. Without the motion layer the strip sits
-   at frame 1 (overflow hidden) — a plain cover. */
-.project__strip {
-  display: flex;
-  height: 100%;
-  will-change: transform;
-}
-.project__strip img {
-  flex: 0 0 100%;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-/* ── MOBILE strips: STEPPED advance (motion.js adds .is-stepped and writes
-      --frame). On touch the strip moves a WHOLE frame at a time and CSS glides
-      it, instead of GSAP writing a transform every scroll pixel — see the
-      mobileCard() note in motion.js for why. Desktop never gets this rule, so
-      its per-pixel scrub is untouched. ── */
-.project.is-stepped .project__strip {
-  transform: translateX(calc(var(--frame, 0) * -100%));
-  transition: transform 0.62s var(--ease);
-}
-/* caption chip — slides up over the photo on hover */
-.project__view {
-  position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  z-index: 2;
-  padding: 0.5rem 1.05rem;
-  border-radius: 100px;
-  /* a cream chip on a photograph — constant in both themes */
-  background: rgba(250, 248, 244, 0.82);
-  backdrop-filter: blur(6px);
-  color: var(--on-media-ink);
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.45s var(--ease), transform 0.45s var(--ease);
-}
-.project:hover .project__view,
-.project:focus-visible .project__view {
-  opacity: 1;
-  transform: none;
-}
-.project__meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.1rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.5s var(--ease);
-}
-.project:hover .project__meta,
-.project:focus-visible .project__meta { border-color: var(--line); }
-.project__title {
-  font-family: var(--serif);
-  font-size: clamp(1.2rem, 2vw, 1.7rem);
-  letter-spacing: -0.01em;
-}
-.project__sub {
-  font-size: 0.76rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  white-space: nowrap;
-}
-
-/* ── Project detail overlay — edge-to-edge photo sequence ── */
-.pdetail {
-  position: fixed;
-  inset: 0;
-  z-index: 300;
-  background: var(--paper);
-  opacity: 0;
-  transition: opacity 0.4s var(--ease);
-}
-.pdetail.is-open { opacity: 1; }
-.pdetail__scroll {
-  position: absolute;
-  inset: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  outline: none;
-  -webkit-overflow-scrolling: touch;
-}
-.pdetail__close {
-  position: fixed;
-  top: clamp(1rem, 3vw, 1.6rem);
-  right: clamp(1rem, 3vw, 1.6rem);
-  z-index: 4; /* above the sticky tab bar (z 3) */
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--chip-bg);
-  backdrop-filter: blur(6px);
-  color: var(--ink);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background 0.3s var(--ease);
-}
-.pdetail__close:hover { background: var(--greige); }
-.pdetail__head {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: clamp(6rem, 16vh, 10rem) var(--gut) clamp(2.5rem, 7vh, 5rem);
-}
-.pdetail__meta {
-  margin: 0 0 1rem;
-  font-size: 0.76rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--gold-ink);
-}
-.pdetail__title {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 400;
-  font-size: clamp(2.2rem, 6vw, 4.4rem);
-  line-height: 1.02;
-  letter-spacing: -0.02em;
-}
-.pdetail__blurb {
-  margin: 1.6rem 0 0;
-  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
-  color: var(--ink-soft);
-  max-width: 54ch;
-}
-.pdetail__seq {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.5rem, 2vw, 1.5rem);
-  padding-bottom: clamp(4rem, 12vh, 8rem);
-}
-.pdetail__frame {
-  margin: 0;
-  overflow: hidden; /* crops the motion layer's gentle frame parallax */
-}
-.pdetail__frame img {
-  width: 100%;
-  height: auto;
-  max-height: 92svh;
-  object-fit: cover;
-}
+/* (the project detail overlay was retired 2026-09-16 — projects have their
+   own pages now; only its 360° chrome below is still used, by those pages) */
 
 /* ── 360° panorama block (Three.js viewer, lazy per project) ── */
 .pdetail__pano {
@@ -1199,114 +1103,6 @@ main {
   border-color: rgba(250, 248, 244, 0.92);
   color: var(--on-media-ink);
   cursor: default;
-}
-
-/* ── Проект / Галерия tab bar (only for projects with sketches) ──
-   Sticky, so the switch is reachable anywhere in the sequence; frosted paper
-   so imagery scrolls under it legibly. Same uppercase-letterspaced voice as
-   the meta line; the active tab carries a gold underline. */
-.pdetail__tabs[hidden] {
-  display: none; /* same [hidden]-vs-display:flex guard as the panels */
-}
-.pdetail__tabs {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  display: flex;
-  justify-content: center;
-  gap: clamp(1.5rem, 5vw, 3.5rem);
-  padding: 0 var(--gut);
-  background: var(--nav-bar-bg);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-}
-.pdetail__tab {
-  appearance: none;
-  border: 0;
-  background: none;
-  padding: 1.05rem 0.2rem 0.95rem;
-  font-family: var(--sans);
-  font-size: 0.78rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px; /* the underline sits ON the bar's hairline */
-  transition: color 0.3s var(--ease), border-color 0.3s var(--ease);
-}
-.pdetail__tab:hover {
-  color: var(--ink);
-}
-.pdetail__tab.is-active {
-  color: var(--ink);
-  border-bottom-color: var(--gold);
-}
-
-/* switchable panels: the photo sequence's own rhythm, per view */
-.pdetail__panel {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(0.5rem, 2vw, 1.5rem);
-}
-.pdetail__panel[hidden] {
-  display: none; /* author display:flex would otherwise beat the UA's [hidden] */
-}
-/* a fresh panel fades in with the site's reveal ease (opacity only — a
-   transform here would skew the parallax measurements taken at open) */
-body.motion .pdetail__panel {
-  animation: pdetail-panel-in 0.55s var(--ease) both;
-}
-@keyframes pdetail-panel-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-/* ── sketches (Проект): drawings, not photographs ──
-   Never cropped (mixed aspect ratios, portrait included), centred on a quiet
-   surface, click-to-zoom to the 3000px variant for the fine linework. */
-.pdetail__sketch {
-  margin: 0;
-  background: var(--wash-neutral);
-  padding: clamp(1rem, 3.5vw, 2.75rem);
-}
-.pdetail__sketch-btn {
-  appearance: none;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  /* reserve space BEFORE the drawing loads: without it, the instant (reduced-
-     motion) tab-switch scroll clamps short because the panel is ~0px tall
-     until the lazy images arrive — and photos popping in stop jolting layout */
-  min-height: clamp(240px, 42svh, 520px);
-  max-height: 88svh;
-  border: 0;
-  padding: 0;
-  background: none;
-  cursor: zoom-in;
-}
-.pdetail__sketch-btn img {
-  display: block;
-  margin: 0 auto;
-  max-width: 100%;
-  max-height: 88svh;
-  width: auto;
-  height: auto;
-  box-shadow: var(--shadow-card);
-}
-/* zoomed: the frame becomes a pannable window onto the full-size drawing.
-   display:block, not the grid — centering + overflow makes the top-left of
-   content larger than its container unreachable */
-.pdetail__sketch.is-zoomed .pdetail__sketch-btn {
-  display: block;
-  overflow: auto;
-  cursor: zoom-out;
-  -webkit-overflow-scrolling: touch;
-}
-.pdetail__sketch.is-zoomed .pdetail__sketch-btn img {
-  max-width: none;
-  max-height: none;
-  margin: 0;
 }
 
 /* ══════════════════ No-JS poster gallery ══════════════════ */
@@ -2126,8 +1922,6 @@ a.foot__credit {
 
 /* ──────────────────────────── Responsive ──────────────────────────── */
 @media (max-width: 820px) {
-  .gallery { gap: 2.5rem; }
-  .project__media { height: auto; aspect-ratio: 4 / 3; } /* taller crop reads better on phones */
 }
 /* external nav link (Магазин → semplohome.com) gets a small ↗ marker */
 .nav__ext::before {
@@ -2213,9 +2007,6 @@ body.nav-open .nav__burger span:nth-child(3) { transform: translateY(-6px) rotat
   }
   .nav__links a:last-child { border-bottom: 0; }
   .nav__links a::after { display: none; } /* no underline-slide in the panel */
-  /* project card meta stacks on very small screens */
-  .project__meta { flex-direction: column; gap: 0.3rem; }
-  .project__sub { white-space: normal; }
 }
 
 /* ─────────────── Reduced motion: posters, no drift, no reveals ─────────────── */

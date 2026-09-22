@@ -31,7 +31,9 @@ import { fileURLToPath } from 'node:url'
 import {
   hero,
   ambients,
+  featured,
   projects,
+  portfolio,
   catalogs,
   strips,
 } from '../src/sections.config.js'
@@ -47,6 +49,15 @@ const PROJECT_VARIANTS = {
   panoramas: [4096, 2048],
 }
 
+// the portfolio schema (mirrors the PORTFOLIO PAGE FIELDS note in config)
+const PORTFOLIO_CATS = new Set(['apartment', 'house', 'commercial'])
+const PORTFOLIO_TEXT = [
+  'titleBg', 'titleEn', 'locationBg', 'locationEn', 'cardBg', 'cardEn',
+  'conceptTitleBg', 'conceptTitleEn', 'conceptBg', 'conceptEn',
+  'realizationBg', 'realizationEn',
+]
+const PORTFOLIO_TODO = new Set(['card', 'concept', 'realization', 'area'])
+
 const problems = []
 const miss = (rel, why) => problems.push(`${rel}  (${why})`)
 
@@ -57,12 +68,15 @@ try {
 } catch {
   problems.push('src/videos.manifest.json missing/unreadable (run npm run optimize:videos)')
 }
-for (const slot of [hero, ...(ambients || [])].filter(Boolean)) {
+for (const slot of [hero, ...(ambients || []), ...(featured || [])].filter(Boolean)) {
   const m = vmanifest[slot.id]
   if (!m) {
     problems.push(`video slot "${slot.id}" has no entry in src/videos.manifest.json`)
     continue
   }
+  // a featured slot must point at a configured project (its title + link)
+  if (slot.project && !projects.some((p) => p.id === slot.project))
+    problems.push(`featured slot "${slot.id}" names project "${slot.project}", which is not in \`projects\``)
   for (const key of ['desktop', 'mobile', 'poster', 'posterMobile', 'posterFirst']) {
     if (!m[key]) continue
     const rel = `public/videos/${m[key]}`
@@ -94,9 +108,34 @@ for (const p of projects) {
         const rel = `public/projects/${p.id}/${type}/${name}-${w}.webp`
         if (!existsSync(resolve(ROOT, rel))) miss(rel, `${p.id} ${type}`)
       }
+      // the generator needs every image's size to reserve its box (no CLS)
+      const d = m.dims?.[`${type}/${name}`]
+      if (!(Array.isArray(d) && d[0] > 0 && d[1] > 0))
+        problems.push(`project "${p.id}": no dims recorded for ${type}/${name} (run npm run optimize:projects)`)
     }
   }
+
+  /* ── portfolio page fields (see the PORTFOLIO PAGE FIELDS note in config) ──
+   * The generated /portfolio/<id>/ page bakes these into static HTML, so a
+   * missing one is a blank heading or an empty <title> on the live site. */
+  if (!PORTFOLIO_CATS.has(p.category))
+    problems.push(
+      `project "${p.id}": category "${p.category}" is not one of ${[...PORTFOLIO_CATS].join(' | ')}`
+    )
+  for (const k of PORTFOLIO_TEXT)
+    if (!String(p[k] ?? '').trim()) problems.push(`project "${p.id}": portfolio field "${k}" is missing`)
+  if (p.area != null && !(Number(p.area) > 0))
+    problems.push(`project "${p.id}": area must be a positive number of square metres (or omitted)`)
+  if (p.cover && !(m.gallery || []).includes(p.cover))
+    problems.push(`project "${p.id}": cover "${p.cover}" is not in its gallery`)
+  for (const k of p.todo || [])
+    if (!PORTFOLIO_TODO.has(k))
+      problems.push(`project "${p.id}": unknown todo group "${k}" (${[...PORTFOLIO_TODO].join(' | ')})`)
+  const og = `public/projects/${p.id}/og.jpg`
+  if (!existsSync(resolve(ROOT, og))) miss(og, `${p.id} social card for /portfolio/${p.id}/`)
 }
+for (const c of portfolio.categories)
+  if (!PORTFOLIO_CATS.has(c)) problems.push(`portfolio.categories: unknown category "${c}"`)
 
 /* ── catalogues, strip frames, social card ── */
 for (const c of catalogs) {
@@ -118,4 +157,6 @@ if (problems.length) {
   )
   process.exit(1)
 }
-console.log('✓ config ↔ assets contract holds (videos, projects, catalogues, strips, social card)')
+console.log(
+  '✓ config ↔ assets contract holds (videos, projects + portfolio fields, catalogues, strips, social cards)'
+)

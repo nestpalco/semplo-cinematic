@@ -1,0 +1,94 @@
+{
+  "source": "_source/presentation.pdf (gitignored; original in the studio's email/Drive)",
+  "gallery": {
+    "01.jpg": {
+      "pdf_page": 9,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "02.jpg": {
+      "pdf_page": 5,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "03.jpg": {
+      "pdf_page": 6,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "04.jpg": {
+      "pdf_page": 4,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "05.jpg": {
+      "pdf_page": 8,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "06.jpg": {
+      "pdf_page": 12,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "07.jpg": {
+      "pdf_page": 14,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "08.jpg": {
+      "pdf_page": 15,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "09.jpg": {
+      "pdf_page": 16,
+      "px": [
+        3456,
+        1944
+      ]
+    },
+    "10.jpg": {
+      "pdf_page": 17,
+      "px": [
+        2160,
+        3840
+      ]
+    }
+  },
+  "sketches": {},
+  "materials": {
+    "01.jpg": {
+      "pdf_page": 2,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x"
+    },
+    "02.jpg": {
+      "pdf_page": 3,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x"
+    }
+  }
+}

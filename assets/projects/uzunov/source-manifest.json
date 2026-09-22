@@ -1,0 +1,104 @@
+{
+  "source": "_source/presentation.pdf (gitignored; original in the studio's email/Drive)",
+  "gallery": {
+    "01.jpg": {
+      "pdf_page": 9,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "02.jpg": {
+      "pdf_page": 10,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "03.jpg": {
+      "pdf_page": 11,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "04.jpg": {
+      "pdf_page": 13,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "05.jpg": {
+      "pdf_page": 15,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "06.jpg": {
+      "pdf_page": 17,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "07.jpg": {
+      "pdf_page": 18,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "08.jpg": {
+      "pdf_page": 20,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "09.jpg": {
+      "pdf_page": 14,
+      "px": [
+        1600,
+        1200
+      ]
+    }
+  },
+  "sketches": {
+    "01.jpg": {
+      "pdf_page": 6,
+      "px": [
+        795,
+        802
+      ],
+      "how": "embedded image at native res (low)"
+    }
+  },
+  "materials": {
+    "01.jpg": {
+      "pdf_page": 3,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x"
+    },
+    "02.jpg": {
+      "pdf_page": 4,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x"
+    },
+    "03.jpg": {
+      "pdf_page": 5,
+      "px": [
+        2880,
+        1620
+      ],
+      "how": "page render 2x"
+    }
+  }
+}

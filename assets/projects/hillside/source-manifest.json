@@ -1,0 +1,105 @@
+{
+  "source": "_source/presentation.pdf (gitignored; original in the studio's email/Drive)",
+  "gallery": {
+    "01.jpg": {
+      "pdf_page": 17,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "02.jpg": {
+      "pdf_page": 18,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "03.jpg": {
+      "pdf_page": 2,
+      "px": [
+        2304,
+        1296
+      ]
+    },
+    "04.jpg": {
+      "pdf_page": 3,
+      "px": [
+        2304,
+        1296
+      ]
+    },
+    "05.jpg": {
+      "pdf_page": 4,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "06.jpg": {
+      "pdf_page": 5,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "07.jpg": {
+      "pdf_page": 6,
+      "px": [
+        1600,
+        1200
+      ]
+    },
+    "08.jpg": {
+      "pdf_page": 13,
+      "px": [
+        2304,
+        1296
+      ]
+    },
+    "09.jpg": {
+      "pdf_page": 9,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "10.jpg": {
+      "pdf_page": 11,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "11.jpg": {
+      "pdf_page": 10,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "12.jpg": {
+      "pdf_page": 22,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "13.jpg": {
+      "pdf_page": 24,
+      "px": [
+        1920,
+        1080
+      ]
+    },
+    "14.jpg": {
+      "pdf_page": 26,
+      "px": [
+        1920,
+        1080
+      ]
+    }
+  },
+  "sketches": {},
+  "materials": {}
+}

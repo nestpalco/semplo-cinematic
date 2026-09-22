@@ -2,7 +2,7 @@ import gsap from 'gsap'
 import ScrollTrigger from 'gsap/ScrollTrigger'
 import { SplitText } from 'gsap/SplitText'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
-import { hero, ambients, motion } from './sections.config.js'
+import { hero, ambients, featured, motion } from './sections.config.js'
 import manifest from './videos.manifest.json'
 
 gsap.registerPlugin(ScrollTrigger, SplitText, ScrollToPlugin)
@@ -17,13 +17,13 @@ gsap.registerPlugin(ScrollTrigger, SplitText, ScrollToPlugin)
  *   (the GSAP-recommended way — never two pins on one element).
  *     PATTERN A  pinText   statement bg parallax (+ any photo row) scrubbed;
  *                          title/body do a masked reveal on pin-enter.
- *     PATTERN B  pinVideo  scroll drives video.currentTime (hero + ambients).
- *     PATTERN C  pinCard   the card's film strip advances rightward.
+ *     PATTERN B  pinVideo  scroll drives video.currentTime (hero + ambients +
+ *                          the three FEATURED project clips).
+ *     (PATTERN C, the card film strips, was retired 2026-09-16 with the cards.)
  *
  *   On MOBILE / reduced-motion: NO pins, native scroll unchanged — the same
  *   effects run position-linked (nativeStatement / nativeAmbient) and videos
- *   autoplay (main.js). The card film strips DO advance on mobile, but stepped a
- *   whole frame at a time rather than scrubbed per pixel — see mobileCard().
+ *   autoplay (main.js).
  *
  *   Titles reveal via maskReveal (SplitText that auto-reverts on complete), so
  *   between reveals the title is plain text and the bilingual textContent swap
@@ -65,7 +65,7 @@ const DRIFT = +(1 / SPEED.distance).toFixed(4)
 /* Pin lengths in viewport-heights — deliberately TIGHT so the page doesn't get
  * exhausting; SPEED.distance stretches them. The effect fills EFFECT_END of the
  * pin, then it holds briefly and releases. Retune the BASE values. */
-const PIN_BASE = { hero: 1.6, text: 1.0, video: 1.2, card: 0.9, strip: 1.1 }
+const PIN_BASE = { hero: 1.6, text: 1.0, video: 1.2, strip: 1.1 }
 const PIN = Object.fromEntries(
   Object.entries(PIN_BASE).map(([k, v]) => [k, +(v * SPEED.distance).toFixed(3)])
 )
@@ -75,7 +75,7 @@ const EFFECT_END = 0.85
  * family → it reverts to native position-linked scroll (shorter page). The
  * scroll-video pins (hero + ambients) always pin — that IS the furnishing
  * moment. Recommended first un-pins if the page feels long: card, then text. */
-const PIN_ENABLED = { text: false, card: false }
+const PIN_ENABLED = { text: false }
 
 const SMOOTH = +(motion.scrub.smooth * SPEED.scrub).toFixed(3) // scrub catch-up (s)
 const REVEAL_DUR = +(R.duration * SPEED.reveal).toFixed(3)
@@ -90,21 +90,10 @@ const MASK_DUR = +(1.0 * SPEED.reveal).toFixed(3)
  *     a COMPUTED '+=' end instead, so the 15% is exact there too rather than
  *     approximate — see spanEnd(). */
 const topPct = (v) => `top ${+v.toFixed(2)}%`
-const CARD_END = 3 // strip finishes with the card's top just under the nav
-const CARD_SPAN = 43 // base vh of scroll the desktop strip advance occupies
-const MCARD_START = 88 // mobile: start as the card's top enters from below
-const MCARD_SPAN_VH = 0.68 // mobile: + the card's own height (see spanEnd)
 const ROW_SPAN_VH = 0.52 // photo rows: 'top 82%' → 'bottom 30%' + own height
 const RANGE = {
   reveal: 'top 80%',
   rowStart: 'top 82%',
-  // Card film strip — base span 43vh ('top 46%' → 'top 3%'), × distance. To keep
-  // the WHOLE card fully in view across that range the media is capped at 46vh
-  // in styles.css, so the card (~54vh) keeps the head/foot room it needs.
-  // Frame 1 still holds through entry; the scrub reverses.
-  cardStart: topPct(CARD_END + CARD_SPAN * SPEED.distance),
-  cardEnd: topPct(CARD_END),
-  mCardStart: topPct(MCARD_START),
 }
 /* exact '+=' end: a viewport fraction plus the element's own height, scaled. */
 const spanEnd = (el, vhPart) => () =>
@@ -112,13 +101,13 @@ const spanEnd = (el, vhPart) => () =>
 
 const REST_SEL =
   '.interlude__eyebrow, .interlude__body, .interlude__btn, .studio__stat, .studio__media,' +
-  '.projects__eyebrow, .cta__eyebrow, .cta__text, .cta__btn, .cta__contacts,' +
+  '.projects__eyebrow, .projects__more-link, .cta__eyebrow, .cta__text, .cta__btn, .cta__contacts,' +
   '.reviews__eyebrow, .reviews__agg, .review'
 /* Sections that get the statement treatment (masked title reveal + staggered
  * rest) but are NOT `.interlude[data-alive]`: the projects header, the contact
  * block, and the reviews section. Listed once, used by both branches of start()
  * so the two can't drift apart. */
-const PLAIN_STATEMENTS = '.projects__head, .cta, .reviews'
+const PLAIN_STATEMENTS = '.projects__head, .projects__more, .cta, .reviews'
 
 const scrubDiag = {}
 window.__semploScrub = () =>
@@ -348,16 +337,6 @@ function pinText(sec) {
   pinCommon(sec, track ? PIN.strip : PIN.text, tl, { onEnter: reveal, onEnterBack: reveal })
 }
 
-function pinCard(card) {
-  const strip = card.querySelector('[data-strip]')
-  const n = strip ? strip.children.length : 0
-  gsap.set(card, { autoAlpha: 1 })
-  const tl = gsap.timeline()
-  if (n > 1) tl.fromTo(strip, { xPercent: 0 }, { xPercent: -100 * (n - 1), ease: 'none', duration: EFFECT_END }, 0)
-  tl.to({}, { duration: n > 1 ? 1 - EFFECT_END : 1 })
-  pinCommon(card, PIN.card, tl)
-}
-
 /* ── NATIVE (mobile / unpinned) builders — position-linked, no pin ─────────── */
 function nativeParallax(sec, els) {
   els.forEach((el) => {
@@ -405,71 +384,6 @@ function nativeStatement(sec) {
   })
   if (fine && display) hoverDrift(display)
 }
-function nativeCard(card) {
-  gsap.set(card, { autoAlpha: 0, y: 36 })
-  ScrollTrigger.create({
-    trigger: card, start: RANGE.reveal, once: true,
-    onEnter: () => gsap.to(card, { autoAlpha: 1, y: 0, duration: REVEAL_DUR, ease: R.ease }),
-  })
-  const strip = card.querySelector('[data-strip]')
-  const n = strip ? strip.children.length : 0
-  if (n > 1)
-    gsap.fromTo(strip, { xPercent: 0 }, {
-      xPercent: -100 * (n - 1), ease: 'none',
-      // trigger on THIS card (not the section) so each advances independently,
-      // only once it's genuinely in view. scrub:true keeps it crisp/1:1 with
-      // scroll — the SLOWDOWN comes from the wider RANGE.card*, not smoothing.
-      scrollTrigger: { trigger: card, start: RANGE.cardStart, end: RANGE.cardEnd, scrub: true },
-    })
-}
-/* ── MOBILE project cards — STEPPED, scroll-linked film strip ───────────────
- * The strips were simply dead on mobile: start() never ran any card handler in
- * the isMobile branch, so every card sat on frame 1.
- *
- * They don't just get nativeCard()'s treatment, though. Continuous per-pixel
- * transform scrubbing is the wrong tool under native touch scrolling: during
- * momentum and rubber-band the browser coalesces scroll updates, so a strip
- * driven a fraction of a frame at a time visibly stutters and can land
- * mid-photo when the finger lifts. So on touch the strip advances a WHOLE FRAME
- * at a time — ScrollTrigger is used only to report progress (cheap and reliable
- * on touch, unlike smooth per-pixel output), the progress is bucketed to a
- * frame index, and CSS transitions the translate (see .project.is-stepped in
- * styles.css). Each advance therefore glides on the compositor no matter how
- * chunky the scroll events were, and a card always rests ON a photo.
- *
- * Still fully scroll-linked and reversible — scroll back up and it steps back —
- * with no pin, no scroll-jacking, and no swipe gesture to fight the page scroll.
- * At most n-1 style writes per card per pass. */
-function mobileCard(card) {
-  gsap.set(card, { autoAlpha: 0, y: 30 })
-  ScrollTrigger.create({
-    trigger: card, start: RANGE.reveal, once: true,
-    onEnter: () => gsap.to(card, { autoAlpha: 1, y: 0, duration: REVEAL_DUR, ease: R.ease }),
-  })
-
-  const strip = card.querySelector('[data-strip]')
-  const n = strip ? strip.children.length : 0
-  if (n < 2) return
-  card.classList.add('is-stepped')
-  let frame = -1
-  const setFrame = (i) => {
-    if (i === frame) return
-    frame = i
-    strip.style.setProperty('--frame', i)
-  }
-  setFrame(0)
-  ScrollTrigger.create({
-    trigger: card,
-    start: RANGE.mCardStart,
-    end: spanEnd(card, MCARD_SPAN_VH),
-    invalidateOnRefresh: true,
-    // n equal buckets across the pass; progress 1 would give n, so clamp
-    onUpdate: (self) => setFrame(Math.min(n - 1, Math.floor(self.progress * n))),
-    onLeave: () => setFrame(n - 1), // rest on the last frame past the card
-    onLeaveBack: () => setFrame(0),
-  })
-}
-
 function nativeAmbient(sec) {
   const cap = sec.querySelector('.ambient__cap')
   if (cap) {
@@ -573,9 +487,7 @@ export async function start() {
       video.addEventListener('play', () => { kb?.kill(); kb = null; gsap.set(video, { scale: 1 }) })
     }
     document.querySelectorAll(`.interlude, ${PLAIN_STATEMENTS}`).forEach(nativeStatement)
-    document.querySelectorAll('[data-ambient]').forEach(nativeAmbient)
-    // PATTERN C project cards — stepped strip advance (see mobileCard)
-    document.querySelectorAll('.project').forEach(mobileCard)
+    document.querySelectorAll('[data-ambient]').forEach(nativeAmbient) // incl. the featured clips
   } else {
     /* DESKTOP — pin every effect section. */
     pinHero()
@@ -583,16 +495,13 @@ export async function start() {
     document.querySelectorAll('.interlude[data-alive]').forEach((sec) =>
       PIN_ENABLED.text ? pinText(sec) : nativeStatement(sec)
     )
-    // Pattern B scrub-video ambients (ambient1, ambient2) — always pin
+    // Pattern B scrub-video ambients (ambient1, ambient2) + the three FEATURED
+    // project clips — always pin
     document.querySelectorAll('[data-ambient]').forEach((sec) => {
-      const cfg = ambients.find((a) => a.id === sec.dataset.id)
+      const cfg = [...ambients, ...featured].find((a) => a.id === sec.dataset.id)
       if (cfg?.scrubVideo) pinVideo(sec, cfg)
       else nativeAmbient(sec) // ambient3 (autoplay loop) stays native
     })
-    // Pattern C project cards
-    document.querySelectorAll('.project').forEach((card) =>
-      PIN_ENABLED.card ? pinCard(card) : nativeCard(card)
-    )
     // Unpinned desktop sections: projects header, reviews, contact (all too tall
     // to pin — the contact block carries the map, the reviews grid is a full band)
     document.querySelectorAll(PLAIN_STATEMENTS).forEach(nativeStatement)
@@ -641,46 +550,145 @@ export async function start() {
   window.addEventListener('load', () => ScrollTrigger.refresh())
 }
 
-/* ── scrollOverlayTo(scroller, y): glide the project overlay's scroller ─────
- * NOT a native smooth scrollTo: the overlay's gallery images fire
- * ScrollTrigger.refresh() as they lazy-load, and each refresh writes the
- * scroller's position once — which cancels a UA smooth scroll mid-flight
- * (observed settling ~400px short on a tab switch). A gsap tween re-writes
- * scrollTop every frame until it lands, so those refreshes can't strand it. */
-export function scrollOverlayTo(scroller, y) {
-  gsap.to(scroller, {
-    duration: 0.8,
-    ease: 'power2.inOut',
-    overwrite: true,
-    scrollTo: { y, autoKill: false },
+/* ═══════════════ PORTFOLIO PAGES (/portfolio/, /portfolio/<id>/) ═══════════════
+ * Entered from src/page.js. Same helpers, same dials, same feel as the
+ * homepage — a statement-style reveal for the headers, a staggered rise for
+ * the cards, the overlay's gentle frame parallax for the gallery. No pins:
+ * these pages are native scroll in every mode.
+ *
+ * html.motion-pending (set by each page's inline boot script) keeps the
+ * reveal targets invisible until the hide() calls below have put the inline
+ * autoAlpha:0 on them — lift() then removes the class and the tweens take
+ * over, so nothing ever flashes visible-then-hidden. */
+const lift = () => document.documentElement.classList.remove('motion-pending')
+
+/* ── UTILITY-PAGE TEMPO ──────────────────────────────────────────────────
+ * The portfolio pages exist to show the work, so the reveal there is quick
+ * polish, not an entrance: shorter tweens, tighter staggers, triggers that
+ * fire as soon as an element's top clears the fold, and no waiting on the
+ * web font beyond a short grace (SplitText re-measures on revert anyway).
+ * The homepage keeps its cinematic SPEED-scaled pacing — none of this
+ * touches start(). */
+const PAGE = {
+  dur: 0.5, // rise-in duration (homepage: ~1.07s)
+  stagger: 0.045,
+  mask: 0.55, // masked title lines (homepage: ~1.27s)
+  maskStagger: 0.06,
+  delay: 0.03,
+  reveal: 'top 92%', // fire early — nothing waits for the visitor to scroll past it
+  fontGrace: 350, // ms to wait for fonts before revealing regardless
+}
+const fontsSoon = () =>
+  Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, PAGE.fontGrace))])
+
+/* masked title reveal + staggered rise of everything else in the section */
+function pageStatement(sec, displaySel, restSel, { delay = PAGE.delay } = {}) {
+  const display = displaySel ? sec.querySelector(displaySel) : null
+  const rest = restSel ? sec.querySelectorAll(restSel) : []
+  if (display) gsap.set(display, { autoAlpha: 0 })
+  if (rest.length) hide(rest)
+  ScrollTrigger.create({
+    trigger: sec, start: PAGE.reveal, once: true,
+    onEnter: () => {
+      if (display) {
+        gsap.set(display, { autoAlpha: 1 })
+        maskReveal(display, { duration: PAGE.mask, stagger: PAGE.maskStagger })
+      }
+      if (rest.length) riseIn(rest, { delay, duration: PAGE.dur, stagger: PAGE.stagger })
+    },
+  })
+  if (fine && display) hoverDrift(display)
+}
+function footReveal() {
+  const foot = document.querySelector('.foot')
+  if (!foot) return
+  gsap.set(foot, { autoAlpha: 0, y: 18 })
+  ScrollTrigger.create({
+    trigger: foot, start: 'top 96%', once: true,
+    onEnter: () => gsap.to(foot, { autoAlpha: 1, y: 0, duration: PAGE.dur, ease: R.ease }),
   })
 }
-
-/* ── refreshOverlay(): re-measure overlay ScrollTriggers after a tab switch ──
- * A hidden tabpanel measures as zero-height, so the gallery's frame-parallax
- * triggers hold stale positions after Проект ⇄ Галерия switches — main.js
- * calls this once the panels' hidden state has been swapped. */
-export function refreshOverlay() {
-  ScrollTrigger.refresh()
-}
-
-/* ── overlayMotion(scrollEl): motion inside an opened project overlay ─────── */
-export function overlayMotion(scrollEl) {
-  const ctx = gsap.context(() => {
-    const head = scrollEl.querySelectorAll('.pdetail__head > *')
-    hide(head)
-    riseIn(head, { delay: 0.15 })
-    const fp = +(5 * DRIFT).toFixed(3) // fixed window → slow it by travel
-    scrollEl.querySelectorAll('.pdetail__frame img').forEach((img) => {
-      gsap.fromTo(img, { yPercent: -fp, scale: 1.12 }, {
-        yPercent: fp, scale: 1.12, ease: 'none',
-        scrollTrigger: {
-          scroller: scrollEl, trigger: img.parentElement,
-          start: 'top bottom', end: 'bottom top', scrub: SMOOTH, invalidateOnRefresh: true,
-        },
+function magnetic(sel) {
+  if (!fine) return
+  document.querySelectorAll(sel).forEach((btn) => {
+    btn.addEventListener('mousemove', (e) => {
+      const r = btn.getBoundingClientRect()
+      gsap.to(btn, {
+        x: ((e.clientX - (r.left + r.width / 2)) / r.width) * 10,
+        y: ((e.clientY - (r.top + r.height / 2)) / r.height) * 6,
+        duration: 0.4, ease: 'power2.out',
       })
-      if (!img.complete) img.addEventListener('load', () => ScrollTrigger.refresh(), { once: true })
     })
+    btn.addEventListener('mouseleave', () => gsap.to(btn, { x: 0, y: 0, duration: 0.6, ease: 'power3.out' }))
   })
-  return () => ctx.revert()
 }
+
+/* ── /portfolio/ — header statement, filter row, staggered card grid ────── */
+export async function startPortfolio() {
+  await fontsSoon()
+  const head = document.querySelector('.pf-head')
+  if (head) pageStatement(head, '.pf-head__title', '.pf-head__eyebrow, .pf-head__intro')
+  const filter = document.querySelector('.pf-filter')
+  if (filter) {
+    hide(filter)
+    ScrollTrigger.create({
+      trigger: filter, start: PAGE.reveal, once: true,
+      onEnter: () => riseIn(filter, { delay: 0.12, duration: PAGE.dur }),
+    })
+  }
+  const cards = gsap.utils.toArray('.pcard')
+  if (cards.length) {
+    gsap.set(cards, { autoAlpha: 0, y: 24 })
+    ScrollTrigger.batch(cards, {
+      start: PAGE.reveal, once: true,
+      onEnter: (els) => riseIn(els, { duration: PAGE.dur, stagger: PAGE.stagger }),
+    })
+    // a filter pick re-flows the grid (cards hide, others move up): re-measure
+    // at once so a card pulled into view gets its rise-in now, not on the next
+    // scroll — and one already revealed keeps its inline autoAlpha:1
+    document.addEventListener('semplo:filter', () => ScrollTrigger.refresh())
+  }
+  footReveal()
+  lift()
+  window.addEventListener('load', () => ScrollTrigger.refresh())
+}
+
+/* ── /portfolio/<id>/ — hero copy on load, statements, gallery parallax ─── */
+export async function startProject() {
+  await fontsSoon()
+  /* everything that must be hidden BEFORE the pending class is lifted */
+  const heroBits = gsap.utils.toArray('.pj-hero__eyebrow, .pj-hero__title, .pj-hero__ctrl')
+  hide(heroBits)
+  const intro = document.querySelector('.pj-intro')
+  if (intro) pageStatement(intro, null, '.pj-meta, .pj-text__col')
+  const pano = document.querySelector('.pj-pano')
+  if (pano) pageStatement(pano, '.pj-h2', null)
+  const nav = document.querySelector('.pj-nav')
+  if (nav) pageStatement(nav, null, '.pj-nav__link, .pj-nav__all', { delay: 0 })
+  const cta = document.querySelector('.pj-cta')
+  if (cta) pageStatement(cta, '.pj-cta__title', '.pj-cta__eyebrow, .pj-cta__text, .cta__btn')
+  footReveal()
+  lift()
+
+  /* hero copy rises on load — the photo is already there, so no wait */
+  riseIn(heroBits, { delay: 0.08, duration: PAGE.dur, stagger: 0.08 })
+  const title = document.querySelector('.pj-hero__title')
+  if (title) hoverDrift(title)
+
+  /* gallery frames: the overlay's gentle parallax, against the window */
+  const fp = +(5 * DRIFT).toFixed(3) // fixed window → slow it by travel
+  document.querySelectorAll('.pj-frame img').forEach((img) => {
+    gsap.fromTo(img, { yPercent: -fp, scale: 1.12 }, {
+      yPercent: fp, scale: 1.12, ease: 'none',
+      scrollTrigger: {
+        trigger: img.parentElement,
+        start: 'top bottom', end: 'bottom top', scrub: SMOOTH, invalidateOnRefresh: true,
+      },
+    })
+    if (!img.complete) img.addEventListener('load', lazyRefresh, { once: true })
+  })
+
+  magnetic('.pj-cta .cta__btn')
+  window.addEventListener('load', () => ScrollTrigger.refresh())
+}
+

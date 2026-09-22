@@ -79,5 +79,69 @@
       "poster": 19712,
       "posterMobile": 9710
     }
+  },
+  "featured-hillside": {
+    "role": "ambient",
+    "trimStart": 0.25,
+    "scrub": true,
+    "desktop": "featured-hillside-1280.mp4",
+    "mobile": "featured-hillside-720.mp4",
+    "poster": "featured-hillside-poster.webp",
+    "posterMobile": "featured-hillside-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 720,
+    "aspect": 1.7778,
+    "duration": 15.2,
+    "fps": 30,
+    "sourceFps": 60,
+    "bytes": {
+      "desktop": 5864547,
+      "mobile": 591508,
+      "poster": 14106,
+      "posterMobile": 6416
+    }
+  },
+  "featured-villa-grivitsa": {
+    "role": "ambient",
+    "placeholder": "semplo-the_living_room.mp4",
+    "scrub": true,
+    "desktop": "featured-villa-grivitsa-1280.mp4",
+    "mobile": "featured-villa-grivitsa-720.mp4",
+    "poster": "featured-villa-grivitsa-poster.webp",
+    "posterMobile": "featured-villa-grivitsa-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 720,
+    "aspect": 1.7778,
+    "duration": 5,
+    "fps": 30,
+    "bytes": {
+      "desktop": 2496933,
+      "mobile": 351464,
+      "poster": 73998,
+      "posterMobile": 33682
+    }
+  },
+  "featured-house-troyan": {
+    "role": "ambient",
+    "placeholder": "kling_20260619_VIDEO_A_big_mode_919_0.mp4",
+    "scrub": true,
+    "desktop": "featured-house-troyan-1280.mp4",
+    "mobile": "featured-house-troyan-720.mp4",
+    "poster": "featured-house-troyan-poster.webp",
+    "posterMobile": "featured-house-troyan-poster-720.webp",
+    "posterFrame": "first",
+    "width": 1280,
+    "height": 1176,
+    "aspect": 1.0884,
+    "duration": 5.042,
+    "fps": 24,
+    "bytes": {
+      "desktop": 2036911,
+      "mobile": 112488,
+      "poster": 37440,
+      "posterMobile": 18426
+    }
   }
 }

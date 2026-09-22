@@ -33,6 +33,10 @@ import {
  * ────────────────────────────────────────────────────────────────────────── */
 
 export function createPano(stage, { src, scroller, scrollYawDeg = 70, autoYaw = true }) {
+  // `scroller` is the overlay's scroll box on the homepage, or `window` on a
+  // /portfolio/<id>/ page (where the block sits in normal document flow)
+  const isWindow = scroller === window
+  const scrollerHeight = () => (isWindow ? window.innerHeight : scroller.clientHeight)
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: 'low-power' })
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2))
 
@@ -98,7 +102,7 @@ export function createPano(stage, { src, scroller, scrollYawDeg = 70, autoYaw = 
   const onScroll = () => {
     if (!autoYaw) return
     const r = stage.getBoundingClientRect()
-    const vh = scroller.clientHeight
+    const vh = scrollerHeight()
     const p = MathUtils.clamp((vh - r.top) / (vh + r.height), 0, 1)
     tScrollYaw = (p - 0.5) * scrollYawDeg
   }
@@ -139,7 +143,7 @@ export function createPano(stage, { src, scroller, scrollYawDeg = 70, autoYaw = 
       visible = e.isIntersecting
       if (visible && !raf) loop()
     },
-    { root: scroller, threshold: 0.05 }
+    { root: isWindow ? null : scroller, threshold: 0.05 }
   )
   io.observe(stage)
   onScroll()

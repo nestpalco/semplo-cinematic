@@ -50,6 +50,12 @@ const PROFILES = {
   ambient: { desktop: { maxSide: 1280, gop: 48, crf: 25 }, mobile: { maxSide: 720, gop: 48, crf: 29 } },
 }
 const POSTER_Q = 80
+// Sources above this frame rate are resampled down to it. The scrub profile
+// keys every 3 frames — at 60 fps that is 20 keyframes/s, twice what the
+// 0.68 s scrub smoothing can use, and the file doubles for nothing (the HILL
+// SIDE delivery came in at 60 fps: 8.8 MB as-is, ~half at 30). Forward
+// playback on mobile does not need 60 fps either.
+const FPS_CAP = 30
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
 const MB = (b) => (b / 1024 / 1024).toFixed(2) + ' MB'
@@ -84,8 +90,9 @@ function probe(file) {
 
 // crop = fraction of HEIGHT trimmed off the bottom (watermark), then scale the
 // long side to maxSide. Both crop + scale keep dimensions even (yuv420p needs it).
-function vf(maxSide, crop) {
+function vf(maxSide, crop, fps = 0) {
   const chain = []
+  if (fps > 0) chain.push(`fps=${fps}`) // cap a 60 fps delivery (see FPS_CAP)
   if (crop > 0) chain.push(`crop=iw:trunc(ih*${(1 - crop).toFixed(4)}/2)*2:0:0`)
   chain.push(
     `scale='if(gt(iw,ih),${maxSide},-2)':'if(gt(iw,ih),-2,${maxSide})':flags=lanczos`
@@ -93,11 +100,15 @@ function vf(maxSide, crop) {
   return chain.join(',')
 }
 
-async function encode(input, output, { maxSide, gop, crf }, crop) {
+// trimStart (seconds) drops the head of the source — for a delivered clip whose
+// opening frames are unusable (e.g. the camera still revealing off-frame black).
+// Applied as an INPUT seek, so timestamps restart at 0 and the poster / scrub
+// duration all refer to the trimmed clip.
+async function encode(input, output, { maxSide, gop, crf }, crop, trimStart = 0, fps = 0) {
   run(FFMPEG, [
-    '-y', '-i', input,
+    '-y', ...(trimStart > 0 ? ['-ss', String(trimStart)] : []), '-i', input,
     '-an', // drop audio — clips are muted
-    '-vf', vf(maxSide, crop),
+    '-vf', vf(maxSide, crop, fps),
     '-c:v', 'libx264',
     '-profile:v', 'high',
     '-pix_fmt', 'yuv420p',
@@ -114,8 +125,9 @@ async function encode(input, output, { maxSide, gop, crf }, crop) {
 
 // frame: 'first' (default) or 'last'. 'last' seeks to just before the end so the
 // poster is the final, settled frame (the furnished room for the hero).
-async function poster(input, output, maxSide, crop, frame, duration) {
-  const seek = frame === 'last' ? ['-ss', String(Math.max(0, duration - 0.1))] : []
+async function poster(input, output, maxSide, crop, frame, duration, trimStart = 0) {
+  // `duration` is the TRIMMED length; the seek is into the untrimmed source
+  const seek = ['-ss', String(frame === 'last' ? Math.max(0, trimStart + duration - 0.1) : trimStart)]
   run(FFMPEG, [
     '-y', ...seek, '-i', input,
     '-frames:v', '1',
@@ -132,8 +144,9 @@ async function main() {
   let slots = []
   try {
     const cfg = await import(pathToFileURL(resolve(ROOT, 'src/sections.config.js')).href)
-    // ONE list of every video slot on the page: the hero, then the ambient loops.
-    slots = [cfg.hero, ...(cfg.ambients || [])].filter(Boolean)
+    // ONE list of every video slot on the page: the hero, the ambient loops,
+    // and the three FEATURED project clips (homepage "Избрани проекти").
+    slots = [cfg.hero, ...(cfg.ambients || []), ...(cfg.featured || [])].filter(Boolean)
   } catch (e) {
     console.error('Could not read src/sections.config.js —', e.message)
     process.exit(1)
@@ -148,12 +161,23 @@ async function main() {
   console.log(`\n🎬 Optimizing ${slots.length} video slot(s)…\n`)
 
   for (const v of slots) {
-    const input = resolve(SRC, v.src)
+    let input = resolve(SRC, v.src)
+    // FEATURED slots name the clip the client will deliver (`src`) and a
+    // `placeholderSrc` to encode until it lands — so dropping the real file
+    // into assets/videos/ and re-running this script is the whole swap.
+    let placeholder = false
+    if (!existsSync(input) && v.placeholderSrc && existsSync(resolve(SRC, v.placeholderSrc))) {
+      console.warn(
+        `⚠ ${String(v.id).padEnd(9)} assets/videos/${v.src} not delivered yet — encoding the PLACEHOLDER ${v.placeholderSrc}`
+      )
+      input = resolve(SRC, v.placeholderSrc)
+      placeholder = true
+    }
     if (!existsSync(input)) {
       console.error(`✗ ${String(v.id).padEnd(9)} missing source: assets/videos/${v.src}`)
       continue
     }
-    const role = v.role === 'hero' ? 'hero' : 'ambient'
+    const role = v.role === 'hero' ? 'hero' : 'ambient' // featured clips use the ambient profile
     const prof = structuredClone(PROFILES[role])
     // PATTERN B slots: desktop variant re-encoded with frequent keyframes so
     // scroll-driven seeking is smooth (gop 3 ≈ a keyframe every 0.12s @24fps).
@@ -166,7 +190,10 @@ async function main() {
     // high-res sources that stay crisp at a higher crf (e.g. a 4K master).
     if (v.crf) prof.desktop = { ...prof.desktop, crf: v.crf }
     const crop = v.cropWatermark ?? 0
+    const trim = placeholder ? 0 : Math.max(0, +v.trimStart || 0) // head trim applies to the real clip only
     const meta = probe(input)
+    if (trim) meta.duration = +(meta.duration - trim).toFixed(3)
+    const fpsCap = meta.fps > FPS_CAP + 0.5 ? FPS_CAP : 0
     const rawBytes = (await stat(input)).size
 
     const dside = prof.desktop.maxSide
@@ -175,23 +202,25 @@ async function main() {
     const postFile = `${v.id}-poster.webp`
     const postMobFile = `${v.id}-poster-720.webp`
 
-    const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop)
-    const mobBytes = await encode(input, resolve(OUT, mobFile), prof.mobile, crop)
+    const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop, trim, fpsCap)
+    const mobBytes = await encode(input, resolve(OUT, mobFile), prof.mobile, crop, trim, fpsCap)
     const pf = v.posterFrame === 'last' ? 'last' : 'first'
-    const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration)
-    const postMobBytes = await poster(input, resolve(OUT, postMobFile), prof.mobile.maxSide, crop, pf, meta.duration)
+    const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration, trim)
+    const postMobBytes = await poster(input, resolve(OUT, postMobFile), prof.mobile.maxSide, crop, pf, meta.duration, trim)
     // scrub slots whose poster is the LAST frame also get a FIRST-frame poster —
     // scrub mode starts at frame 0, so its underlay must match frame 0.
     let postFirstFile = null
     if (v.scrubVideo && pf === 'last') {
       postFirstFile = `${v.id}-poster-first.webp`
-      await poster(input, resolve(OUT, postFirstFile), prof.desktop.maxSide, crop, 'first', meta.duration)
+      await poster(input, resolve(OUT, postFirstFile), prof.desktop.maxSide, crop, 'first', meta.duration, trim)
     }
 
     const outMeta = probe(resolve(OUT, deskFile))
 
     manifest[v.id] = {
       role,
+      ...(placeholder ? { placeholder: v.placeholderSrc } : {}), // the real `src` has not landed
+      ...(trim ? { trimStart: trim } : {}), // seconds dropped from the head of the source
       scrub: !!v.scrubVideo, // desktop variant is frequent-keyframe (seekable)
       desktop: deskFile,
       mobile: mobFile,
@@ -203,7 +232,8 @@ async function main() {
       height: outMeta.height,
       aspect: +(outMeta.width / outMeta.height).toFixed(4),
       duration: +meta.duration.toFixed(3),
-      fps: meta.fps,
+      fps: outMeta.fps, // as encoded (a 60 fps source is capped, see FPS_CAP)
+      ...(fpsCap ? { sourceFps: meta.fps } : {}),
       bytes: { desktop: deskBytes, mobile: mobBytes, poster: postBytes, posterMobile: postMobBytes },
     }
 
@@ -217,7 +247,9 @@ async function main() {
       `✓ ${String(v.id).padEnd(9)} ${role.padEnd(7)} ${meta.width}×${meta.height} ${meta.duration.toFixed(1)}s` +
         `  raw ${KB(rawBytes).padStart(8)} → desktop ${KB(deskBytes).padStart(8)} (${pct}%)` +
         `  mobile ${KB(mobBytes).padStart(7)}  poster ${KB(postBytes).padStart(7)} [${pf}]` +
-        (crop ? `  wm-crop ${Math.round(crop * 100)}%` : '')
+        (crop ? `  wm-crop ${Math.round(crop * 100)}%` : '') +
+        (trim ? `  head-trim ${trim}s` : '') +
+        (fpsCap ? `  ${meta.fps}→${fpsCap} fps` : '')
     )
   }
 

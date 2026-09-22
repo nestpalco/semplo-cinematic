@@ -32,3 +32,15 @@ assets/catalogs/pdf-originals/
 .DS_Store
 *.log
 npm-debug.log*
+
+# ── raw client hand-offs (source PDFs / docx / mockups, ~260 MB) ─────────────
+# Collected from the studio's "Презентации за сайт" emails into
+# assets/projects/<id>/_source/. Only the curated gallery/ sketches/ materials/
+# output derived from them belongs in the repo.
+assets/projects/*/_source/
+
+# ── generated portfolio pages (scripts/build-pages.mjs, rebuilt by the Vite plugin on every build) ──
+/portfolio/
+
+# Session reports written by Claude (local notes, never deployed)
+reports/

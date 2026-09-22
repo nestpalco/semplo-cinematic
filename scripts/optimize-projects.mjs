@@ -56,6 +56,9 @@ const TYPES = {
   sketches: { widths: [3000, 1000], quality: 85 },
   panoramas: { widths: [4096, 2048], quality: 78, equirect: true },
 }
+// per-project og:image (see the social-card note in main()) — 1.91:1, the
+// crop every network applies to large link cards; mirrors business.ogImage
+const OG = { width: 1200, height: 630, quality: 82 }
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
 const MB = (b) => (b / 1024 / 1024).toFixed(2) + ' MB'
@@ -73,8 +76,8 @@ async function listDir(dir, { dirsOnly = false } = {}) {
   try {
     const entries = await readdir(dir, { withFileTypes: true })
     return entries
-      .filter((e) => (dirsOnly ? e.isDirectory() : e.isFile() && IMG.test(e.name)))
-      .map((e) => e.name)
+      .filter((e) => (dirsOnly ? e.isDirectory() && !e.name.startsWith('_') : e.isFile() && IMG.test(e.name)))
+      .map((e) => e.name) // `_shared/` etc. are not projects
       .sort()
   } catch {
     return []
@@ -88,7 +91,11 @@ async function main() {
   let outTotal = 0
 
   for (const id of ids) {
-    manifest[id] = { gallery: [], sketches: [], panoramas: [] }
+    // `dims` — the pixel size of each image's LARGEST emitted variant, keyed
+    // "<type>/<name>": the page generator writes them as width/height on every
+    // <img> so the browser reserves the right box before the file arrives
+    // (no layout shift as a lazy gallery frame loads)
+    manifest[id] = { gallery: [], sketches: [], panoramas: [], dims: {} }
     console.log(`\n🏠 ${id}`)
 
     for (const [type, prof] of Object.entries(TYPES)) {
@@ -123,11 +130,38 @@ async function main() {
           const bytes = (await stat(outFile)).size
           outTotal += bytes
           sizes.push(`${w}: ${KB(bytes)}`)
+          if (w === prof.widths[0]) {
+            const om = await sharp(outFile).metadata()
+            manifest[id].dims[`${type}/${name}`] = [om.width, om.height]
+          }
         }
         console.log(
           `   ✓ ${type.padEnd(9)} ${name.padEnd(8)} raw ${KB(srcStat.size).padStart(8)}  →  ${sizes.join('   ')}`
         )
       }
+    }
+
+    /* ── social card for the project's own page (/portfolio/<id>/) ──
+     * A 1200×630 JPEG cut from the cover photo (config `cover`, else the
+     * first gallery image), for the same reason the site card is a JPEG:
+     * Facebook and LinkedIn do not render a WebP og:image. Always
+     * regenerated — it is one small file and `cover` may have changed. */
+    const cfgP = configProjects.find((p) => p.id === id)
+    const gal = manifest[id].gallery
+    const coverName = cfgP?.cover && gal.includes(cfgP.cover) ? cfgP.cover : gal[0]
+    if (coverName) {
+      const files = await listDir(resolve(SRC, id, 'gallery'))
+      const f = files.find((x) => parse(x).name === coverName)
+      const input = resolve(SRC, id, 'gallery', f)
+      await mkdir(resolve(OUT, id), { recursive: true })
+      const outFile = resolve(OUT, id, 'og.jpg')
+      await sharp(input)
+        .resize({ width: OG.width, height: OG.height, fit: 'cover', position: 'attention' })
+        .jpeg({ quality: OG.quality, mozjpeg: true })
+        .toFile(outFile)
+      const bytes = (await stat(outFile)).size
+      outTotal += bytes
+      console.log(`   ✓ og.jpg    ${coverName.padEnd(8)} ${OG.width}×${OG.height} JPEG  →  ${KB(bytes)}`)
     }
   }
 
