@@ -65,12 +65,26 @@ const DRIFT = +(1 / SPEED.distance).toFixed(4)
 
 /* Pin lengths in viewport-heights — deliberately TIGHT so the page doesn't get
  * exhausting; SPEED.distance stretches them. The effect fills EFFECT_END of the
- * pin, then it holds briefly and releases. Retune the BASE values. */
-const PIN_BASE = { hero: 1.6, text: 1.0, video: 1.2, strip: 1.1 }
+ * pin, then it holds briefly and releases. Retune the BASE values.
+ * The scroll-scrubbed VIDEO sections are not in this table: their pin is
+ * derived from the clip's duration (SCRUB_RATE below) so every clip plays the
+ * same seconds of video per pixel of scroll. */
+const PIN_BASE = { text: 1.0, strip: 1.1 }
 const PIN = Object.fromEntries(
   Object.entries(PIN_BASE).map(([k, v]) => [k, +(v * SPEED.distance).toFixed(3)])
 )
 const EFFECT_END = 0.85
+
+/* Scrub rate — ONE number for every scroll-scrubbed video (hero, featured,
+ * scrub ambients): viewport-heights of pin per second of clip. 0.16 is the
+ * hero's pre-normalisation pin (1.6 vh for its 10 s clip) — the rate the client
+ * has lived with; SPEED.distance stretches it like every other pin. So a 15 s
+ * clip pins 1.5× longer than a 10 s one and all of them feel identical under
+ * the finger. The effect still fills EFFECT_END of the pin, and the hero's
+ * headline tween is placed in timeline fractions, so it follows the pin. */
+const SCRUB_RATE_BASE = 0.16
+const SCRUB_RATE = +(SCRUB_RATE_BASE * SPEED.distance).toFixed(4) // vh of pin per second of clip
+const scrubPin = (duration) => +(duration * SCRUB_RATE).toFixed(3) // pin length (vh) for a clip
 
 /* Which effect families PIN (desktop). Flip a flag to false to un-pin that
  * family → it reverts to native position-linked scroll (shorter page). The
@@ -285,7 +299,7 @@ function pinHero() {
   const tl = gsap.timeline()
   seekTween(tl, video, m.duration) // scroll furnishes the room
   tl.to('.hero__inner', { y: -44, autoAlpha: 0, ease: 'none', duration: 0.28 }, EFFECT_END - 0.28)
-  pinCommon(sec, PIN.hero, tl)
+  pinCommon(sec, scrubPin(m.duration), tl) // pin ∝ clip duration (SCRUB_RATE)
 }
 
 function pinVideo(sec, cfg) {
@@ -303,7 +317,7 @@ function pinVideo(sec, cfg) {
   const cap = sec.querySelector('.ambient__cap')
   if (cap) hide(cap.children)
   const reveal = cap ? () => riseIn(cap.children) : undefined
-  pinCommon(sec, PIN.video, tl, { onEnter: reveal, onEnterBack: reveal })
+  pinCommon(sec, scrubPin(m.duration), tl, { onEnter: reveal, onEnterBack: reveal }) // pin ∝ clip duration
 }
 
 function pinText(sec) {
