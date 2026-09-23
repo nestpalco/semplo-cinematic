@@ -112,8 +112,8 @@ frames are unusable (the HILL SIDE clip slides in from off-frame black), set
 a scrubbed section rests on. The manifest records both (`placeholder`,
 `trimStart`) so you can see at a glance what was encoded.
 
-Delivered so far: **HILL SIDE** (2026-09-16). Villa Grivitsa and Troyan
-House still run on placeholders.
+Delivered so far: **HILL SIDE** (2026-09-16), **Villa Grivitsa** and
+**Troyan House** (both 2026-09-23) — no placeholders remain.
 
 ## Enquiry form → email (Vercel serverless function)
 

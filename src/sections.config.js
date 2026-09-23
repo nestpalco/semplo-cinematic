@@ -224,29 +224,33 @@ export const projects = [
   },
   {
     id: 'house-troyan',
-    titleBg: 'Къща Троян', titleEn: 'Troyan House',
+    // copy + area DELIVERED 2026-09-23 (email "Fwd: Видео- къща Троян", docx
+    // "Двуетажна къща в Троян"); BG verbatim, EN drafted by us
+    titleBg: 'Двуетажна къща в Троян', titleEn: 'Two-storey house in Troyan',
     category: 'house',
     locationBg: 'Троян', locationEn: 'Troyan',
-    // area: not supplied yet — TODO (the meta row shows a pending badge)
-    updated: '2026-09-16',
+    area: 377, // РЗП 377,2 кв.м (ЗП 226 кв.м) per the docx — total floor area shown, rounded
+    updated: '2026-09-23',
     panoramas: [
       { file: 'living', bg: 'Дневна', en: 'Living room' },
       { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
     ],
-    // TODO: no client docx for this project yet — placeholder copy, badged on the page
-    todo: ['card', 'concept', 'realization', 'area'],
-    cardBg: 'Двуетажна къща в полите на Балкана — дърво, камък и мека светлина.',
-    cardEn: 'A two-storey house in the foothills of the Balkan range — wood, stone and soft light.',
-    conceptTitleBg: 'Топло дърво, камък и мека светлина',
-    conceptTitleEn: 'Warm wood, stone and soft light',
+    cardBg:
+      'Изискан съвременен интериор с богати текстури, мраморни и дървесни акценти, индивидуален мебелен дизайн и прецизно проектирано осветление.',
+    cardEn:
+      'A refined contemporary interior with rich textures, marble and wood accents, bespoke furniture design and precisely planned lighting.',
+    conceptTitleBg: 'Модерен лукс с топъл органичен характер',
+    conceptTitleEn: 'Modern luxury with a warm, organic character',
     conceptBg:
-      'Отворена дневна с кухня и трапезария на първия етаж, три спални и баня на втория. Естественият дъб и камъкът водят палитрата, а големите остъклявания рамкират планината и пълнят къщата със светлина през целия ден.',
+      'Интериорът изгражда перфектен баланс между съвременна елегантност и естествен уют. Дневната зона се откроява с ярък акцент в наситено смарагдовозелено, хармонично съчетан с топла дървесна текстура, каменни облицовки с подчертана структура и ефирни светли тонове. Кухнята и трапезарията залагат на чисти линии, кухненски остров с елегантно скрито осветление и дизайнерски осветителни тела. В спалнята и антрето са използвани вертикални дървесни панели, огледала и амбиентно осветление, които създават усещане за дълбочина и архитектурна завършеност, докато банята драматично комбинира светъл и тъмен камък с меки дървесни елементи.',
     conceptEn:
-      'An open living, kitchen and dining space on the ground floor, three bedrooms and a bathroom above. Natural oak and stone lead the palette, while the large glazing frames the mountain and fills the house with light all day long.',
+      'The interior strikes a perfect balance between contemporary elegance and natural comfort. The living area stands out with a bold accent in deep emerald green, harmoniously paired with warm wood texture, stone cladding with a pronounced structure and airy light tones. The kitchen and dining room rely on clean lines, a kitchen island with elegantly concealed lighting and designer light fittings. In the bedroom and the hallway, vertical wood panels, mirrors and ambient lighting create a sense of depth and architectural completeness, while the bathroom dramatically combines light and dark stone with soft wooden elements.',
+    // the docx's "От концепцията до реализацията" text is word-for-word the HILL SIDE
+    // one (its "результат" typo corrected to "резултат")
     realizationBg:
-      'От първите скици до последния детайл проектът е изпълнен от един екип — проектиране, сухо строителство и мебели по поръчка, изработени по нашите чертежи.',
+      'За SEMPLO Concept всеки проект е цялостен процес, в който дизайнът и реализацията се развиват заедно. Предлагаме пълна услуга — от интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство позволява всеки детайл да бъде изпълнен като естествено продължение на интериорната концепция — с контрол върху качеството, пропорциите и крайния резултат. SEMPLO Concept — от идея до напълно завършен интериор.',
     realizationEn:
-      'From the first sketches to the last detail the project was delivered by one team — design, drywall construction and bespoke furniture built to our drawings.',
+      'For SEMPLO Concept every project is a single process in which design and execution evolve together. We offer a complete service — from the interior concept and technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets every detail be executed as a natural continuation of the interior concept — with control over quality, proportion and the final result. SEMPLO Concept — from idea to a fully finished interior.',
   },
 
   /* ── the rest of the portfolio ── */
@@ -405,18 +409,29 @@ export const featured = [
     id: 'featured-villa-grivitsa',
     role: 'featured',
     project: 'villa-grivitsa',
+    // DELIVERED 2026-09-23 ("VipZALAGRIVITSA-1.mp4", thread "Re: Вила Гривица"):
+    // 1920×1080, 60 fps (genuine), 10.15 s, H.264, no audio — ONE continuous
+    // dolly down the VIP hall to the TV wall, no cuts, clean frame 0 (no trim).
+    // HOMESTYLER logo burned into the bottom-right corner (rows 1013–1043 of 1080).
     src: 'featured-villa-grivitsa.mp4',
-    placeholderSrc: 'semplo-the_living_room.mp4',
-    cropWatermark: 0,
+    placeholderSrc: 'semplo-the_living_room.mp4', // no longer used — the real clip exists
+    cropWatermark: 0.08, // drops the bottom 86 px → HOMESTYLER mark gone (0.06 left its top edge)
+    crf: 27, // clean 60 fps render stays crisp at 27; crf 25 landed at 8.3 MB, 27 ≈ 6.9
     scrubVideo: true,
   },
   {
     id: 'featured-house-troyan',
     role: 'featured',
     project: 'house-troyan',
+    // DELIVERED 2026-09-23 ("YouCut_20260923_151806551.mp4" on Drive, email
+    // "Fwd: Видео- къща Троян"): 1624×1080 (3:2, SAR 405:406), 50 fps container
+    // but only ~12.5 UNIQUE frames/s (a Kling AI 3.0 clip slowed ~2× in YouCut —
+    // every frame is held for four), 10.17 s, silent AAC track (stripped). ONE
+    // continuous push from the sofa toward the kitchen, no cuts, clean frame 0.
+    // "KlingAI 3.0" mark burned into the bottom-right corner (rows 1021–1040 of 1080).
     src: 'featured-house-troyan.mp4',
-    placeholderSrc: 'kling_20260619_VIDEO_A_big_mode_919_0.mp4',
-    cropWatermark: 0.08,
+    placeholderSrc: 'kling_20260619_VIDEO_A_big_mode_919_0.mp4', // no longer used — the real clip exists
+    cropWatermark: 0.08, // drops the bottom 86 px → KlingAI mark gone
     scrubVideo: true,
   },
 ]
