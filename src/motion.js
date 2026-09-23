@@ -4,6 +4,7 @@ import { SplitText } from 'gsap/SplitText'
 import { ScrollToPlugin } from 'gsap/ScrollToPlugin'
 import { hero, ambients, featured, motion } from './sections.config.js'
 import manifest from './videos.manifest.json'
+import { clipFor } from './video-tier.js'
 
 gsap.registerPlugin(ScrollTrigger, SplitText, ScrollToPlugin)
 
@@ -231,13 +232,14 @@ function injectAlive(section) {
 }
 const speedEls = (layer) => (layer ? [...layer.querySelectorAll('[data-speed]')] : [])
 
-/* eager-load a scrub clip's desktop variant (they're 2–3.6 MB frequent-keyframe
- * encodes; the lazy IO left them undecoded during the scrub window). */
+/* eager-load a scrub clip's desktop variant (frequent-keyframe encodes of
+ * 2–10 MB; the lazy IO left them undecoded during the scrub window). The tier
+ * (sd 1280 / hd 1920) is the same one main.js chose for the poster. */
 function eagerLoad(video, m) {
   if (video.dataset.loaded) return
   video.dataset.loaded = '1'
   video.preload = 'auto'
-  video.src = `/videos/${m.desktop}`
+  video.src = clipFor(m)
   video.load()
 }
 // a proxy tween that drives currentTime, ε-gated — the "seek" half of Pattern B

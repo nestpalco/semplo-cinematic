@@ -2,27 +2,36 @@
   "hero": {
     "role": "hero",
     "scrub": true,
-    "desktop": "hero-1440.mp4",
+    "gop": 6,
+    "desktop": "hero-1280.mp4",
+    "desktopHd": "hero-1920.mp4",
     "mobile": "hero-720.mp4",
     "poster": "hero-poster.webp",
+    "posterHd": "hero-poster-1920.webp",
     "posterMobile": "hero-poster-720.webp",
     "posterFirst": "hero-poster-first.webp",
+    "posterFirstHd": "hero-poster-first-1920.webp",
     "posterFrame": "last",
-    "width": 1440,
-    "height": 810,
+    "width": 1280,
+    "height": 720,
     "aspect": 1.7778,
     "duration": 10.033,
     "fps": 30,
     "bytes": {
-      "desktop": 4363971,
+      "desktop": 2215573,
+      "desktopHd": 4161735,
       "mobile": 211472,
-      "poster": 57748,
-      "posterMobile": 21490
+      "poster": 60996,
+      "posterHd": 105566,
+      "posterMobile": 26338,
+      "posterFirst": 42600,
+      "posterFirstHd": 75958
     }
   },
   "ambient1": {
     "role": "ambient",
     "scrub": true,
+    "gop": 6,
     "desktop": "ambient1-1280.mp4",
     "mobile": "ambient1-720.mp4",
     "poster": "ambient1-poster.webp",
@@ -34,7 +43,7 @@
     "duration": 5,
     "fps": 30,
     "bytes": {
-      "desktop": 2150397,
+      "desktop": 1599923,
       "mobile": 406159,
       "poster": 80492,
       "posterMobile": 36516
@@ -43,6 +52,7 @@
   "ambient2": {
     "role": "ambient",
     "scrub": true,
+    "gop": 6,
     "desktop": "ambient2-1280.mp4",
     "mobile": "ambient2-720.mp4",
     "poster": "ambient2-poster.webp",
@@ -54,7 +64,7 @@
     "duration": 5.042,
     "fps": 24,
     "bytes": {
-      "desktop": 2054392,
+      "desktop": 1272528,
       "mobile": 115500,
       "poster": 33940,
       "posterMobile": 16042
@@ -84,9 +94,12 @@
     "role": "ambient",
     "trimStart": 0.25,
     "scrub": true,
+    "gop": 6,
     "desktop": "featured-hillside-1280.mp4",
+    "desktopHd": "featured-hillside-1920.mp4",
     "mobile": "featured-hillside-720.mp4",
     "poster": "featured-hillside-poster.webp",
+    "posterHd": "featured-hillside-poster-1920.webp",
     "posterMobile": "featured-hillside-poster-720.webp",
     "posterFrame": "first",
     "width": 1280,
@@ -96,18 +109,23 @@
     "fps": 30,
     "sourceFps": 60,
     "bytes": {
-      "desktop": 5864547,
+      "desktop": 5018823,
+      "desktopHd": 9087908,
       "mobile": 591508,
       "poster": 14106,
+      "posterHd": 25872,
       "posterMobile": 6416
     }
   },
   "featured-villa-grivitsa": {
     "role": "ambient",
     "scrub": true,
+    "gop": 6,
     "desktop": "featured-villa-grivitsa-1280.mp4",
+    "desktopHd": "featured-villa-grivitsa-1920.mp4",
     "mobile": "featured-villa-grivitsa-720.mp4",
     "poster": "featured-villa-grivitsa-poster.webp",
+    "posterHd": "featured-villa-grivitsa-poster-1920.webp",
     "posterMobile": "featured-villa-grivitsa-poster-720.webp",
     "posterFrame": "first",
     "width": 1280,
@@ -117,18 +135,23 @@
     "fps": 30,
     "sourceFps": 60,
     "bytes": {
-      "desktop": 6621979,
+      "desktop": 6601436,
+      "desktopHd": 10253892,
       "mobile": 717365,
       "poster": 104712,
+      "posterHd": 186592,
       "posterMobile": 40460
     }
   },
   "featured-house-troyan": {
     "role": "ambient",
     "scrub": true,
+    "gop": 6,
     "desktop": "featured-house-troyan-1280.mp4",
+    "desktopHd": "featured-house-troyan-1920.mp4",
     "mobile": "featured-house-troyan-720.mp4",
     "poster": "featured-house-troyan-poster.webp",
+    "posterHd": "featured-house-troyan-poster-1920.webp",
     "posterMobile": "featured-house-troyan-poster-720.webp",
     "posterFrame": "first",
     "width": 1280,
@@ -138,9 +161,11 @@
     "fps": 30,
     "sourceFps": 50,
     "bytes": {
-      "desktop": 4980534,
+      "desktop": 3886739,
+      "desktopHd": 5563470,
       "mobile": 449361,
       "poster": 57892,
+      "posterHd": 91758,
       "posterMobile": 27256
     }
   }

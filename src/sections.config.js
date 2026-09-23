@@ -47,7 +47,8 @@ export const hero = {
   role: 'hero',
   src: 'kling_20260619_VIDEO_A_big_mode_946_0-4K.mp4', // hero clip (4K master, clean)
   cropWatermark: 0, // clean source, use the full frame
-  crf: 25, // 4K master stays crisp at crf 25 → ~4 MB (vs 5.5 MB at the default 22)
+  crf: 25, // both desktop tiers: the Kling 4K master looks the same at 25 and 23 (measured 2026-09-23)
+  posterQuality: 85, // the hero poster is the page's LCP image — a notch above the default q80
   posterFrame: 'last', // finished room is the payoff → poster = final frame
   // PATTERN B: on desktop (motion-ok) the hero is PINNED and scroll scrubs the
   // clip — scrolling literally furnishes the empty room under this headline.
@@ -416,7 +417,6 @@ export const featured = [
     src: 'featured-villa-grivitsa.mp4',
     placeholderSrc: 'semplo-the_living_room.mp4', // no longer used — the real clip exists
     cropWatermark: 0.08, // drops the bottom 86 px → HOMESTYLER mark gone (0.06 left its top edge)
-    crf: 27, // clean 60 fps render stays crisp at 27; crf 25 landed at 8.3 MB, 27 ≈ 6.9
     scrubVideo: true,
   },
   {

@@ -24,6 +24,7 @@ import {
   initContactLinks,
 } from './chrome.js'
 import manifest from './videos.manifest.json'
+import { isMobile, tier, clipFor, posterFor, posterFirstFor } from './video-tier.js'
 
 /* ──────────────────────────────────────────────────────────────────────────
  * SEMPLO — calm, photography-first page. ONE signature moment, native scroll.
@@ -59,8 +60,8 @@ import manifest from './videos.manifest.json'
 const forceMotion = new URLSearchParams(location.search).has('forcemotion')
 const osReduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 const prefersReduced = osReduced && !forceMotion
-const isMobile =
-  matchMedia('(max-width: 820px)').matches || matchMedia('(pointer: coarse)').matches
+// isMobile (and the hd/sd desktop tier) come from src/video-tier.js — the one
+// place that decides which encode of every video slot this visitor gets.
 
 console.info(
   `[semplo] mode: ${prefersReduced ? 'REDUCED (no reveals/parallax/Ken Burns)' : 'MOTION'}` +
@@ -71,6 +72,7 @@ console.info(
 
 document.body.classList.add(prefersReduced ? 'reduced' : 'motion')
 if (isMobile) document.body.classList.add('is-mobile')
+document.documentElement.dataset.videoTier = tier // hd | sd | mobile (diagnostics + e2e)
 if (prefersReduced) document.documentElement.style.scrollBehavior = 'auto'
 
 /* Desktop + motion-ok: PATTERN B applies — scroll drives the scrub-flagged
@@ -104,14 +106,14 @@ document.addEventListener('semplo:lang', () => {
 initTheme({ prefersReduced })
 
 /* ── 2. Templates ─────────────────────────────────────────────────────────── */
-const posterFor = (m) => `/videos/${isMobile && m.posterMobile ? m.posterMobile : m.poster}`
+// posterFor(m) / clipFor(m) / posterFirstFor(m): tier-aware, see video-tier.js
 
 function heroHTML() {
   const m = manifest[hero.id]
   // Scrub mode starts on frame 0 (the empty room) → poster must match frame 0.
   // Everywhere else the poster stays the LAST frame (the furnished payoff).
   const poster =
-    scrubDesktop && hero.scrubVideo && m.posterFirst ? `/videos/${m.posterFirst}` : posterFor(m)
+    scrubDesktop && hero.scrubVideo && m.posterFirst ? posterFirstFor(m) : posterFor(m)
   return `
     <section class="hero" data-hero data-id="${hero.id}" data-dark>
       <div class="hero__media">
@@ -453,8 +455,7 @@ function revealPage() {
 
 /* ── 5. Lazy-loader for every video slot (hero + ambients) ────────────────── */
 function slotSrc(id) {
-  const m = manifest[id]
-  return `/videos/${isMobile ? m.mobile : m.desktop}`
+  return clipFor(manifest[id]) // mobile 720 / sd 1280 / hd 1920 — decided once at boot
 }
 function startLoad(video) {
   if (video.dataset.loaded) return

@@ -3,9 +3,11 @@
  *  SEMPLO — video optimization pipeline (calm, forward-playback page).
  * ─────────────────────────────────────────────────────────────────────────
  *   in : /assets/videos/<raw kling clip>.mp4   (named in src/sections.config.js)
- *   out: /public/videos/<id>-{1600|1280}.mp4    desktop clip
+ *   out: /public/videos/<id>-1280.mp4           desktop clip (standard tier)
+ *        /public/videos/<id>-1920.mp4           desktop clip (HD tier — hero + featured only)
  *        /public/videos/<id>-720.mp4            mobile clip
  *        /public/videos/<id>-poster.webp        poster (first OR last frame)
+ *        /public/videos/<id>-poster-1920.webp   poster, HD tier
  *        /public/videos/<id>-poster-720.webp    poster (mobile / no-JS)
  *        /src/videos.manifest.json              sizes, dims, duration, fps
  *
@@ -13,8 +15,12 @@
  *   • scrubVideo slots (PATTERN B — scroll drives video.currentTime on desktop)
  *     need FREQUENT KEYFRAMES for smooth seeking: sparse keyframes mean every
  *     seek decodes forward from the last keyframe = visible stutter. Their
- *     DESKTOP variant uses gop 3 (keyframe ~every 0.12s) — bigger, worth it.
- *     Their MOBILE variant still autoplays forward → long GOP, small.
+ *     DESKTOP variants use SCRUB_GOP (6 → a keyframe every 0.2 s at 30 fps;
+ *     measured 2026-09-23: seeks +1–2 ms vs gop 3, a third fewer bytes at the
+ *     same crf, see reports/2026-09-23-video-quality-tiers.md). The hero and
+ *     the featured clips are full-bleed on desktop, so they get TWO desktop
+ *     tiers (SCRUB.desktop 1280 + SCRUB.hd 1920 — src/video-tier.js picks one
+ *     per visitor). Their MOBILE variant still autoplays forward → long GOP.
  *   • plain slots autoplay forward everywhere → long GOP throughout.
  *  We crop the source watermark and strip audio. The hero is encoded a touch
  *  larger + higher quality (it is THE moment).
@@ -56,6 +62,15 @@ const POSTER_Q = 80
 // SIDE delivery came in at 60 fps: 8.8 MB as-is, ~half at 30). Forward
 // playback on mobile does not need 60 fps either.
 const FPS_CAP = 30
+// Scrub (PATTERN B) encodes — the hero + featured clips. Two desktop tiers:
+//   desktop  1280 wide, crf 23   → laptops up to 1440 CSS px
+//   hd       1920 wide, crf 25   → wider viewports and DPR ≥ 1.5 screens
+// A slot's `crf` override applies to BOTH tiers (the hero: 25 in both).
+const SCRUB_GOP = 6 // keyframe cadence of every scrub encode (ambients included)
+const SCRUB = {
+  desktop: { maxSide: 1280, crf: 23 },
+  hd: { maxSide: 1920, crf: 25 },
+}
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
 const MB = (b) => (b / 1024 / 1024).toFixed(2) + ' MB'
@@ -125,14 +140,14 @@ async function encode(input, output, { maxSide, gop, crf }, crop, trimStart = 0,
 
 // frame: 'first' (default) or 'last'. 'last' seeks to just before the end so the
 // poster is the final, settled frame (the furnished room for the hero).
-async function poster(input, output, maxSide, crop, frame, duration, trimStart = 0) {
+async function poster(input, output, maxSide, crop, frame, duration, trimStart = 0, quality = POSTER_Q) {
   // `duration` is the TRIMMED length; the seek is into the untrimmed source
   const seek = ['-ss', String(frame === 'last' ? Math.max(0, trimStart + duration - 0.1) : trimStart)]
   run(FFMPEG, [
     '-y', ...seek, '-i', input,
     '-frames:v', '1',
     '-vf', vf(maxSide, crop),
-    '-c:v', 'libwebp', '-quality', String(POSTER_Q),
+    '-c:v', 'libwebp', '-quality', String(quality),
     output,
   ])
   return (await stat(output)).size
@@ -155,6 +170,7 @@ async function main() {
   const manifest = {}
   let rawTotal = 0
   let deskTotal = 0
+  let hdTotal = 0
   let mobTotal = 0
   let postTotal = 0
 
@@ -179,16 +195,26 @@ async function main() {
     }
     const role = v.role === 'hero' ? 'hero' : 'ambient' // featured clips use the ambient profile
     const prof = structuredClone(PROFILES[role])
-    // PATTERN B slots: desktop variant re-encoded with frequent keyframes so
-    // scroll-driven seeking is smooth (gop 3 ≈ a keyframe every 0.12s @24fps).
-    // Frequent keyframes cost bitrate, so cap the scrub variant at 1440 wide —
-    // at 1600 the hero landed at 4.2 MB; 1440 keeps it nearer 3.
+    // PATTERN B slots: desktop variants re-encoded with FREQUENT keyframes so
+    // scroll-driven seeking is smooth (SCRUB_GOP). The hero + featured clips are
+    // the full-bleed moments and get the two-tier SCRUB profiles (1280 standard
+    // + 1920 HD); the ambient loops keep their own single 1280 file, only with
+    // the scrub keyframe cadence.
+    const tiered = v.scrubVideo && (v.role === 'hero' || v.role === 'featured')
     if (v.scrubVideo) {
-      prof.desktop = { ...prof.desktop, gop: 3, maxSide: Math.min(prof.desktop.maxSide, 1440) }
+      prof.desktop = tiered
+        ? { ...prof.desktop, ...SCRUB.desktop, gop: SCRUB_GOP }
+        : { ...prof.desktop, gop: SCRUB_GOP, maxSide: Math.min(prof.desktop.maxSide, 1440) }
+      if (tiered) prof.hd = { ...prof.desktop, ...SCRUB.hd }
     }
-    // optional per-slot quality override (higher crf = smaller). Useful for clean
-    // high-res sources that stay crisp at a higher crf (e.g. a 4K master).
-    if (v.crf) prof.desktop = { ...prof.desktop, crf: v.crf }
+    // optional per-slot quality override (higher crf = smaller), applied to every
+    // desktop tier. For a source that does not reward a lower crf (the hero's
+    // Kling 4K master looks the same at 25 and 23 — measured).
+    if (v.crf) {
+      prof.desktop = { ...prof.desktop, crf: v.crf }
+      if (prof.hd) prof.hd = { ...prof.hd, crf: v.crf }
+    }
+    const pq = v.posterQuality || POSTER_Q // WebP quality of this slot's posters (hero: 85, its poster is the LCP image)
     const crop = v.cropWatermark ?? 0
     const trim = placeholder ? 0 : Math.max(0, +v.trimStart || 0) // head trim applies to the real clip only
     const meta = probe(input)
@@ -205,14 +231,28 @@ async function main() {
     const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop, trim, fpsCap)
     const mobBytes = await encode(input, resolve(OUT, mobFile), prof.mobile, crop, trim, fpsCap)
     const pf = v.posterFrame === 'last' ? 'last' : 'first'
-    const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration, trim)
-    const postMobBytes = await poster(input, resolve(OUT, postMobFile), prof.mobile.maxSide, crop, pf, meta.duration, trim)
+    const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration, trim, pq)
+    const postMobBytes = await poster(input, resolve(OUT, postMobFile), prof.mobile.maxSide, crop, pf, meta.duration, trim, pq)
     // scrub slots whose poster is the LAST frame also get a FIRST-frame poster —
     // scrub mode starts at frame 0, so its underlay must match frame 0.
     let postFirstFile = null
+    let postFirstBytes = 0
     if (v.scrubVideo && pf === 'last') {
       postFirstFile = `${v.id}-poster-first.webp`
-      await poster(input, resolve(OUT, postFirstFile), prof.desktop.maxSide, crop, 'first', meta.duration, trim)
+      postFirstBytes = await poster(input, resolve(OUT, postFirstFile), prof.desktop.maxSide, crop, 'first', meta.duration, trim, pq)
+    }
+    // HD tier (hero + featured): the 1920 clip + posters at its width, chosen by
+    // src/video-tier.js for wide / high-DPR desktops
+    let hdFile = null, hdBytes = 0, postHdFile = null, postHdBytes = 0, postFirstHdFile = null, postFirstHdBytes = 0
+    if (prof.hd) {
+      hdFile = `${v.id}-${prof.hd.maxSide}.mp4`
+      hdBytes = await encode(input, resolve(OUT, hdFile), prof.hd, crop, trim, fpsCap)
+      postHdFile = `${v.id}-poster-${prof.hd.maxSide}.webp`
+      postHdBytes = await poster(input, resolve(OUT, postHdFile), prof.hd.maxSide, crop, pf, meta.duration, trim, pq)
+      if (postFirstFile) {
+        postFirstHdFile = `${v.id}-poster-first-${prof.hd.maxSide}.webp`
+        postFirstHdBytes = await poster(input, resolve(OUT, postFirstHdFile), prof.hd.maxSide, crop, 'first', meta.duration, trim, pq)
+      }
     }
 
     const outMeta = probe(resolve(OUT, deskFile))
@@ -221,12 +261,16 @@ async function main() {
       role,
       ...(placeholder ? { placeholder: v.placeholderSrc } : {}), // the real `src` has not landed
       ...(trim ? { trimStart: trim } : {}), // seconds dropped from the head of the source
-      scrub: !!v.scrubVideo, // desktop variant is frequent-keyframe (seekable)
+      scrub: !!v.scrubVideo, // desktop variants are frequent-keyframe (seekable)
+      ...(v.scrubVideo ? { gop: SCRUB_GOP } : {}),
       desktop: deskFile,
+      ...(hdFile ? { desktopHd: hdFile } : {}), // 1920 tier (hero + featured only)
       mobile: mobFile,
       poster: postFile,
+      ...(postHdFile ? { posterHd: postHdFile } : {}),
       posterMobile: postMobFile,
       ...(postFirstFile ? { posterFirst: postFirstFile } : {}),
+      ...(postFirstHdFile ? { posterFirstHd: postFirstHdFile } : {}),
       posterFrame: pf,
       width: outMeta.width,
       height: outMeta.height,
@@ -234,18 +278,29 @@ async function main() {
       duration: +meta.duration.toFixed(3),
       fps: outMeta.fps, // as encoded (a 60 fps source is capped, see FPS_CAP)
       ...(fpsCap ? { sourceFps: meta.fps } : {}),
-      bytes: { desktop: deskBytes, mobile: mobBytes, poster: postBytes, posterMobile: postMobBytes },
+      bytes: {
+        desktop: deskBytes,
+        ...(hdFile ? { desktopHd: hdBytes } : {}),
+        mobile: mobBytes,
+        poster: postBytes,
+        ...(postHdFile ? { posterHd: postHdBytes } : {}),
+        posterMobile: postMobBytes,
+        ...(postFirstFile ? { posterFirst: postFirstBytes } : {}),
+        ...(postFirstHdFile ? { posterFirstHd: postFirstHdBytes } : {}),
+      },
     }
 
     rawTotal += rawBytes
     deskTotal += deskBytes
+    hdTotal += hdBytes
     mobTotal += mobBytes
-    postTotal += postBytes + postMobBytes
+    postTotal += postBytes + postMobBytes + postFirstBytes + postHdBytes + postFirstHdBytes
 
     const pct = ((deskBytes / rawBytes) * 100).toFixed(0)
     console.log(
       `✓ ${String(v.id).padEnd(9)} ${role.padEnd(7)} ${meta.width}×${meta.height} ${meta.duration.toFixed(1)}s` +
         `  raw ${KB(rawBytes).padStart(8)} → desktop ${KB(deskBytes).padStart(8)} (${pct}%)` +
+        (hdFile ? `  hd ${KB(hdBytes).padStart(8)}` : '') +
         `  mobile ${KB(mobBytes).padStart(7)}  poster ${KB(postBytes).padStart(7)} [${pf}]` +
         (crop ? `  wm-crop ${Math.round(crop * 100)}%` : '') +
         (trim ? `  head-trim ${trim}s` : '') +
@@ -259,6 +314,7 @@ async function main() {
     `\n📦 ${Object.keys(manifest).length} slot(s) optimized.\n` +
       `   Raw sources : ${MB(rawTotal)}\n` +
       `   Desktop set : ${MB(deskTotal)}  (lazy-loaded — never all at once)\n` +
+      `   HD set      : ${MB(hdTotal)}  (hero + featured, 1920 tier)\n` +
       `   Mobile set  : ${MB(mobTotal)}\n` +
       `   Posters     : ${MB(postTotal)}\n` +
       `   Manifest → src/videos.manifest.json\n`

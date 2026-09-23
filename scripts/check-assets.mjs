@@ -77,7 +77,7 @@ for (const slot of [hero, ...(ambients || []), ...(featured || [])].filter(Boole
   // a featured slot must point at a configured project (its title + link)
   if (slot.project && !projects.some((p) => p.id === slot.project))
     problems.push(`featured slot "${slot.id}" names project "${slot.project}", which is not in \`projects\``)
-  for (const key of ['desktop', 'mobile', 'poster', 'posterMobile', 'posterFirst']) {
+  for (const key of ['desktop', 'desktopHd', 'mobile', 'poster', 'posterHd', 'posterMobile', 'posterFirst', 'posterFirstHd']) {
     if (!m[key]) continue
     const rel = `public/videos/${m[key]}`
     if (!existsSync(resolve(PUB, 'videos', m[key]))) miss(rel, `video slot "${slot.id}" ${key}`)

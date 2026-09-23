@@ -115,6 +115,25 @@ a scrubbed section rests on. The manifest records both (`placeholder`,
 Delivered so far: **HILL SIDE** (2026-09-16), **Villa Grivitsa** and
 **Troyan House** (both 2026-09-23) — no placeholders remain.
 
+### Desktop video tiers
+
+The hero and the three featured clips are full-bleed, so they are encoded in
+TWO desktop tiers plus mobile (`SCRUB` in `scripts/optimize-videos.mjs`, all
+with a keyframe every 6 frames — `SCRUB_GOP`):
+
+| tier | file | who gets it |
+| --- | --- | --- |
+| hd | `<id>-1920.mp4` + `<id>-poster-1920.webp` (crf 25) | viewports wider than 1440 CSS px, or DPR ≥ 1.5 at ≥ 1024 px |
+| sd | `<id>-1280.mp4` + `<id>-poster.webp` (crf 23) | other desktops |
+| mobile | `<id>-720.mp4` + `<id>-poster-720.webp` | ≤ 820 px or a coarse pointer |
+
+`src/video-tier.js` decides ONCE at boot (`matchMedia`, no re-fetch on resize)
+and both `main.js` and `motion.js` read it, so a slot never mixes tiers. The
+ambient loops stay single-tier (1280). The manifest carries `desktopHd`,
+`posterHd`, `posterFirstHd` and their `bytes`; `check-assets` requires the
+files. Sizes and the measurements behind the choice:
+`reports/2026-09-23-video-quality-tiers.md`.
+
 ## Enquiry form → email (Vercel serverless function)
 
 The form POSTs to `/api/enquiry` (`api/enquiry.js`, deployed by Vercel

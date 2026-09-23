@@ -1708,3 +1708,32 @@ test('dist carries the cPanel fallback: .htaccess + the PHP enquiry endpoint', a
   expect(ht, 'media caching rule').toContain('videos|projects|panoramas')
   expect(ht, 'hashed-bundle caching rule').toContain('immutable')
 })
+
+/* ── video tiers (src/video-tier.js) ─────────────────────────────────────────
+ * Wide desktops get the 1920 encodes + posters, ordinary desktops the 1280
+ * ones; the tier is chosen once at boot from matchMedia. Checked on the first
+ * featured slot (eager-loaded on desktop-motion → its src is on the element)
+ * and on the hero's first-frame underlay. */
+test('video tiers: a 1920 viewport gets the HD encode, 1440 the standard one', async ({ page }, info) => {
+  test.skip(info.project.name !== 'desktop', 'tier choice is a desktop-motion concern')
+  const manifest = JSON.parse(fs.readFileSync(new URL('../src/videos.manifest.json', import.meta.url), 'utf8'))
+  const f = featured[0]
+  const fm = manifest[f.id]
+  const hm = manifest.hero
+  for (const [width, tier, clip, poster, heroFirst] of [
+    [1920, 'hd', fm.desktopHd, fm.posterHd, hm.posterFirstHd],
+    [1440, 'sd', fm.desktop, fm.poster, hm.posterFirst],
+  ]) {
+    expect(clip, `${tier} clip is in the manifest`).toBeTruthy()
+    expect(poster, `${tier} poster is in the manifest`).toBeTruthy()
+    await page.setViewportSize({ width, height: width >= 1920 ? 1080 : 900 })
+    await ready(page)
+    expect(await page.evaluate(() => document.documentElement.dataset.videoTier), `tier at ${width}px`).toBe(tier)
+    const sec = page.locator(`[data-featured][data-id="${f.id}"]`)
+    expect(await sec.locator('.ambient__poster').getAttribute('src'), `poster at ${width}px`).toBe(`/videos/${poster}`)
+    await expect
+      .poll(() => sec.locator('video').evaluate((v) => v.getAttribute('src')), { message: `clip at ${width}px`, timeout: 10_000 })
+      .toBe(`/videos/${clip}`)
+    expect(await page.locator('.hero__poster').getAttribute('src'), `hero underlay at ${width}px`).toBe(`/videos/${heroFirst}`)
+  }
+})
