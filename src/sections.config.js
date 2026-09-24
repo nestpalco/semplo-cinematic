@@ -332,21 +332,26 @@ export const projects = [
     category: 'apartment', // as typed by the client ("апартамент") — see Информация.pdf
     locationBg: 'гр. Божурище', locationEn: 'Bozhurishte',
     area: 45,
-    updated: '2026-09-24', // gallery re-curated from the revised deck ("Конна база ново.pdf")
+    updated: '2026-09-24', // revised deck ("Конна база ново.pdf") + revised copy ("Текст нов.docx", same day)
+    // copy = the client's revised text.docx of 2026-09-24 14:43, verbatim (the
+    // trailing "Конна база ново" in its concept paragraph is the deck's file
+    // name, not copy — left out)
     cardBg:
-      'Интериор с характерна комбинация от естествено дърво, наситено зелено и светли неутрални тонове, в който функционалността и индивидуалните мебели създават уютна и отличителна атмосфера.',
+      'Топъл и характерен интериор, в който естественото дърво, наситеното зелено и меките неутрални текстури създават съвременна, уютна и разпознаваема атмосфера.',
     cardEn:
-      'An interior with a distinctive mix of natural wood, deep green and light neutral tones, where functionality and bespoke furniture create a cosy, characterful atmosphere.',
-    conceptTitleBg: 'Естествени текстури и характерна атмосфера',
-    conceptTitleEn: 'Natural textures and a distinctive atmosphere',
+      'A warm, characterful interior in which natural wood, deep green and soft neutral textures create a contemporary, cosy and recognisable atmosphere.',
+    conceptTitleBg:
+      'Естествен характер и съвременен уют',
+    conceptTitleEn:
+      'Natural character and contemporary comfort',
     conceptBg:
-      'Интериорът е изграден около естествени материали, топли дървесни тонове и наситено зелено, които създават спокойна, елегантна и запомняща се атмосфера. Тъмните стенни повърхности и вертикалните релефни елементи придават дълбочина, докато светлата мебелировка и декоративното осветление балансират композицията. В дневната характерният зелен диван и масивната кръгла маса оформят основните акценти, а в спалнята и банята същият дизайнерски език продължава в по-мека и изчистена интерпретация.',
+      'Интериорът е изграден около топлината на естественото дърво, земните тонове и наситеното зелено. Тъмните дървесни повърхности придават дълбочина на дневната зона, докато характерният зелен диван, светлата трапезария и меките текстури внасят баланс и комфорт. В спалнята по-светлите дървесни мебели и неутралният текстил създават по-спокойна и уютна атмосфера, а банята продължава концепцията с меки каменни нюанси, релефни повърхности и топло осветление.',
     conceptEn:
-      'The interior is built around natural materials, warm wood tones and a deep green that together create a calm, elegant and memorable atmosphere. Dark wall surfaces and vertical relief elements add depth, while the light furnishings and decorative lighting balance the composition. In the living room the signature green sofa and the solid round table form the main accents, and in the bedroom and bathroom the same design language continues in a softer, more restrained interpretation.',
+      'The interior is built around the warmth of natural wood, earthy tones and a deep green. Dark wood surfaces give the living area depth, while the signature green sofa, the light dining set and the soft textures bring balance and comfort. In the bedroom the lighter wooden furniture and neutral textiles create a calmer, cosier atmosphere, and the bathroom carries the concept on with soft stone shades, relief surfaces and warm lighting.',
     realizationBg:
-      'За SEMPLO Concept всеки интериор започва с идея, но завършва с прецизна реализация. Предлагаме цялостна услуга — от разработването на интериорната концепция и техническото проектиране до подбора на материали, строително-ремонтните дейности и производството на мебели по индивидуален проект. Собственото ни производство ни позволява да реализираме мебелите и специфичните детайли като естествено продължение на дизайна, с контрол върху качеството и изпълнението на всеки етап. SEMPLO Concept — от идея до напълно завършен интериор.',
+      'За SEMPLO Concept всеки интериор е цялостен процес, в който дизайнът, материалите и мебелите се развиват като една обща концепция. Предлагаме интериорно и техническо проектиране, подбор на материали, строително-ремонтни дейности и производство на мебели по индивидуален проект. Така можем да контролираме всеки детайл и да превърнем първоначалната идея в напълно завършено пространство. SEMPLO Concept — от идея до напълно завършен интериор.',
     realizationEn:
-      'For SEMPLO Concept every interior begins with an idea but ends with precise execution. We offer a complete service — from developing the interior concept and the technical design to the selection of materials, the construction works and the production of bespoke furniture. Our own workshop lets us realise the furniture and the specific details as a natural continuation of the design, with control over quality and execution at every stage. SEMPLO Concept — from idea to a fully finished interior.',
+      'For SEMPLO Concept every interior is a single process in which the design, the materials and the furniture evolve as one overall concept. We offer interior and technical design, the selection of materials, construction works and the production of bespoke furniture. That lets us control every detail and turn the initial idea into a fully finished space. SEMPLO Concept — from idea to a fully finished interior.',
   },
   {
     id: 'sofia-2',
