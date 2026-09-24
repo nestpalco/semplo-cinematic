@@ -90,8 +90,9 @@ const MOBILE = { sd: { maxSide: 720 }, hd: { maxSide: 1080 } }
 // pixels on the strip. Never upscaled: `sd` is ≤ 720×1280 and `hd` ≤ 1080×1920,
 // each capped at the source height — a 1080p delivery yields one 608×1080 (or
 // 560×994 after the watermark crop) portrait file and NO hd variant, since the
-// source has no more rows to give. crf 25, 30 fps, long GOP like the other
-// mobile files (phones play forward, they never scrub).
+// source has no more rows to give. crf 25 (a slot may set `portraitCrf`, the
+// ambient loops use 27), 30 fps, long GOP like the other mobile files (phones
+// play forward, they never scrub).
 const PORTRAIT = { aspect: 9 / 16, sd: { height: 1280 }, hd: { height: 1920 }, crf: 25 }
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
@@ -267,11 +268,14 @@ async function main() {
     // widths, and the portrait crops (crf 25) — see MOBILE / PORTRAIT above
     const mobSd = { ...prof.mobile, ...MOBILE.sd }
     const mobHd = { ...prof.mobile, ...MOBILE.hd }
-    const portSd = { ...prof.mobile, crf: PORTRAIT.crf, portrait: PORTRAIT.sd }
+    // a slot's `portraitCrf` overrides PORTRAIT.crf for both portrait encodes
+    // (the ambient loops: background texture, 27; hero + featured stay at 25)
+    const portCrf = v.portraitCrf || PORTRAIT.crf
+    const portSd = { ...prof.mobile, crf: portCrf, portrait: PORTRAIT.sd }
     // an hd portrait only where the source is taller than the sd cap (a 4K
     // master); a 1080p delivery would just duplicate the sd file
     const srcHeight = Math.round(meta.height * (1 - crop))
-    const portHd = srcHeight > PORTRAIT.sd.height ? { ...prof.mobile, crf: PORTRAIT.crf, portrait: PORTRAIT.hd } : null
+    const portHd = srcHeight > PORTRAIT.sd.height ? { ...prof.mobile, crf: portCrf, portrait: PORTRAIT.hd } : null
 
     const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop, trim, fpsCap)
     const mobBytes = await encode(input, resolve(OUT, mobFile), mobSd, crop, trim, fpsCap)

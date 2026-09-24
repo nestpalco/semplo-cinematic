@@ -127,7 +127,7 @@ frames — `SCRUB_GOP`); every slot also gets a MOBILE family (`MOBILE`,
 | hd | `<id>-1920.mp4` + `<id>-poster-1920.webp` (crf 25) | viewports wider than 1440 CSS px, or DPR ≥ 1.5 at ≥ 1024 px |
 | sd | `<id>-1280.mp4` + `<id>-poster.webp` (crf 23) | other desktops |
 | portrait-hd | `<id>-portrait-hd.mp4` (≤ 1080×1920) + `<id>-poster-portrait-hd.webp` | phones (≤ 820 px or coarse pointer, viewport taller than 8:5) at DPR ≥ 2 — only slots with a 4K source have it, the rest fall through to `portrait` |
-| portrait | `<id>-portrait.mp4` (≤ 720×1280, crf 25) + `<id>-poster-portrait.webp` | phones at DPR 1, and DPR ≥ 2 phones for 1080p sources |
+| portrait | `<id>-portrait.mp4` (≤ 720×1280, crf 25; the ambient loops set `portraitCrf: 27`) + `<id>-poster-portrait.webp` | phones at DPR 1, and DPR ≥ 2 phones for 1080p sources |
 | mobile-hd | `<id>-1080.mp4` + `<id>-poster-1080.webp` | mobile in landscape / tablets, DPR ≥ 2 |
 | mobile | `<id>-720.mp4` + `<id>-poster-720.webp` | mobile in landscape / tablets, DPR 1 |
 

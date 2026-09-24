@@ -79,6 +79,7 @@ export const ambients = [
     src: 'semplo-the_living_room-4K.mp4', // living room ambient clip (4K source, clean)
     cropWatermark: 0, // clean source, use the full frame
     crf: 28, // 4K master stays crisp at crf 28 → ~2 MB (vs 2.9 MB at the default 25)
+    portraitCrf: 27, // background texture: its 1080×1920 portrait was the heaviest phone fetch (2.2 MB at 25)
     scrubVideo: true, // PATTERN B: position-linked scrub (no pin) on desktop
     eyebrowBg: 'Дневната', eyebrowEn: 'The living room',
     lineBg: 'Където денят се събира.', lineEn: 'Where the day gathers.',
@@ -88,6 +89,7 @@ export const ambients = [
     role: 'ambient',
     src: 'kling_20260619_VIDEO_A_modern_l_488_0.mp4', // ← SWAP: near-still warm interior
     cropWatermark: 0.08,
+    portraitCrf: 27, // background texture — see ambient1
     scrubVideo: true, // PATTERN B: position-linked scrub (no pin) on desktop
     // pure living photograph — no overlay text
   },
