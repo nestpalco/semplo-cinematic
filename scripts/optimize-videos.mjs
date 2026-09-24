@@ -5,10 +5,15 @@
  *   in : /assets/videos/<raw kling clip>.mp4   (named in src/sections.config.js)
  *   out: /public/videos/<id>-1280.mp4           desktop clip (standard tier)
  *        /public/videos/<id>-1920.mp4           desktop clip (HD tier — hero + featured only)
- *        /public/videos/<id>-720.mp4            mobile clip
+ *        /public/videos/<id>-720.mp4            mobile clip, landscape, DPR 1
+ *        /public/videos/<id>-1080.mp4           mobile clip, landscape, DPR ≥ 2
+ *        /public/videos/<id>-portrait.mp4       PHONE clip: 9:16 centre crop, ≤ 720×1280
+ *        /public/videos/<id>-portrait-hd.mp4    …at ≤ 1080×1920 (only sources tall enough)
  *        /public/videos/<id>-poster.webp        poster (first OR last frame)
  *        /public/videos/<id>-poster-1920.webp   poster, HD tier
  *        /public/videos/<id>-poster-720.webp    poster (mobile / no-JS)
+ *        /public/videos/<id>-poster-1080.webp   poster, mobile landscape DPR ≥ 2
+ *        /public/videos/<id>-poster-portrait[-hd].webp   posters of the portrait crops
  *        /src/videos.manifest.json              sizes, dims, duration, fps
  *
  *  Two encode families:
@@ -71,6 +76,23 @@ const SCRUB = {
   desktop: { maxSide: 1280, crf: 23 },
   hd: { maxSide: 1920, crf: 25 },
 }
+// MOBILE encodes (forward autoplay → the role's long GOP + mobile crf). Two
+// landscape widths: 720 for DPR 1 phones/tablets, 1080 for DPR ≥ 2. Measured
+// 2026-09-24: a 720 landscape clip on a 390×844 DPR-3 phone has 70–75 % of its
+// frame cropped away by object-fit: cover and the visible strip (≈190 px wide)
+// painted onto 1170 physical px — a 6× upscale, which is the "low quality on
+// mobile" the client saw. See reports/2026-09-24-mobile-video-portrait-tiers.md.
+const MOBILE = { sd: { maxSide: 720 }, hd: { maxSide: 1080 } }
+// PORTRAIT encodes for phones: the 9:16 CENTRE crop of the frame — exactly the
+// strip cover shows on a phone today (every full-bleed section is narrower than
+// 9:16 there: hero 0.46, featured 0.47, ambient 0.54), so the composition does
+// not move; the file simply stops carrying the 70 % nobody sees and spends its
+// pixels on the strip. Never upscaled: `sd` is ≤ 720×1280 and `hd` ≤ 1080×1920,
+// each capped at the source height — a 1080p delivery yields one 608×1080 (or
+// 560×994 after the watermark crop) portrait file and NO hd variant, since the
+// source has no more rows to give. crf 25, 30 fps, long GOP like the other
+// mobile files (phones play forward, they never scrub).
+const PORTRAIT = { aspect: 9 / 16, sd: { height: 1280 }, hd: { height: 1920 }, crf: 25 }
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
 const MB = (b) => (b / 1024 / 1024).toFixed(2) + ' MB'
@@ -105,13 +127,20 @@ function probe(file) {
 
 // crop = fraction of HEIGHT trimmed off the bottom (watermark), then scale the
 // long side to maxSide. Both crop + scale keep dimensions even (yuv420p needs it).
-function vf(maxSide, crop, fps = 0) {
+// portrait = { height } → after the watermark crop, take the 9:16 CENTRE column
+// and scale it to at most that height (never up).
+function vf(maxSide, crop, fps = 0, portrait = null) {
   const chain = []
   if (fps > 0) chain.push(`fps=${fps}`) // cap a 60 fps delivery (see FPS_CAP)
   if (crop > 0) chain.push(`crop=iw:trunc(ih*${(1 - crop).toFixed(4)}/2)*2:0:0`)
-  chain.push(
-    `scale='if(gt(iw,ih),${maxSide},-2)':'if(gt(iw,ih),-2,${maxSide})':flags=lanczos`
-  )
+  if (portrait) {
+    chain.push(`crop=trunc(ih*${PORTRAIT.aspect.toFixed(6)}/2)*2:ih:(iw-ow)/2:0`)
+    chain.push(`scale=-2:'min(${portrait.height},ih)':flags=lanczos`)
+  } else {
+    chain.push(
+      `scale='if(gt(iw,ih),min(${maxSide},iw),-2)':'if(gt(iw,ih),-2,min(${maxSide},ih))':flags=lanczos`
+    )
+  }
   return chain.join(',')
 }
 
@@ -119,11 +148,11 @@ function vf(maxSide, crop, fps = 0) {
 // opening frames are unusable (e.g. the camera still revealing off-frame black).
 // Applied as an INPUT seek, so timestamps restart at 0 and the poster / scrub
 // duration all refer to the trimmed clip.
-async function encode(input, output, { maxSide, gop, crf }, crop, trimStart = 0, fps = 0) {
+async function encode(input, output, { maxSide, gop, crf, portrait = null }, crop, trimStart = 0, fps = 0) {
   run(FFMPEG, [
     '-y', ...(trimStart > 0 ? ['-ss', String(trimStart)] : []), '-i', input,
     '-an', // drop audio — clips are muted
-    '-vf', vf(maxSide, crop, fps),
+    '-vf', vf(maxSide, crop, fps, portrait),
     '-c:v', 'libx264',
     '-profile:v', 'high',
     '-pix_fmt', 'yuv420p',
@@ -140,13 +169,13 @@ async function encode(input, output, { maxSide, gop, crf }, crop, trimStart = 0,
 
 // frame: 'first' (default) or 'last'. 'last' seeks to just before the end so the
 // poster is the final, settled frame (the furnished room for the hero).
-async function poster(input, output, maxSide, crop, frame, duration, trimStart = 0, quality = POSTER_Q) {
+async function poster(input, output, maxSide, crop, frame, duration, trimStart = 0, quality = POSTER_Q, portrait = null) {
   // `duration` is the TRIMMED length; the seek is into the untrimmed source
   const seek = ['-ss', String(frame === 'last' ? Math.max(0, trimStart + duration - 0.1) : trimStart)]
   run(FFMPEG, [
     '-y', ...seek, '-i', input,
     '-frames:v', '1',
-    '-vf', vf(maxSide, crop),
+    '-vf', vf(maxSide, crop, 0, portrait),
     '-c:v', 'libwebp', '-quality', String(quality),
     output,
   ])
@@ -172,6 +201,9 @@ async function main() {
   let deskTotal = 0
   let hdTotal = 0
   let mobTotal = 0
+  let mobHdTotal = 0
+  let portTotal = 0
+  let portHdTotal = 0
   let postTotal = 0
 
   console.log(`\n🎬 Optimizing ${slots.length} video slot(s)…\n`)
@@ -224,15 +256,39 @@ async function main() {
 
     const dside = prof.desktop.maxSide
     const deskFile = `${v.id}-${dside}.mp4`
-    const mobFile = `${v.id}-720.mp4`
+    const mobFile = `${v.id}-${MOBILE.sd.maxSide}.mp4`
+    const mobHdFile = `${v.id}-${MOBILE.hd.maxSide}.mp4`
+    const portFile = `${v.id}-portrait.mp4`
     const postFile = `${v.id}-poster.webp`
-    const postMobFile = `${v.id}-poster-720.webp`
+    const postMobFile = `${v.id}-poster-${MOBILE.sd.maxSide}.webp`
+    const postMobHdFile = `${v.id}-poster-${MOBILE.hd.maxSide}.webp`
+    const postPortFile = `${v.id}-poster-portrait.webp`
+    // the mobile family: the role's long GOP + mobile crf at two landscape
+    // widths, and the portrait crops (crf 25) — see MOBILE / PORTRAIT above
+    const mobSd = { ...prof.mobile, ...MOBILE.sd }
+    const mobHd = { ...prof.mobile, ...MOBILE.hd }
+    const portSd = { ...prof.mobile, crf: PORTRAIT.crf, portrait: PORTRAIT.sd }
+    // an hd portrait only where the source is taller than the sd cap (a 4K
+    // master); a 1080p delivery would just duplicate the sd file
+    const srcHeight = Math.round(meta.height * (1 - crop))
+    const portHd = srcHeight > PORTRAIT.sd.height ? { ...prof.mobile, crf: PORTRAIT.crf, portrait: PORTRAIT.hd } : null
 
     const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop, trim, fpsCap)
-    const mobBytes = await encode(input, resolve(OUT, mobFile), prof.mobile, crop, trim, fpsCap)
+    const mobBytes = await encode(input, resolve(OUT, mobFile), mobSd, crop, trim, fpsCap)
+    const mobHdBytes = await encode(input, resolve(OUT, mobHdFile), mobHd, crop, trim, fpsCap)
+    const portBytes = await encode(input, resolve(OUT, portFile), portSd, crop, trim, fpsCap)
+    let portHdFile = null, portHdBytes = 0, postPortHdFile = null, postPortHdBytes = 0
     const pf = v.posterFrame === 'last' ? 'last' : 'first'
     const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration, trim, pq)
-    const postMobBytes = await poster(input, resolve(OUT, postMobFile), prof.mobile.maxSide, crop, pf, meta.duration, trim, pq)
+    const postMobBytes = await poster(input, resolve(OUT, postMobFile), MOBILE.sd.maxSide, crop, pf, meta.duration, trim, pq)
+    const postMobHdBytes = await poster(input, resolve(OUT, postMobHdFile), MOBILE.hd.maxSide, crop, pf, meta.duration, trim, pq)
+    const postPortBytes = await poster(input, resolve(OUT, postPortFile), 0, crop, pf, meta.duration, trim, pq, PORTRAIT.sd)
+    if (portHd) {
+      portHdFile = `${v.id}-portrait-hd.mp4`
+      portHdBytes = await encode(input, resolve(OUT, portHdFile), portHd, crop, trim, fpsCap)
+      postPortHdFile = `${v.id}-poster-portrait-hd.webp`
+      postPortHdBytes = await poster(input, resolve(OUT, postPortHdFile), 0, crop, pf, meta.duration, trim, pq, PORTRAIT.hd)
+    }
     // scrub slots whose poster is the LAST frame also get a FIRST-frame poster —
     // scrub mode starts at frame 0, so its underlay must match frame 0.
     let postFirstFile = null
@@ -256,6 +312,8 @@ async function main() {
     }
 
     const outMeta = probe(resolve(OUT, deskFile))
+    const portMeta = probe(resolve(OUT, portFile))
+    const portHdMeta = portHdFile ? probe(resolve(OUT, portHdFile)) : null
 
     manifest[v.id] = {
       role,
@@ -265,10 +323,18 @@ async function main() {
       ...(v.scrubVideo ? { gop: SCRUB_GOP } : {}),
       desktop: deskFile,
       ...(hdFile ? { desktopHd: hdFile } : {}), // 1920 tier (hero + featured only)
-      mobile: mobFile,
+      mobile: mobFile, // landscape 720 (DPR 1)
+      mobileHd: mobHdFile, // landscape 1080 (DPR ≥ 2)
+      portrait: portFile, // phones: 9:16 centre crop, ≤ 720×1280 (never upscaled)
+      ...(portHdFile ? { portraitHd: portHdFile } : {}), // ≤ 1080×1920, 4K sources only
+      portraitSize: [portMeta.width, portMeta.height],
+      ...(portHdMeta ? { portraitHdSize: [portHdMeta.width, portHdMeta.height] } : {}),
       poster: postFile,
       ...(postHdFile ? { posterHd: postHdFile } : {}),
       posterMobile: postMobFile,
+      posterMobileHd: postMobHdFile,
+      posterPortrait: postPortFile,
+      ...(postPortHdFile ? { posterPortraitHd: postPortHdFile } : {}),
       ...(postFirstFile ? { posterFirst: postFirstFile } : {}),
       ...(postFirstHdFile ? { posterFirstHd: postFirstHdFile } : {}),
       posterFrame: pf,
@@ -282,9 +348,15 @@ async function main() {
         desktop: deskBytes,
         ...(hdFile ? { desktopHd: hdBytes } : {}),
         mobile: mobBytes,
+        mobileHd: mobHdBytes,
+        portrait: portBytes,
+        ...(portHdFile ? { portraitHd: portHdBytes } : {}),
         poster: postBytes,
         ...(postHdFile ? { posterHd: postHdBytes } : {}),
         posterMobile: postMobBytes,
+        posterMobileHd: postMobHdBytes,
+        posterPortrait: postPortBytes,
+        ...(postPortHdFile ? { posterPortraitHd: postPortHdBytes } : {}),
         ...(postFirstFile ? { posterFirst: postFirstBytes } : {}),
         ...(postFirstHdFile ? { posterFirstHd: postFirstHdBytes } : {}),
       },
@@ -294,14 +366,17 @@ async function main() {
     deskTotal += deskBytes
     hdTotal += hdBytes
     mobTotal += mobBytes
-    postTotal += postBytes + postMobBytes + postFirstBytes + postHdBytes + postFirstHdBytes
+    mobHdTotal += mobHdBytes
+    portTotal += portBytes
+    portHdTotal += portHdBytes || portBytes // what a DPR ≥ 2 phone actually gets
+    postTotal += postBytes + postMobBytes + postMobHdBytes + postPortBytes + postPortHdBytes + postFirstBytes + postHdBytes + postFirstHdBytes
 
     const pct = ((deskBytes / rawBytes) * 100).toFixed(0)
     console.log(
       `✓ ${String(v.id).padEnd(9)} ${role.padEnd(7)} ${meta.width}×${meta.height} ${meta.duration.toFixed(1)}s` +
         `  raw ${KB(rawBytes).padStart(8)} → desktop ${KB(deskBytes).padStart(8)} (${pct}%)` +
         (hdFile ? `  hd ${KB(hdBytes).padStart(8)}` : '') +
-        `  mobile ${KB(mobBytes).padStart(7)}  poster ${KB(postBytes).padStart(7)} [${pf}]` +
+        `  mobile ${KB(mobBytes).padStart(7)}/${KB(mobHdBytes)}  portrait ${KB(portBytes)}${portHdFile ? '/' + KB(portHdBytes) : ''} (${portMeta.width}×${portMeta.height}${portHdMeta ? ', ' + portHdMeta.width + '×' + portHdMeta.height : ''})  poster ${KB(postBytes).padStart(7)} [${pf}]` +
         (crop ? `  wm-crop ${Math.round(crop * 100)}%` : '') +
         (trim ? `  head-trim ${trim}s` : '') +
         (fpsCap ? `  ${meta.fps}→${fpsCap} fps` : '')
@@ -315,7 +390,8 @@ async function main() {
       `   Raw sources : ${MB(rawTotal)}\n` +
       `   Desktop set : ${MB(deskTotal)}  (lazy-loaded — never all at once)\n` +
       `   HD set      : ${MB(hdTotal)}  (hero + featured, 1920 tier)\n` +
-      `   Mobile set  : ${MB(mobTotal)}\n` +
+      `   Mobile set  : ${MB(mobTotal)} landscape 720 · ${MB(mobHdTotal)} landscape 1080\n` +
+      `   Portrait    : ${MB(portTotal)} sd · ${MB(portHdTotal)} what a DPR ≥ 2 phone loads\n` +
       `   Posters     : ${MB(postTotal)}\n` +
       `   Manifest → src/videos.manifest.json\n`
   )

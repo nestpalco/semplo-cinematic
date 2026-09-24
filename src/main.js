@@ -72,7 +72,7 @@ console.info(
 
 document.body.classList.add(prefersReduced ? 'reduced' : 'motion')
 if (isMobile) document.body.classList.add('is-mobile')
-document.documentElement.dataset.videoTier = tier // hd | sd | mobile (diagnostics + e2e)
+document.documentElement.dataset.videoTier = tier // hd | sd | mobile[-hd] | portrait[-hd] (diagnostics + e2e)
 if (prefersReduced) document.documentElement.style.scrollBehavior = 'auto'
 
 /* Desktop + motion-ok: PATTERN B applies — scroll drives the scrub-flagged

@@ -6,9 +6,23 @@
     "desktop": "hero-1280.mp4",
     "desktopHd": "hero-1920.mp4",
     "mobile": "hero-720.mp4",
+    "mobileHd": "hero-1080.mp4",
+    "portrait": "hero-portrait.mp4",
+    "portraitHd": "hero-portrait-hd.mp4",
+    "portraitSize": [
+      720,
+      1280
+    ],
+    "portraitHdSize": [
+      1080,
+      1920
+    ],
     "poster": "hero-poster.webp",
     "posterHd": "hero-poster-1920.webp",
     "posterMobile": "hero-poster-720.webp",
+    "posterMobileHd": "hero-poster-1080.webp",
+    "posterPortrait": "hero-poster-portrait.webp",
+    "posterPortraitHd": "hero-poster-portrait-hd.webp",
     "posterFirst": "hero-poster-first.webp",
     "posterFirstHd": "hero-poster-first-1920.webp",
     "posterFrame": "last",
@@ -21,9 +35,15 @@
       "desktop": 2215573,
       "desktopHd": 4161735,
       "mobile": 211472,
+      "mobileHd": 421399,
+      "portrait": 649441,
+      "portraitHd": 1355410,
       "poster": 60996,
       "posterHd": 105566,
       "posterMobile": 26338,
+      "posterMobileHd": 48156,
+      "posterPortrait": 34258,
+      "posterPortraitHd": 58358,
       "posterFirst": 42600,
       "posterFirstHd": 75958
     }
@@ -34,8 +54,22 @@
     "gop": 6,
     "desktop": "ambient1-1280.mp4",
     "mobile": "ambient1-720.mp4",
+    "mobileHd": "ambient1-1080.mp4",
+    "portrait": "ambient1-portrait.mp4",
+    "portraitHd": "ambient1-portrait-hd.mp4",
+    "portraitSize": [
+      720,
+      1280
+    ],
+    "portraitHdSize": [
+      1080,
+      1920
+    ],
     "poster": "ambient1-poster.webp",
     "posterMobile": "ambient1-poster-720.webp",
+    "posterMobileHd": "ambient1-poster-1080.webp",
+    "posterPortrait": "ambient1-poster-portrait.webp",
+    "posterPortraitHd": "ambient1-poster-portrait-hd.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 720,
@@ -45,8 +79,14 @@
     "bytes": {
       "desktop": 1599923,
       "mobile": 406159,
+      "mobileHd": 760939,
+      "portrait": 1140067,
+      "portraitHd": 2236471,
       "poster": 80492,
-      "posterMobile": 36516
+      "posterMobile": 36516,
+      "posterMobileHd": 64714,
+      "posterPortrait": 66710,
+      "posterPortraitHd": 103920
     }
   },
   "ambient2": {
@@ -55,8 +95,22 @@
     "gop": 6,
     "desktop": "ambient2-1280.mp4",
     "mobile": "ambient2-720.mp4",
+    "mobileHd": "ambient2-1080.mp4",
+    "portrait": "ambient2-portrait.mp4",
+    "portraitHd": "ambient2-portrait-hd.mp4",
+    "portraitSize": [
+      720,
+      1280
+    ],
+    "portraitHdSize": [
+      744,
+      1324
+    ],
     "poster": "ambient2-poster.webp",
     "posterMobile": "ambient2-poster-720.webp",
+    "posterMobileHd": "ambient2-poster-1080.webp",
+    "posterPortrait": "ambient2-poster-portrait.webp",
+    "posterPortraitHd": "ambient2-poster-portrait-hd.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 1176,
@@ -66,8 +120,14 @@
     "bytes": {
       "desktop": 1272528,
       "mobile": 115500,
+      "mobileHd": 217648,
+      "portrait": 336776,
+      "portraitHd": 382529,
       "poster": 33940,
-      "posterMobile": 16042
+      "posterMobile": 16042,
+      "posterMobileHd": 27252,
+      "posterPortrait": 16020,
+      "posterPortraitHd": 17354
     }
   },
   "ambient3": {
@@ -75,8 +135,16 @@
     "scrub": false,
     "desktop": "ambient3-1280.mp4",
     "mobile": "ambient3-720.mp4",
+    "mobileHd": "ambient3-1080.mp4",
+    "portrait": "ambient3-portrait.mp4",
+    "portraitSize": [
+      372,
+      662
+    ],
     "poster": "ambient3-poster.webp",
     "posterMobile": "ambient3-poster-720.webp",
+    "posterMobileHd": "ambient3-poster-1080.webp",
+    "posterPortrait": "ambient3-poster-portrait.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 662,
@@ -86,8 +154,12 @@
     "bytes": {
       "desktop": 591385,
       "mobile": 143320,
+      "mobileHd": 254658,
+      "portrait": 181281,
       "poster": 19712,
-      "posterMobile": 9710
+      "posterMobile": 9710,
+      "posterMobileHd": 15596,
+      "posterPortrait": 9028
     }
   },
   "featured-hillside": {
@@ -98,9 +170,17 @@
     "desktop": "featured-hillside-1280.mp4",
     "desktopHd": "featured-hillside-1920.mp4",
     "mobile": "featured-hillside-720.mp4",
+    "mobileHd": "featured-hillside-1080.mp4",
+    "portrait": "featured-hillside-portrait.mp4",
+    "portraitSize": [
+      606,
+      1080
+    ],
     "poster": "featured-hillside-poster.webp",
     "posterHd": "featured-hillside-poster-1920.webp",
     "posterMobile": "featured-hillside-poster-720.webp",
+    "posterMobileHd": "featured-hillside-poster-1080.webp",
+    "posterPortrait": "featured-hillside-poster-portrait.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 720,
@@ -112,9 +192,13 @@
       "desktop": 5018823,
       "desktopHd": 9087908,
       "mobile": 591508,
+      "mobileHd": 1110556,
+      "portrait": 1853883,
       "poster": 14106,
       "posterHd": 25872,
-      "posterMobile": 6416
+      "posterMobile": 6416,
+      "posterMobileHd": 11120,
+      "posterPortrait": 9490
     }
   },
   "featured-villa-grivitsa": {
@@ -124,9 +208,17 @@
     "desktop": "featured-villa-grivitsa-1280.mp4",
     "desktopHd": "featured-villa-grivitsa-1920.mp4",
     "mobile": "featured-villa-grivitsa-720.mp4",
+    "mobileHd": "featured-villa-grivitsa-1080.mp4",
+    "portrait": "featured-villa-grivitsa-portrait.mp4",
+    "portraitSize": [
+      558,
+      992
+    ],
     "poster": "featured-villa-grivitsa-poster.webp",
     "posterHd": "featured-villa-grivitsa-poster-1920.webp",
     "posterMobile": "featured-villa-grivitsa-poster-720.webp",
+    "posterMobileHd": "featured-villa-grivitsa-poster-1080.webp",
+    "posterPortrait": "featured-villa-grivitsa-poster-portrait.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 662,
@@ -138,9 +230,13 @@
       "desktop": 6601436,
       "desktopHd": 10253892,
       "mobile": 717365,
+      "mobileHd": 1382964,
+      "portrait": 2133401,
       "poster": 104712,
       "posterHd": 186592,
-      "posterMobile": 40460
+      "posterMobile": 40460,
+      "posterMobileHd": 80036,
+      "posterPortrait": 66726
     }
   },
   "featured-house-troyan": {
@@ -150,9 +246,17 @@
     "desktop": "featured-house-troyan-1280.mp4",
     "desktopHd": "featured-house-troyan-1920.mp4",
     "mobile": "featured-house-troyan-720.mp4",
+    "mobileHd": "featured-house-troyan-1080.mp4",
+    "portrait": "featured-house-troyan-portrait.mp4",
+    "portraitSize": [
+      558,
+      992
+    ],
     "poster": "featured-house-troyan-poster.webp",
     "posterHd": "featured-house-troyan-poster-1920.webp",
     "posterMobile": "featured-house-troyan-poster-720.webp",
+    "posterMobileHd": "featured-house-troyan-poster-1080.webp",
+    "posterPortrait": "featured-house-troyan-poster-portrait.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 782,
@@ -162,11 +266,15 @@
     "sourceFps": 50,
     "bytes": {
       "desktop": 3886739,
-      "desktopHd": 5563470,
+      "desktopHd": 4491462,
       "mobile": 449361,
+      "mobileHd": 827538,
+      "portrait": 871940,
       "poster": 57892,
-      "posterHd": 91758,
-      "posterMobile": 27256
+      "posterHd": 75234,
+      "posterMobile": 27256,
+      "posterMobileHd": 47292,
+      "posterPortrait": 28954
     }
   }
 }

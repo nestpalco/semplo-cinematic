@@ -115,24 +115,36 @@ a scrubbed section rests on. The manifest records both (`placeholder`,
 Delivered so far: **HILL SIDE** (2026-09-16), **Villa Grivitsa** and
 **Troyan House** (both 2026-09-23) — no placeholders remain.
 
-### Desktop video tiers
+### Video tiers (desktop and mobile)
 
 The hero and the three featured clips are full-bleed, so they are encoded in
-TWO desktop tiers plus mobile (`SCRUB` in `scripts/optimize-videos.mjs`, all
-with a keyframe every 6 frames — `SCRUB_GOP`):
+TWO desktop tiers (`SCRUB` in `scripts/optimize-videos.mjs`, keyframe every 6
+frames — `SCRUB_GOP`); every slot also gets a MOBILE family (`MOBILE`,
+`PORTRAIT` in the same script — forward autoplay, long GOP):
 
 | tier | file | who gets it |
 | --- | --- | --- |
 | hd | `<id>-1920.mp4` + `<id>-poster-1920.webp` (crf 25) | viewports wider than 1440 CSS px, or DPR ≥ 1.5 at ≥ 1024 px |
 | sd | `<id>-1280.mp4` + `<id>-poster.webp` (crf 23) | other desktops |
-| mobile | `<id>-720.mp4` + `<id>-poster-720.webp` | ≤ 820 px or a coarse pointer |
+| portrait-hd | `<id>-portrait-hd.mp4` (≤ 1080×1920) + `<id>-poster-portrait-hd.webp` | phones (≤ 820 px or coarse pointer, viewport taller than 8:5) at DPR ≥ 2 — only slots with a 4K source have it, the rest fall through to `portrait` |
+| portrait | `<id>-portrait.mp4` (≤ 720×1280, crf 25) + `<id>-poster-portrait.webp` | phones at DPR 1, and DPR ≥ 2 phones for 1080p sources |
+| mobile-hd | `<id>-1080.mp4` + `<id>-poster-1080.webp` | mobile in landscape / tablets, DPR ≥ 2 |
+| mobile | `<id>-720.mp4` + `<id>-poster-720.webp` | mobile in landscape / tablets, DPR 1 |
 
-`src/video-tier.js` decides ONCE at boot (`matchMedia`, no re-fetch on resize)
-and both `main.js` and `motion.js` read it, so a slot never mixes tiers. The
-ambient loops stay single-tier (1280). The manifest carries `desktopHd`,
-`posterHd`, `posterFirstHd` and their `bytes`; `check-assets` requires the
-files. Sizes and the measurements behind the choice:
-`reports/2026-09-23-video-quality-tiers.md`.
+The portrait files are the 9:16 CENTRE crop of the frame — the strip
+`object-fit: cover` already showed on a phone (every full-bleed section there is
+narrower than 9:16), so the framing is unchanged and the file spends its pixels
+on what is visible instead of the 70 % that was cropped away. They are never
+upscaled: a 1080p delivery yields one ~608×1080 portrait file (560×994 after a
+watermark crop) and no `-hd` variant.
+
+`src/video-tier.js` decides ONCE at boot (`matchMedia`, no re-fetch on resize
+or rotation) and both `main.js` and `motion.js` read it, so a slot never mixes
+tiers. The ambient loops stay single-tier on desktop (1280). The manifest
+carries every variant and its `bytes` (plus `portraitSize` / `portraitHdSize`);
+`check-assets` requires the files and insists each slot has the mobile family.
+Measurements: `reports/2026-09-23-video-quality-tiers.md` (desktop),
+`reports/2026-09-24-mobile-video-portrait-tiers.md` (mobile).
 
 ## Enquiry form → email (Vercel serverless function)
 

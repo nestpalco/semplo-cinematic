@@ -1709,6 +1709,40 @@ test('dist carries the cPanel fallback: .htaccess + the PHP enquiry endpoint', a
   expect(ht, 'hashed-bundle caching rule').toContain('immutable')
 })
 
+/* ── mobile video tier: a phone gets the PORTRAIT encodes ────────────────────
+ * 390x844 at DPR 2.75 (the mobile project) is taller than 8:5 and DPR >= 2, so
+ * src/video-tier.js must pick `portrait-hd`: the hero rests on its portrait
+ * poster and every slot's <video> loads the 9:16 centre-crop file (the hd one
+ * where the source is 4K, else the single portrait file). Without this a phone
+ * paints a ~190 px strip of the 720 landscape clip six times up. */
+test('mobile video tier: 390x844 loads the portrait encodes, never the landscape 720', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', 'phone tier choice — mobile project only')
+  const manifest = JSON.parse(fs.readFileSync(new URL('../src/videos.manifest.json', import.meta.url), 'utf8'))
+  await ready(page)
+  expect(await page.evaluate(() => document.documentElement.dataset.videoTier)).toBe('portrait-hd')
+  const want = (m) => `/videos/${m.portraitHd || m.portrait}`
+  const wantPoster = (m) => `/videos/${m.posterPortraitHd || m.posterPortrait}`
+  expect(manifest.hero.portrait, 'hero has a portrait encode').toBeTruthy()
+  expect(await page.locator('.hero__poster').getAttribute('src'), 'hero poster is the portrait crop').toBe(wantPoster(manifest.hero))
+  // every slot: poster is the portrait crop, and once the lazy loader fires the
+  // clip is the portrait file (scroll each into view — mobile loads on intersect)
+  for (const sec of await page.locator('[data-hero],[data-ambient]').all()) {
+    const id = await sec.getAttribute('data-id')
+    const m = manifest[id]
+    expect(m?.portrait, `${id} has a portrait encode`).toBeTruthy()
+    expect(await sec.locator('img').first().getAttribute('src'), `${id} poster`).toBe(wantPoster(m))
+    await sec.scrollIntoViewIfNeeded()
+    await expect
+      .poll(() => sec.locator('video').getAttribute('src'), { message: `${id} clip`, timeout: 10_000 })
+      .toBe(want(m))
+    expect(await sec.locator('video').getAttribute('src'), `${id} never the 720 landscape file`).not.toContain('-720.mp4')
+  }
+  // and the decoded hero frame really is portrait (taller than wide)
+  await expect
+    .poll(() => page.evaluate(() => { const v = document.querySelector('[data-hero-video]'); return v.videoHeight > v.videoWidth }), { timeout: 15_000 })
+    .toBe(true)
+})
+
 /* ── video tiers (src/video-tier.js) ─────────────────────────────────────────
  * Wide desktops get the 1920 encodes + posters, ordinary desktops the 1280
  * ones; the tier is chosen once at boot from matchMedia. Checked on the first

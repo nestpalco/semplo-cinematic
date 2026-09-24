@@ -77,10 +77,17 @@ for (const slot of [hero, ...(ambients || []), ...(featured || [])].filter(Boole
   // a featured slot must point at a configured project (its title + link)
   if (slot.project && !projects.some((p) => p.id === slot.project))
     problems.push(`featured slot "${slot.id}" names project "${slot.project}", which is not in \`projects\``)
-  for (const key of ['desktop', 'desktopHd', 'mobile', 'poster', 'posterHd', 'posterMobile', 'posterFirst', 'posterFirstHd']) {
+  for (const key of [
+    'desktop', 'desktopHd', 'mobile', 'mobileHd', 'portrait', 'portraitHd',
+    'poster', 'posterHd', 'posterMobile', 'posterMobileHd', 'posterPortrait', 'posterPortraitHd',
+    'posterFirst', 'posterFirstHd',
+  ]) {
     if (!m[key]) continue
     const rel = `public/videos/${m[key]}`
     if (!existsSync(resolve(PUB, 'videos', m[key]))) miss(rel, `video slot "${slot.id}" ${key}`)
+  }
+  for (const key of ['mobileHd', 'portrait', 'posterMobileHd', 'posterPortrait']) {
+    if (!m[key]) problems.push(`video slot "${slot.id}" has no "${key}" in the manifest (run npm run optimize:videos)`)
   }
 }
 
