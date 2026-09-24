@@ -329,9 +329,10 @@ initContactLinks()
       .map((r) => {
         const dBg = monthYear(r.date, 'bg-BG')
         const dEn = monthYear(r.date, 'en-GB')
+        const todoLabel = ui.reviews.todo || ['TODO', 'TODO'] // label key is gone — no placeholders ship
         const todo = r.todo
-          ? `<span class="review__todo" data-bg="${esc(ui.reviews.todo[0])}"
-                   data-en="${esc(ui.reviews.todo[1])}">${esc(ui.reviews.todo[0])}</span>`
+          ? `<span class="review__todo" data-bg="${esc(todoLabel[0])}"
+                   data-en="${esc(todoLabel[1])}">${esc(todoLabel[0])}</span>`
           : ''
         return `
       <figure class="review${r.todo ? ' is-todo' : ''}">

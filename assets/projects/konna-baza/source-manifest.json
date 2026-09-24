@@ -1,5 +1,5 @@
 {
-  "source": "_source/presentation.pdf (gitignored; original in the studio's email/Drive)",
+  "source": "_source/presentation.pdf = \"Конна база ново.pdf\" (revised deck, email \"Конна база - промени\" 2026-09-24; gitignored). The first deck is kept as _source/presentation-v1-2026-09-16.pdf — every render in it was re-done with the revised furniture, so nothing from v1 survives here.",
   "gallery": {
     "01.jpg": {
       "pdf_page": 9,
@@ -9,7 +9,7 @@
       ]
     },
     "02.jpg": {
-      "pdf_page": 5,
+      "pdf_page": 4,
       "px": [
         3456,
         1944
@@ -23,14 +23,14 @@
       ]
     },
     "04.jpg": {
-      "pdf_page": 4,
+      "pdf_page": 10,
       "px": [
         3456,
         1944
       ]
     },
     "05.jpg": {
-      "pdf_page": 8,
+      "pdf_page": 5,
       "px": [
         3456,
         1944
@@ -39,8 +39,8 @@
     "06.jpg": {
       "pdf_page": 12,
       "px": [
-        3456,
-        1944
+        3840,
+        2160
       ]
     },
     "07.jpg": {
@@ -51,24 +51,38 @@
       ]
     },
     "08.jpg": {
-      "pdf_page": 15,
+      "pdf_page": 13,
       "px": [
         3456,
         1944
       ]
     },
     "09.jpg": {
-      "pdf_page": 16,
+      "pdf_page": 17,
       "px": [
         3456,
         1944
       ]
     },
     "10.jpg": {
-      "pdf_page": 17,
+      "pdf_page": 16,
       "px": [
         2160,
         3840
+      ]
+    },
+    "11.jpg": {
+      "pdf_page": 18,
+      "px": [
+        2160,
+        3840
+      ]
+    },
+    "12.jpg": {
+      "pdf_page": 21,
+      "px": [
+        3456,
+        1944
       ]
     }
   },
@@ -80,7 +94,7 @@
         2880,
         1620
       ],
-      "how": "page render 2x"
+      "how": "page render 2x (page byte-identical to v1 — file unchanged)"
     },
     "02.jpg": {
       "pdf_page": 3,
@@ -88,7 +102,7 @@
         2880,
         1620
       ],
-      "how": "page render 2x"
+      "how": "page render 2x (furniture page changed: Fonti / Daisy / Solano / Gappa)"
     }
   }
 }

@@ -29,6 +29,12 @@
 export const publishable = (reviews) =>
   (reviews?.items || []).filter((r) => !r.todo && r.author && (r.textBg || r.textEn))
 
+/** The verbatim text of a review: its `lang` column, else the page language. */
+const original = (r, lang) => {
+  const want = r.lang || lang
+  return (want === 'en' ? r.textEn : r.textBg) || r.textBg || r.textEn
+}
+
 /**
  * The full JSON-LD node.
  * @param {object} business  the `business` export from sections.config.js
@@ -89,7 +95,10 @@ export function businessLd(business, reviews, lang = 'bg') {
       bestRating: '5',
       worstRating: '1',
     },
-    reviewBody: (lang === 'bg' ? r.textBg : r.textEn) || r.textBg || r.textEn,
+    // the text as WRITTEN wins over the page language: a review left in English
+    // is published in English (with our translation only ever shown in the UI)
+    reviewBody: original(r, lang),
+    ...(r.lang ? { inLanguage: r.lang } : {}),
     // where the review was originally left — honest provenance, and it is what
     // lets a consumer see these are Google reviews rather than site testimonials
     ...(reviews.url ? { url: reviews.url } : {}),

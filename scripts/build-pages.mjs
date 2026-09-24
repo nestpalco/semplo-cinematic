@@ -229,8 +229,10 @@ function footer({ business }) {
 }
 
 /** placeholder badge for copy the client has not supplied yet */
+// the ui.portfolio label keys were removed with the last placeholder copy
+// (2026-09-24) — a badge can still render for a preview, as a plain "TODO"
 const todoBadge = (ui, key = 'todo') =>
-  `<span class="pj-todo" data-i18n="portfolio.${key}">${esc(ui.portfolio[key][0])}</span>`
+  `<span class="pj-todo" data-i18n="portfolio.${key}">${esc((ui.portfolio[key] || ['TODO'])[0])}</span>`
 
 /* ── the listing: portfolio/index.html ──────────────────────────────────── */
 function listingPage(cfg) {

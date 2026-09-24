@@ -330,7 +330,7 @@ export const projects = [
     category: 'apartment', // as typed by the client ("апартамент") — see Информация.pdf
     locationBg: 'гр. Божурище', locationEn: 'Bozhurishte',
     area: 45,
-    updated: '2026-09-16',
+    updated: '2026-09-24', // gallery re-curated from the revised deck ("Конна база ново.pdf")
     cardBg:
       'Интериор с характерна комбинация от естествено дърво, наситено зелено и светли неутрални тонове, в който функционалността и индивидуалните мебели създават уютна и отличителна атмосфера.',
     cardEn:
@@ -589,70 +589,68 @@ export const business = {
  * real review from the Google listing into `items` below and the section, the
  * star rows and the Review + AggregateRating JSON-LD all follow.
  *
- * ★ TO FILL IN (open business.map.link → "Reviews"):
+ * ★ HOW TO MAINTAIN (open business.map.link → "Reviews"):
  *   1. `rating` / `count` — the listing's headline score and total review count.
  *      These two power the AggregateRating, so they must match the listing.
- *      Already set from the live listing as of 2026-08-02 (4.4 ★, 14 reviews) —
- *      re-check them when you paste the reviews in, since they drift.
- *   2. one `items` entry per review you want to show (4–6 reads best):
+ *      Re-check them whenever a review is added — they drift.
+ *   2. one `items` entry per review you want to show (3–6 reads best):
  *        author  — the reviewer's display name, as Google shows it
  *        rating  — 1–5, as given
  *        date    — ISO yyyy-mm-dd (Google shows "2 months ago"; approximate it)
- *        textBg  — the review verbatim, in the language it was written
- *        textEn  — your translation (shown when the site is in EN)
- *        todo    — DELETE this key once the entry holds a real review. Entries
- *                  that still carry it are dimmed and badged in the UI, and are
- *                  LEFT OUT of the JSON-LD so no placeholder is ever published
- *                  as structured data.
- *   3. delete any placeholder you don't replace.
+ *        lang    — 'bg' | 'en': the language the review was WRITTEN in. That
+ *                  column is the verbatim text and is what the JSON-LD
+ *                  publishes; the other column is our translation for the
+ *                  language toggle.
+ *        textBg / textEn — the review in each UI language (one verbatim, one
+ *                  translated — see `lang`)
+ *        todo    — a `todo` flag (true) marks a demo/placeholder entry. Such
+ *                  entries are dimmed and badged in the UI and LEFT OUT of the
+ *                  JSON-LD. There are none now (all three below are real,
+ *                  2026-09-24) and none may ship to production.
  *
- * Until at least one `todo`-free entry exists, main.js emits NO review schema
- * at all — deliberate: fake reviews in schema are a manual-action risk.
+ * With no `todo`-free entry main.js would emit NO review schema at all —
+ * deliberate: fake reviews in schema are a manual-action risk.
  */
 export const reviews = {
-  rating: 4.4, // their live Google rating on 2026-08-02 — re-check before launch
-  count: 14, // their live Google review count on 2026-08-02
+  rating: 4.5, // their live Google rating on 2026-09-24 (was 4.4 on 2026-08-02)
+  count: 16, // their live Google review count on 2026-09-24 (was 14)
   url: 'https://maps.app.goo.gl/RW5PLieX7xKHSCPx5', // read / leave a review
+  // Three real Google reviews, transcribed from the screenshots the studio sent
+  // on 2026-09-24 ("Re: Вила Гривица", ревю.jpg / ревю 2.jpg / ревю 3.jpg).
+  // `date` is approximated from Google's relative stamp on that day ("a year
+  // ago" → 2025-09, "just now" → the day of the screenshot). `lang` marks the
+  // language the review was WRITTEN in — the other column is our translation,
+  // and schema.js publishes the original as reviewBody.
   items: [
     {
-      todo: true, // TODO: replace with a real Google review, then delete this key
-      author: 'Мария Петрова',
+      author: 'Кристина Хаджиева',
       rating: 5,
-      date: '2026-05-18',
+      date: '2026-09-24', // "just now" on the screenshot day
+      lang: 'bg',
       textBg:
-        'Работихме със SEMPLO DESIGN по цялостния проект на апартамента ни. Изслушаха ни, предложиха решения, за които не бяхме се сетили, и спазиха срока. Резултатът е точно домът, който си представяхме.',
+        'Изключително съм доволна от целия процес и крайния резултат. Още от първите разговори усетих, че идеите и желанията ми са разбрани, а крайният проект надмина очакванията ми. Всеки детайл беше внимателно обмислен, а съчетанието между естетика, функционалност и индивидуален подход направи пространството наистина мое. Благодаря за професионализма, търпението и отношението през целия процес. С удоволствие бих се доверила на Semplo Concept отново!',
       textEn:
-        'We worked with SEMPLO DESIGN on the complete design of our apartment. They listened, proposed solutions we had never thought of, and kept to the schedule. The result is exactly the home we pictured.',
+        'I am extremely happy with the whole process and the final result. From the very first conversations I felt that my ideas and wishes were understood, and the final project exceeded my expectations. Every detail was carefully thought through, and the combination of aesthetics, functionality and an individual approach made the space truly mine. Thank you for the professionalism, the patience and the attitude throughout the whole process. I would gladly trust Semplo Concept again!',
     },
     {
-      todo: true, // TODO: replace with a real Google review, then delete this key
-      author: 'Георги Иванов',
+      author: "Nicolas d'ambra", // straight apostrophe, as Google shows it
       rating: 5,
-      date: '2026-03-04',
+      date: '2025-09-01', // "a year ago" on 2026-09-24
+      lang: 'en', // written in English — textBg is our translation
       textBg:
-        'Прецизност в детайла и коректност в комуникацията. Мебелите по поръчка са безупречни, а екипът остана на разположение и след приключване на ремонта.',
+        'Наскоро възложих на Semplo Design обновяването на интериора си и съм абсолютно възхитен от резултата. Екипът показа образцов професионализъм, вслушваше се внимателно в нуждите ми и предлагаше креативни решения. Шоурумът им е истински източник на вдъхновение с широка гама от мебели и дизайни за всякакъв вкус. Горещо препоръчвам Semplo Design на всеки, който иска да преобрази своя дом.',
       textEn:
-        'Precision in the detail and honesty in the communication. The bespoke furniture is faultless, and the team stayed available well after the works were finished.',
+        'I recently hired Semplo Design to renovate my interior, and I am absolutely delighted with the result. The team demonstrated exemplary professionalism, listening carefully to my needs and offering creative solutions. Their showroom is a true source of inspiration, offering a wide range of furniture and designs to suit all tastes. I highly recommend Semplo Design to anyone looking to transform their living space.',
     },
     {
-      todo: true, // TODO: replace with a real Google review, then delete this key
-      author: 'Elena Dimitrova',
-      rating: 4, // one 4★ placeholder so the partial star row is visible in the design
-      date: '2025-11-22',
-      textBg:
-        'Довериха ни се с офиса и не сбъркахме. Пространството е спокойно, светло и работи много по-добре от предишното — а бюджетът остана там, където се уговорихме.',
-      textEn:
-        'We trusted them with our office and we were right to. The space is calm, bright and works far better than before — and the budget stayed where we agreed it would.',
-    },
-    {
-      todo: true, // TODO: replace with a real Google review, then delete this key
-      author: 'Николай Стоянов',
+      author: 'Selcuk Coskunoglu',
       rating: 5,
-      date: '2025-09-09',
+      date: '2025-09-01', // "a year ago" on 2026-09-24
+      lang: 'bg',
       textBg:
-        'От идеята до последния детайл — един екип, един стандарт. Рядкост е да срещнеш студио, което държи на качеството толкова, колкото и клиентът.',
+        'Вашият ангажимент към качеството личи във всеки аспект на работата ви. Вниманието към детайла, иновативните дизайни и стремежът към създаване на изключителни потребителски изживявания ви отличават. Ясно е, че съвършенството е в основата на всичко, което правите- продължавайте с невероятната работа!!!!',
       textEn:
-        'From the first idea to the last detail — one team, one standard. It is rare to find a studio that cares about the quality as much as the client does.',
+        'Your commitment to quality shows in every aspect of your work. The attention to detail, the innovative designs and the drive to create exceptional customer experiences set you apart. It is clear that excellence is at the heart of everything you do – keep up the incredible work!!!!',
     },
   ],
 }
@@ -791,9 +789,10 @@ export const ui = {
       'Разкажете ни за пространството — отговаряме в рамките на един работен ден.',
       'Tell us about the space — we reply within one working day.',
     ],
-    todo: ['ПРИМЕРЕН ТЕКСТ', 'PLACEHOLDER TEXT'],
-    todoArea: ['ПРИМЕРНА ПЛОЩ', 'PLACEHOLDER AREA'], // area present but unconfirmed
-    todoAreaMissing: ['ПЛОЩ — ОЧАКВА СЕ', 'AREA — PENDING'], // no area supplied yet
+    // The placeholder badge labels (`todo`, `todoArea`, `todoAreaMissing`) were
+    // removed 2026-09-24 with the last placeholder copy — nothing in `projects`
+    // carries a `todo` list any more. build-pages.mjs falls back to a plain
+    // "TODO" badge should one ever come back during a client preview.
   },
   // Real SEMPLO contact details. Phone/email mirror `business` above (which is
   // what the JSON-LD reads) — keep the two in step.
@@ -832,7 +831,8 @@ export const ui = {
     agg: ['{r} от 5 · {n} отзива в Google', '{r} out of 5 · {n} reviews on Google'],
     link: ['Прочетете всички в Google', 'Read them all on Google'],
     of: ['{r} от 5 звезди', '{r} out of 5 stars'],
-    todo: ['ПРИМЕРЕН ОТЗИВ', 'PLACEHOLDER'],
+    // no `todo` badge label any more — all reviews are real (2026-09-24);
+    // main.js falls back to "TODO" if a placeholder entry ever reappears
   },
   // ── Contact form (the modal behind the "Свържете се с нас" button) ──
   // Field values POSTed to the function stay in Bulgarian whatever the UI
