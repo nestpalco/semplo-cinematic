@@ -432,6 +432,7 @@ export const featured = [
     // HOMESTYLER logo again bottom-right, rows 1842–1884 of 1920.
     portraitSrc: 'featured-villa-grivitsa-portrait.mp4',
     portraitCropWatermark: 0.05, // drops the bottom 96 px → 1080×1824, logo gone with an 18 px margin
+    portraitCrf: 27, // the rug's fine texture made the 1080×1824 file 5.97 MB at 25 — the heaviest phone fetch
     scrubVideo: true,
   },
   {
