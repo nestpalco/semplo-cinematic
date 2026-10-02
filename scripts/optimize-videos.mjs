@@ -33,6 +33,12 @@
  *  posterFrame: 'last' grabs the FINAL frame for the poster (the hero's payoff —
  *  the finished room). Default 'first'.
  *
+ *  portraitSrc: a NATIVE 9:16 render of the same camera move (assets/videos/).
+ *  When set, the portrait files + posters are encoded from it instead of the
+ *  centre crop of the landscape master — same trimStart, its own watermark
+ *  crop (`portraitCropWatermark`, default: the slot's `cropWatermark`), never
+ *  upscaled. Slots without it keep the centre crop.
+ *
  *  Run: npm run optimize:videos  (also runs before `npm run dev` / `build`).
  * ─────────────────────────────────────────────────────────────────────────
  */
@@ -92,7 +98,8 @@ const MOBILE = { sd: { maxSide: 720 }, hd: { maxSide: 1080 } }
 // 560×994 after the watermark crop) portrait file and NO hd variant, since the
 // source has no more rows to give. crf 25 (a slot may set `portraitCrf`, the
 // ambient loops use 27), 30 fps, long GOP like the other mobile files (phones
-// play forward, they never scrub).
+// play forward, they never scrub). A slot with a native portrait render
+// (`portraitSrc`) skips the crop: its own frame is fitted inside the same caps.
 const PORTRAIT = { aspect: 9 / 16, sd: { height: 1280 }, hd: { height: 1920 }, crf: 25 }
 
 const KB = (b) => (b / 1024).toFixed(0) + ' KB'
@@ -130,11 +137,18 @@ function probe(file) {
 // long side to maxSide. Both crop + scale keep dimensions even (yuv420p needs it).
 // portrait = { height } → after the watermark crop, take the 9:16 CENTRE column
 // and scale it to at most that height (never up).
+// portrait = { height, native: true } → the source IS portrait (a slot's
+// portraitSrc): no column crop, just fit inside height × height·9/16 (never up)
+// — the watermark crop leaves it a little shorter than 9:16, and the full width
+// is kept rather than trimmed to match.
 function vf(maxSide, crop, fps = 0, portrait = null) {
   const chain = []
   if (fps > 0) chain.push(`fps=${fps}`) // cap a 60 fps delivery (see FPS_CAP)
   if (crop > 0) chain.push(`crop=iw:trunc(ih*${(1 - crop).toFixed(4)}/2)*2:0:0`)
-  if (portrait) {
+  if (portrait?.native) {
+    const k = `min(1,min(${Math.round(portrait.height * PORTRAIT.aspect)}/iw,${portrait.height}/ih))`
+    chain.push(`scale='2*trunc(iw*${k}/2)':'2*trunc(ih*${k}/2)':flags=lanczos`)
+  } else if (portrait) {
     chain.push(`crop=trunc(ih*${PORTRAIT.aspect.toFixed(6)}/2)*2:ih:(iw-ow)/2:0`)
     chain.push(`scale=-2:'min(${portrait.height},ih)':flags=lanczos`)
   } else {
@@ -271,27 +285,50 @@ async function main() {
     // a slot's `portraitCrf` overrides PORTRAIT.crf for both portrait encodes
     // (the ambient loops: background texture, 27; hero + featured stay at 25)
     const portCrf = v.portraitCrf || PORTRAIT.crf
-    const portSd = { ...prof.mobile, crf: portCrf, portrait: PORTRAIT.sd }
+    // the portrait INPUT: a native portrait render (`portraitSrc`) when the slot
+    // has one and it is on disk, else the landscape master (centre crop). The
+    // native file is a separate render of the same move, so it is probed on its
+    // own (fps cap, height) and checked against the master's duration.
+    let pIn = input, pCrop = crop, pMeta = meta, pFpsCap = fpsCap, native = false
+    if (v.portraitSrc && !placeholder) {
+      const f = resolve(SRC, v.portraitSrc)
+      if (!existsSync(f)) {
+        console.warn(`⚠ ${String(v.id).padEnd(9)} portraitSrc assets/videos/${v.portraitSrc} missing — centre-cropping the master`)
+      } else {
+        pIn = f
+        native = true
+        pCrop = v.portraitCropWatermark ?? crop
+        pMeta = probe(f)
+        if (pMeta.width >= pMeta.height) throw new Error(`${v.id}: portraitSrc ${v.portraitSrc} is ${pMeta.width}×${pMeta.height}, not portrait`)
+        if (trim) pMeta.duration = +(pMeta.duration - trim).toFixed(3)
+        pFpsCap = pMeta.fps > FPS_CAP + 0.5 ? FPS_CAP : 0
+        if (Math.abs(pMeta.duration - meta.duration) > 0.1)
+          console.warn(`⚠ ${String(v.id).padEnd(9)} portraitSrc runs ${pMeta.duration}s vs the master's ${meta.duration}s — check the move matches`)
+      }
+    }
+    const pSpec = (p) => (native ? { ...p, native: true } : p)
+    const portSd = { ...prof.mobile, crf: portCrf, portrait: pSpec(PORTRAIT.sd) }
     // an hd portrait only where the source is taller than the sd cap (a 4K
-    // master); a 1080p delivery would just duplicate the sd file
-    const srcHeight = Math.round(meta.height * (1 - crop))
-    const portHd = srcHeight > PORTRAIT.sd.height ? { ...prof.mobile, crf: portCrf, portrait: PORTRAIT.hd } : null
+    // master, or a native 1080×1920 portrait); a 1080p landscape delivery
+    // would just duplicate the sd file
+    const srcHeight = Math.round(pMeta.height * (1 - pCrop))
+    const portHd = srcHeight > PORTRAIT.sd.height ? { ...prof.mobile, crf: portCrf, portrait: pSpec(PORTRAIT.hd) } : null
 
     const deskBytes = await encode(input, resolve(OUT, deskFile), prof.desktop, crop, trim, fpsCap)
     const mobBytes = await encode(input, resolve(OUT, mobFile), mobSd, crop, trim, fpsCap)
     const mobHdBytes = await encode(input, resolve(OUT, mobHdFile), mobHd, crop, trim, fpsCap)
-    const portBytes = await encode(input, resolve(OUT, portFile), portSd, crop, trim, fpsCap)
+    const portBytes = await encode(pIn, resolve(OUT, portFile), portSd, pCrop, trim, pFpsCap)
     let portHdFile = null, portHdBytes = 0, postPortHdFile = null, postPortHdBytes = 0
     const pf = v.posterFrame === 'last' ? 'last' : 'first'
     const postBytes = await poster(input, resolve(OUT, postFile), prof.desktop.maxSide, crop, pf, meta.duration, trim, pq)
     const postMobBytes = await poster(input, resolve(OUT, postMobFile), MOBILE.sd.maxSide, crop, pf, meta.duration, trim, pq)
     const postMobHdBytes = await poster(input, resolve(OUT, postMobHdFile), MOBILE.hd.maxSide, crop, pf, meta.duration, trim, pq)
-    const postPortBytes = await poster(input, resolve(OUT, postPortFile), 0, crop, pf, meta.duration, trim, pq, PORTRAIT.sd)
+    const postPortBytes = await poster(pIn, resolve(OUT, postPortFile), 0, pCrop, pf, pMeta.duration, trim, pq, portSd.portrait)
     if (portHd) {
       portHdFile = `${v.id}-portrait-hd.mp4`
-      portHdBytes = await encode(input, resolve(OUT, portHdFile), portHd, crop, trim, fpsCap)
+      portHdBytes = await encode(pIn, resolve(OUT, portHdFile), portHd, pCrop, trim, pFpsCap)
       postPortHdFile = `${v.id}-poster-portrait-hd.webp`
-      postPortHdBytes = await poster(input, resolve(OUT, postPortHdFile), 0, crop, pf, meta.duration, trim, pq, PORTRAIT.hd)
+      postPortHdBytes = await poster(pIn, resolve(OUT, postPortHdFile), 0, pCrop, pf, pMeta.duration, trim, pq, portHd.portrait)
     }
     // scrub slots whose poster is the LAST frame also get a FIRST-frame poster —
     // scrub mode starts at frame 0, so its underlay must match frame 0.
@@ -330,6 +367,7 @@ async function main() {
       mobile: mobFile, // landscape 720 (DPR 1)
       mobileHd: mobHdFile, // landscape 1080 (DPR ≥ 2)
       portrait: portFile, // phones: 9:16 centre crop, ≤ 720×1280 (never upscaled)
+      ...(native ? { portraitSource: v.portraitSrc } : {}), // portrait files encoded from this native render, not the crop
       ...(portHdFile ? { portraitHd: portHdFile } : {}), // ≤ 1080×1920, 4K sources only
       portraitSize: [portMeta.width, portMeta.height],
       ...(portHdMeta ? { portraitHdSize: [portHdMeta.width, portHdMeta.height] } : {}),
@@ -380,7 +418,7 @@ async function main() {
       `✓ ${String(v.id).padEnd(9)} ${role.padEnd(7)} ${meta.width}×${meta.height} ${meta.duration.toFixed(1)}s` +
         `  raw ${KB(rawBytes).padStart(8)} → desktop ${KB(deskBytes).padStart(8)} (${pct}%)` +
         (hdFile ? `  hd ${KB(hdBytes).padStart(8)}` : '') +
-        `  mobile ${KB(mobBytes).padStart(7)}/${KB(mobHdBytes)}  portrait ${KB(portBytes)}${portHdFile ? '/' + KB(portHdBytes) : ''} (${portMeta.width}×${portMeta.height}${portHdMeta ? ', ' + portHdMeta.width + '×' + portHdMeta.height : ''})  poster ${KB(postBytes).padStart(7)} [${pf}]` +
+        `  mobile ${KB(mobBytes).padStart(7)}/${KB(mobHdBytes)}  portrait${native ? ' [native]' : ''} ${KB(portBytes)}${portHdFile ? '/' + KB(portHdBytes) : ''} (${portMeta.width}×${portMeta.height}${portHdMeta ? ', ' + portHdMeta.width + '×' + portHdMeta.height : ''})  poster ${KB(postBytes).padStart(7)} [${pf}]` +
         (crop ? `  wm-crop ${Math.round(crop * 100)}%` : '') +
         (trim ? `  head-trim ${trim}s` : '') +
         (fpsCap ? `  ${meta.fps}→${fpsCap} fps` : '')

@@ -89,6 +89,13 @@ for (const slot of [hero, ...(ambients || []), ...(featured || [])].filter(Boole
   for (const key of ['mobileHd', 'portrait', 'posterMobileHd', 'posterPortrait']) {
     if (!m[key]) problems.push(`video slot "${slot.id}" has no "${key}" in the manifest (run npm run optimize:videos)`)
   }
+  // a native portrait render (`portraitSrc`): the committed portrait files must
+  // have been encoded from it — and not from a portraitSrc since removed
+  if ((slot.portraitSrc || null) !== (m.portraitSource || null))
+    problems.push(
+      `video slot "${slot.id}": config portraitSrc is ${slot.portraitSrc || 'unset'} but the portrait files were encoded from ` +
+        `${m.portraitSource || 'the landscape centre crop'} (run npm run optimize:videos)`
+    )
 }
 
 /* ── projects ── */

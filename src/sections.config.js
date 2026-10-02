@@ -424,6 +424,14 @@ export const featured = [
     src: 'featured-villa-grivitsa.mp4',
     placeholderSrc: 'semplo-the_living_room.mp4', // no longer used — the real clip exists
     cropWatermark: 0.08, // drops the bottom 86 px → HOMESTYLER mark gone (0.06 left its top edge)
+    // NATIVE PORTRAIT delivered 2026-10-01 ("VipZALAGRIVITSA-2.mp4", same
+    // thread): 1080×1920, 60 fps, 10.15 s / 609 frames, H.264, no audio, no
+    // cuts — the SAME dolly as the master (same timing, same vertical field of
+    // view, framed ~11 landscape px right of the exact centre). Phones get it
+    // instead of the 9:16 centre crop of the master (558×992 → 1080 wide).
+    // HOMESTYLER logo again bottom-right, rows 1842–1884 of 1920.
+    portraitSrc: 'featured-villa-grivitsa-portrait.mp4',
+    portraitCropWatermark: 0.05, // drops the bottom 96 px → 1080×1824, logo gone with an 18 px margin
     scrubVideo: true,
   },
   {

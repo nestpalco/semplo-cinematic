@@ -1743,6 +1743,30 @@ test('mobile video tier: 390x844 loads the portrait encodes, never the landscape
     .toBe(true)
 })
 
+/* ── native portrait render: the villa's phone clip is the client's 1080×1920
+ * delivery (`portraitSrc`), not the 558×992 centre crop of the landscape master.
+ * Config, manifest and the decoded frame must all agree: a stale re-encode or a
+ * dropped portraitSrc would quietly put the soft crop back on phones. */
+test('villa grivitsa: phones get the NATIVE portrait render, 1080 wide', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile', 'phone tier choice — mobile project only')
+  const manifest = JSON.parse(fs.readFileSync(new URL('../src/videos.manifest.json', import.meta.url), 'utf8'))
+  const slot = featured.find((f) => f.id === 'featured-villa-grivitsa')
+  const m = manifest[slot.id]
+  expect(slot.portraitSrc, 'config names the native render').toBe('featured-villa-grivitsa-portrait.mp4')
+  expect(m.portraitSource, 'portrait files were encoded from it').toBe(slot.portraitSrc)
+  expect(m.portraitHd, 'native 1080-row source → an hd portrait file').toBe('featured-villa-grivitsa-portrait-hd.mp4')
+  expect(m.portraitHdSize, 'full native width, logo rows cropped').toEqual([1080, 1824])
+  await ready(page)
+  const sec = page.locator(`[data-id="${slot.id}"]`)
+  await sec.scrollIntoViewIfNeeded()
+  await expect
+    .poll(() => sec.locator('video').getAttribute('src'), { message: 'villa clip', timeout: 10_000 })
+    .toBe(`/videos/${m.portraitHd}`)
+  await expect
+    .poll(() => sec.locator('video').evaluate((v) => [v.videoWidth, v.videoHeight]), { timeout: 15_000 })
+    .toEqual([1080, 1824])
+})
+
 /* ── video tiers (src/video-tier.js) ─────────────────────────────────────────
  * Wide desktops get the 1920 encodes + posters, ordinary desktops the 1280
  * ones; the tier is chosen once at boot from matchMedia. Checked on the first

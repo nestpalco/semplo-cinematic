@@ -210,15 +210,22 @@
     "mobile": "featured-villa-grivitsa-720.mp4",
     "mobileHd": "featured-villa-grivitsa-1080.mp4",
     "portrait": "featured-villa-grivitsa-portrait.mp4",
+    "portraitSource": "featured-villa-grivitsa-portrait.mp4",
+    "portraitHd": "featured-villa-grivitsa-portrait-hd.mp4",
     "portraitSize": [
-      558,
-      992
+      720,
+      1216
+    ],
+    "portraitHdSize": [
+      1080,
+      1824
     ],
     "poster": "featured-villa-grivitsa-poster.webp",
     "posterHd": "featured-villa-grivitsa-poster-1920.webp",
     "posterMobile": "featured-villa-grivitsa-poster-720.webp",
     "posterMobileHd": "featured-villa-grivitsa-poster-1080.webp",
     "posterPortrait": "featured-villa-grivitsa-poster-portrait.webp",
+    "posterPortraitHd": "featured-villa-grivitsa-poster-portrait-hd.webp",
     "posterFrame": "first",
     "width": 1280,
     "height": 662,
@@ -231,12 +238,14 @@
       "desktopHd": 10253892,
       "mobile": 717365,
       "mobileHd": 1382964,
-      "portrait": 2133401,
+      "portrait": 2829676,
+      "portraitHd": 6116068,
       "poster": 104712,
       "posterHd": 186592,
       "posterMobile": 40460,
       "posterMobileHd": 80036,
-      "posterPortrait": 66726
+      "posterPortrait": 104564,
+      "posterPortraitHd": 193256
     }
   },
   "featured-house-troyan": {
