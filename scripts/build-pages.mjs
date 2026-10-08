@@ -199,7 +199,9 @@ function nav({ ui, portfolio }) {
     </header>`
 }
 
-function footer({ business }) {
+// `current` — the footer's own "Проекти" link is the page you are on (listing
+// and project pages alike), so it carries aria-current like the nav bar's.
+function footer({ business, portfolio }) {
   return `
       <footer class="foot">
         <div class="foot__col foot__social">
@@ -216,6 +218,12 @@ function footer({ business }) {
         </div>
         <div class="foot__col foot__center">
           <span class="foot__brand" data-i18n="brand">SEMPLO DESIGN</span>
+          <nav class="foot__nav" aria-label="Footer">
+            <a href="${portfolio.path}" data-i18n="nav.work" aria-current="page">Проекти</a>
+            <a href="/#catalogs" data-i18n="nav.catalogs">Каталози</a>
+            <a href="/#studio" data-i18n="nav.studio">Студио</a>
+            <a href="/#contact" data-i18n="nav.contact">Контакт</a>
+          </nav>
           <span data-i18n="foot.rights">© 2026 SEMPLO DESIGN — Интериорно студио · Всички права запазени</span>
           <a class="foot__credit" href="https://webservices.agency" target="_blank"
              rel="noopener" data-i18n="foot.credit">Изработка и поддръжка — webservices.agency</a>

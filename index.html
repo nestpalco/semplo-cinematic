@@ -116,7 +116,9 @@
         <span class="nav__tag" data-i18n="tagline">Интериорно студио</span>
       </a>
       <nav class="nav__links" id="nav-links" aria-label="Primary">
-        <a href="#work" data-i18n="nav.work">Проекти</a>
+        <!-- "Проекти" is a PAGE link (the full portfolio), not an anchor: the
+             pin-aware anchor handler in main.js only binds a[href^="#"] -->
+        <a href="/portfolio/" data-i18n="nav.work">Проекти</a>
         <a href="#catalogs" data-i18n="nav.catalogs">Каталози</a>
         <a href="#studio" data-i18n="nav.studio">Студио</a>
         <a href="#contact" data-i18n="nav.contact">Контакт</a>
@@ -268,6 +270,14 @@
         <!-- CENTER: wordmark + rights + studio credit -->
         <div class="foot__col foot__center">
           <span class="foot__brand" data-i18n="brand">SEMPLO DESIGN</span>
+          <!-- primary links again, so the portfolio is reachable from the foot
+               of every page (the nav bar hides on scroll) -->
+          <nav class="foot__nav" aria-label="Footer">
+            <a href="/portfolio/" data-i18n="nav.work">Проекти</a>
+            <a href="#catalogs" data-i18n="nav.catalogs">Каталози</a>
+            <a href="#studio" data-i18n="nav.studio">Студио</a>
+            <a href="#contact" data-i18n="nav.contact">Контакт</a>
+          </nav>
           <span data-i18n="foot.rights"
             >© 2026 SEMPLO DESIGN — Интериорно студио · Всички права запазени</span
           >

@@ -241,7 +241,8 @@ async function contrastFailures(page) {
       '.nav__logo', '.nav__tag', '.nav__links a', '.lang__btn',
       '.interlude__eyebrow', '.interlude__title', '.interlude__body',
       '.studio__num', '.studio__stat-label',
-      '.projects__eyebrow', '.projects__title', '.projects__more-link',
+      '.projects__eyebrow', '.projects__title', '.projects__sub', '.projects__more-link',
+      '.foot__nav a',
       '.catcard__cat', '.catcard__title', '.catcard__dl', '.catcard__size', '.catcard__doc',
       '.cta__eyebrow', '.cta__title', '.cta__text', '.cta__btn', '.cta__contacts',
       '.cta__contacts a', '.cta__maplink', '.foot__brand', '.foot__center span',
@@ -350,7 +351,9 @@ test('loads clean: no console errors, no horizontal scroll', async ({ page }) =>
 test('nav anchors scroll to their section (BG + EN)', async ({ page }) => {
   const errors = collectErrors(page)
   await ready(page)
-  const targets = ['#work', '#catalogs', '#studio', '#contact']
+  // "Проекти" is a page link since 2026-10-08 (→ /portfolio/, tested below);
+  // the other three stay pin-aware anchors
+  const targets = ['#catalogs', '#studio', '#contact']
   for (const lang of ['bg', 'en']) {
     if (lang === 'en') {
       await page.locator('.lang__btn[data-lang="en"]').click()
@@ -370,6 +373,38 @@ test('nav anchors scroll to their section (BG + EN)', async ({ page }) => {
     await page.waitForFunction(() => window.scrollY < 30, null, { timeout: 7000 }).catch(() => {})
     expect(await page.evaluate(() => window.scrollY), 'brand → top').toBeLessThan(60)
   }
+  expect(errors, errors.join('\n')).toHaveLength(0)
+})
+
+/* ── 2b. NAV "Проекти" is a PAGE link → /portfolio/ with every project card;
+ * the footer repeats it on every page (the bar hides on scroll) ──────────── */
+test('nav + footer "Проекти" lead to the full portfolio', async ({ page }) => {
+  const errors = collectErrors(page)
+  await ready(page)
+  const work = page.locator('.nav__links a[data-i18n="nav.work"]')
+  expect(await work.getAttribute('href')).toBe(portfolio.path)
+  expect(await work.getAttribute('aria-current'), 'not current on the homepage').toBeNull()
+  await expect(work).toHaveText(ui.nav.work[0])
+  // footer: Проекти → /portfolio/, the rest are the homepage anchors
+  const foot = page.locator('.foot__nav a')
+  await expect(foot).toHaveCount(4)
+  expect(await foot.first().getAttribute('href')).toBe(portfolio.path)
+  await expect(foot.first()).toHaveText(ui.nav.work[0])
+  for (const [i, key] of ['catalogs', 'studio', 'contact'].entries())
+    expect(await foot.nth(i + 1).getAttribute('href')).toBe(`#${key}`)
+  // EN labels follow the toggle
+  await page.locator('.lang__btn[data-lang="en"]').click()
+  await page.waitForTimeout(300)
+  await expect(work).toHaveText(ui.nav.work[1])
+  await expect(foot.first()).toHaveText(ui.nav.work[1])
+  await page.locator('.lang__btn[data-lang="bg"]').click()
+  await page.waitForTimeout(300)
+  // click it (through the burger on the compact nav) → the listing, all cards
+  await openMobileNav(page)
+  await work.click()
+  await page.waitForURL(`**${portfolio.path}`)
+  await expect(page.locator('.pcard')).toHaveCount(projects.length)
+  expect(await page.locator('.nav__links a[data-i18n="nav.work"]').getAttribute('aria-current')).toBe('page')
   expect(errors, errors.join('\n')).toHaveLength(0)
 })
 
@@ -438,6 +473,11 @@ test('selected projects: three featured video sections link to the portfolio', a
   const more = page.locator('.projects__more-link')
   expect(await more.getAttribute('href')).toBe(portfolio.path)
   await expect(more).toHaveText(ui.projects.more[0])
+  // the count line under the heading: "3 избрани · всички 8 в портфолиото →"
+  const fill = (s) => s.replace('{n}', featured.length).replace('{total}', projects.length)
+  const sub = page.locator('.projects__sub')
+  expect(await sub.getAttribute('href')).toBe(portfolio.path)
+  await expect(sub).toHaveText(fill(ui.projects.sub[0]))
 
   // desktop: each featured clip is pinned + scrubbed exactly like the ambients
   if (info.project.name === 'desktop') {
@@ -454,6 +494,7 @@ test('selected projects: three featured video sections link to the portfolio', a
     projects.find((x) => x.id === featured[0].project).titleEn
   )
   await expect(more).toHaveText(ui.projects.more[1])
+  await expect(sub).toHaveText(fill(ui.projects.sub[1]))
   await page.locator('.lang__btn[data-lang="bg"]').click()
   await page.waitForTimeout(300)
 

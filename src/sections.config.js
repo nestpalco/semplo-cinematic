@@ -746,7 +746,9 @@ export const ui = {
   brand: ['SEMPLO DESIGN', 'SEMPLO DESIGN'],
   tagline: ['Интериорно студио', 'Interior studio'],
   nav: {
-    work: ['Проекти', 'Work'],
+    // → /portfolio/ (a page, not the homepage #work anchor — since 2026-10-08;
+    // the hero CTA still scrolls to #work, the "Избрани проекти" section)
+    work: ['Проекти', 'Projects'],
     catalogs: ['Каталози', 'Catalogues'],
     studio: ['Студио', 'Studio'],
     contact: ['Контакт', 'Contact'],
@@ -768,6 +770,11 @@ export const ui = {
     title: ['Избрани проекти', 'Selected projects'],
     view: ['Разгледай проекта', 'View project'], // the link on each featured section
     more: ['Разгледайте всички проекти', 'View all projects'], // → /portfolio/ (arrow added in CSS)
+    // one line under the heading, so the count is visible BEFORE the three
+    // video sections: "{n} избрани · всички {total} в портфолиото →" (a link to
+    // /portfolio/). {n} = featured.length, {total} = projects.length — main.js
+    // fills them in, nothing to keep by hand.
+    sub: ['{n} избрани · всички {total} в портфолиото', '{n} selected · all {total} in the portfolio'],
   },
   pano: {
     badge: ['360°', '360°'],

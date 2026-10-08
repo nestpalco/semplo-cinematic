@@ -981,6 +981,30 @@ main {
   line-height: 1.02;
   letter-spacing: -0.018em;
 }
+/* "3 избрани · всички 8 в портфолиото →" — the count line under the title, a
+   quiet link to /portfolio/ so the visitor knows there is more before scrolling
+   through three full-height video sections. Same voice as the eyebrow. */
+.projects__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: clamp(0.9rem, 2vh, 1.4rem);
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  transition: color 0.3s var(--ease);
+}
+.projects__sub::after {
+  content: '→';
+  transition: transform 0.4s var(--ease);
+}
+.projects__sub:hover {
+  color: var(--gold-ink);
+}
+.projects__sub:hover::after {
+  transform: translateX(4px);
+}
 /* (the project detail overlay was retired 2026-09-16 — projects have their
    own pages now; only its 360° chrome below is still used, by those pages) */
 
@@ -1498,6 +1522,23 @@ main {
   color: var(--ink);
   font-size: 1.2rem;
   letter-spacing: 0.01em;
+}
+/* the primary links again (Проекти → /portfolio/, then the homepage anchors):
+   the bar hides on scroll, so the portfolio stays one click away at the foot
+   of every page */
+.foot__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.4rem;
+  margin: 0.2rem 0 0.35rem;
+  font-size: 0.74rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.foot__nav a:hover,
+.foot__nav a[aria-current='page'] {
+  color: var(--gold-ink);
 }
 /* RIGHT: address + phone + email */
 .foot__contact {

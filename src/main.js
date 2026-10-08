@@ -233,12 +233,18 @@ function featuredHTML(f) {
 }
 
 function projectsHTML() {
+  // "3 избрани · всички 8 в портфолиото →" — counts from config, both languages
+  const sub = ui.projects.sub.map((s) =>
+    s.replace('{n}', featured.length).replace('{total}', projects.length)
+  )
   return `
     <section class="projects" id="work">
       <header class="projects__head" data-interlude>
         <div class="interlude__inner">
           <p class="projects__eyebrow" data-i18n="projects.eyebrow">${ui.projects.eyebrow[0]}</p>
           <h2 class="projects__title" data-i18n="projects.title">${ui.projects.title[0]}</h2>
+          <a class="projects__sub" href="${portfolio.path}"
+             data-bg="${sub[0]}" data-en="${sub[1]}">${sub[0]}</a>
         </div>
       </header>
       ${featured.map(featuredHTML).join('')}

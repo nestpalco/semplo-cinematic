@@ -39,6 +39,13 @@ html.motion-pending :is(
   width: 100%;
   opacity: 0.6;
 }
+/* …and in the compact-nav panel (≤620px), where the underline is hidden, the
+   current item reads in brass instead */
+@media (max-width: 620px) {
+  .nav__links a[aria-current='page'] {
+    color: var(--gold-ink);
+  }
+}
 
 /* ══════════════════════════════ LISTING ══════════════════════════════ */
 .pf {

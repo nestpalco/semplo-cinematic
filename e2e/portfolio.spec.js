@@ -163,6 +163,13 @@ test('portfolio: header, filters, cards from config, bilingual, clean', async ({
   for (const key of ['catalogs', 'studio', 'contact'])
     expect(await page.locator(`.nav__links a[data-i18n="nav.${key}"]`).getAttribute('href')).toBe(`/#${key}`)
   expect(await page.locator('.nav__brand').getAttribute('href')).toBe('/')
+  // footer repeats the primary links: Проекти (current) + the homepage anchors
+  const foot = page.locator('.foot__nav a')
+  await expect(foot).toHaveCount(4)
+  expect(await foot.first().getAttribute('href')).toBe(P)
+  expect(await foot.first().getAttribute('aria-current')).toBe('page')
+  for (const [i, key] of ['catalogs', 'studio', 'contact'].entries())
+    expect(await foot.nth(i + 1).getAttribute('href')).toBe(`/#${key}`)
 
   // filter row: Всички + one chip per category, "all" pressed
   const chips = page.locator('[data-filter]')
