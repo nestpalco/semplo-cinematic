@@ -1,104 +1,27 @@
 {
-  "source": "_source/presentation.pdf (gitignored; original in the studio's email/Drive)",
+  "source": "gallery 03–08 + panoramas/: email \"Hillside\" (office@semplohome.com, 2026-10-08 10:20, Drive links) — re-renders after the LIVING-ROOM REDESIGN (marble floor, LED-framed TV wall, David diptych; the old living room had a wood floor + flower painting). Raw files in _source/2026-10-08-living-redesign/ (gitignored). gallery 01–02 and 09–15: _source/presentation.pdf (2026-09-16 deck) — hallway, bedrooms, bathrooms are unchanged.",
   "gallery": {
-    "01.jpg": {
-      "pdf_page": 17,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "02.jpg": {
-      "pdf_page": 18,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "03.jpg": {
-      "pdf_page": 2,
-      "px": [
-        2304,
-        1296
-      ]
-    },
-    "04.jpg": {
-      "pdf_page": 3,
-      "px": [
-        2304,
-        1296
-      ]
-    },
-    "05.jpg": {
-      "pdf_page": 4,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "06.jpg": {
-      "pdf_page": 5,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "07.jpg": {
-      "pdf_page": 6,
-      "px": [
-        1600,
-        1200
-      ]
-    },
-    "08.jpg": {
-      "pdf_page": 13,
-      "px": [
-        2304,
-        1296
-      ]
-    },
-    "09.jpg": {
-      "pdf_page": 9,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "10.jpg": {
-      "pdf_page": 11,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "11.jpg": {
-      "pdf_page": 10,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "12.jpg": {
-      "pdf_page": 22,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "13.jpg": {
-      "pdf_page": 24,
-      "px": [
-        1920,
-        1080
-      ]
-    },
-    "14.jpg": {
-      "pdf_page": 26,
-      "px": [
-        1920,
-        1080
-      ]
-    }
+    "01.jpg": { "pdf_page": 17, "px": [1920, 1080], "note": "hallway — round LED mirror (unchanged, was 01)" },
+    "02.jpg": { "pdf_page": 18, "px": [1920, 1080], "note": "hallway — second angle (unchanged, was 02)" },
+    "03.jpg": { "was": "Copy of Нели Хил сайд_Unnamed Space-207.jpeg", "px": [4000, 3000], "note": "NEW living room — wide from the window: TV wall, sofa, dining, kitchen" },
+    "04.jpg": { "was": "Copy of Нели Хил сайд_Living Room-208.jpeg", "px": [4000, 3000], "note": "NEW living room — wide from the TV end (SEMPLO placard on the TV)" },
+    "05.jpg": { "was": "Copy of Нели Хил сайд_Unnamed Space-200.jpeg", "px": [4000, 3000], "note": "NEW living room — sofa, David diptych, dining table" },
+    "06.jpg": { "was": "Copy of Нели Хил сайд_Unnamed Space-201.jpeg", "px": [4000, 3000], "note": "NEW kitchen + dining + David wall" },
+    "07.jpg": { "was": "Copy of Нели Хил сайд_Unnamed Space-204.jpeg", "px": [4000, 3000], "note": "NEW TV wall — LED lattice, lit glass cabinet, wine rack" },
+    "08.jpg": { "was": "Copy of Нели Хил сайд_Unnamed Space-205.jpeg", "px": [4000, 3000], "note": "NEW dining — table, shelving, toward the kitchen" },
+    "09.jpg": { "pdf_page": 13, "px": [2304, 1296], "note": "master bedroom — SEMPLO TV (unchanged, was 08)" },
+    "10.jpg": { "pdf_page": 9, "px": [1920, 1080], "note": "bedroom — curved LED wall (unchanged, was 09)" },
+    "11.jpg": { "pdf_page": 11, "px": [1920, 1080], "note": "bedroom — wardrobe (unchanged, was 10)" },
+    "12.jpg": { "pdf_page": 10, "px": [1920, 1080], "note": "twin bedroom (unchanged, was 11)" },
+    "13.jpg": { "pdf_page": 22, "px": [1920, 1080], "note": "bathroom — patterned tiles (unchanged, was 12)" },
+    "14.jpg": { "pdf_page": 24, "px": [1920, 1080], "note": "bathroom — green onyx floor (unchanged, was 13)" },
+    "15.jpg": { "pdf_page": 26, "px": [1920, 1080], "note": "bathroom — second angle (unchanged, was 14)" },
+    "(dropped 2026-10-08)": "old 03, 04, 05, 06, 07 (deck pages 2, 3, 4, 5, 6) — the OLD living room / kitchen, superseded by the redesign",
+    "(not used 2026-10-08)": "Unnamed Space-203.jpeg (3840×2160, close-up of the David diptych — a detail, not a room) and Unnamed Space-206.jpeg (near-duplicate of 200/201: sofa + dining + door). No Unnamed Space-202 was sent (8 JPEGs, not 9)."
+  },
+  "panoramas": {
+    "living.jpg": { "was": "Living Room-10-10-8-2026, 10_16_22 AM.zip → spherical.jpg", "px": [8000, 4000], "note": "camera standing by the window between the curtain panels, looking at the TV wall, sofa, dining and kitchen; only cube faces + spherical in the ZIP, faces discarded" },
+    "(rejected)": "Living Room-9 (camera over the kitchen hob — the worktop fills the lower third, a kitchen view, not the living room); Living Room-11 (camera inside the sofa — the seat cushions wrap the whole lower hemisphere)"
   },
   "sketches": {},
   "materials": {}

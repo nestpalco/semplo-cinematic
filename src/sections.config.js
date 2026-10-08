@@ -179,7 +179,10 @@ export const projects = [
     category: 'apartment',
     locationBg: 'гр. София', locationEn: 'Sofia',
     area: 90, // Информация.pdf, 2026-09-16
-    updated: '2026-09-16',
+    updated: '2026-10-08',
+    // 360° — DELIVERED 2026-10-08 (email "Hillside", three Homestyler ZIPs
+    // "Living Room-9/10/11"): one viewpoint kept (see source-manifest.json)
+    panoramas: [{ file: 'living', bg: 'Дневна', en: 'Living room' }],
     cardBg:
       'Изискан съвременен интериор в топла неутрална палитра, съчетаващ естествени текстури, мебели по индивидуален проект и внимателно проектирано осветление.',
     cardEn:
@@ -233,7 +236,7 @@ export const projects = [
     category: 'house',
     locationBg: 'Троян', locationEn: 'Troyan',
     area: 377, // РЗП 377,2 кв.м (ЗП 226 кв.м) per the docx — total floor area shown, rounded
-    updated: '2026-09-23',
+    updated: '2026-10-08', // gallery re-curated to 15 from the client's 16:9 "for site" set
     panoramas: [
       { file: 'living', bg: 'Дневна', en: 'Living room' },
       { file: 'bedroom', bg: 'Спалня', en: 'Bedroom' },
@@ -400,17 +403,23 @@ export const featured = [
     id: 'featured-hillside',
     role: 'featured',
     project: 'hillside',
-    // DELIVERED 2026-09-16 ("Нели Хил сайд-1.mp4", email "Видео"): 1920×1080,
-    // 60 fps, 15.45 s, H.264, no audio, no watermark — three hard-cut shots
-    // (kitchen → sofa → TV wall), the last with the SEMPLO CONCEPT STORE placard
-    // on the TV (in the render, not an overlay).
+    // REPLACED 2026-10-08 ("Copy of Нели Хил сайд-1.mp4", email "Hillside"):
+    // a NEW render of the REDESIGNED living room — 1920×1080, 60 fps, 10.15 s /
+    // 609 frames, H.264, no audio, ONE continuous dolly from the TV wall down
+    // the room into the kitchen, no cuts, clean frame 0 (no black reveal, so no
+    // trimStart any more). HOMESTYLER logo burned into the bottom-right corner
+    // (rows 1015–1041 of 1080). The 2026-09-16 clip (15.45 s, three hard cuts,
+    // the OLD living room) is in git history only.
     src: 'featured-hillside.mp4',
     placeholderSrc: 'kling_20260619_VIDEO_Cinematic__1064_0.mp4', // no longer used — the real clip exists
-    cropWatermark: 0, // clean delivery, full frame (the placeholder needed 0.08)
-    // the camera slides in from off-frame BLACK over the first 11 frames (a
-    // 285px black band down the left edge at frame 0, gone by 0.2s) — and frame
-    // 0 is the poster + the scrub's resting frame, so drop that head
-    trimStart: 0.25,
+    cropWatermark: 0.08, // drops the bottom 86 px → HOMESTYLER mark gone (same as the villa)
+    // NATIVE PORTRAIT delivered in the same email ("Copy of Нели Хил сайд-2.mp4"):
+    // 1080×1920, 60 fps, 10.15 s / 609 frames, no audio, no cuts — the SAME
+    // dolly as the master (frame-aligned at offset 0, correlation 0.995; its
+    // frame is the master's exact centre 9:16 column). Logo bottom-right,
+    // rows 1853–1881 of 1920.
+    portraitSrc: 'featured-hillside-portrait.mp4',
+    portraitCropWatermark: 0.05, // drops the bottom 96 px → 1080×1824, logo gone with a 29 px margin
     scrubVideo: true,
   },
   {
@@ -439,15 +448,19 @@ export const featured = [
     id: 'featured-house-troyan',
     role: 'featured',
     project: 'house-troyan',
-    // DELIVERED 2026-09-23 ("YouCut_20260923_151806551.mp4" on Drive, email
-    // "Fwd: Видео- къща Троян"): 1624×1080 (3:2, SAR 405:406), 50 fps container
-    // but only ~12.5 UNIQUE frames/s (a Kling AI 3.0 clip slowed ~2× in YouCut —
-    // every frame is held for four), 10.17 s, silent AAC track (stripped). ONE
-    // continuous push from the sofa toward the kitchen, no cuts, clean frame 0.
-    // "KlingAI 3.0" mark burned into the bottom-right corner (rows 1021–1040 of 1080).
+    // REPLACED 2026-10-08 ("troyan_video.mp4" inside "2026-10-06- for site.zip",
+    // email "Троян"): a REAL rendered walkthrough this time — 3840×2160, 30 fps
+    // with 30 unique frames/s, 10.0 s / 300 frames, H.264 Main 28.9 Mb/s,
+    // silent AAC track (stripped), NO watermark or AI mark anywhere. ONE
+    // continuous push from the green sofa past the dining table to the TV
+    // wall, no cuts, clean frame 0. The 4K source gives phones a 1080×1920
+    // portrait-hd centre crop. (The 2026-09-23 clip was a Kling AI 3.0 render
+    // slowed 2× in YouCut, 1624×1080 with ~12.5 unique fps — git history only.)
+    // The client's native PORTRAIT render is promised "for the weekend" — until
+    // it lands the centre crop stays; add `portraitSrc` when it does.
     src: 'featured-house-troyan.mp4',
     placeholderSrc: 'kling_20260619_VIDEO_A_big_mode_919_0.mp4', // no longer used — the real clip exists
-    cropWatermark: 0.08, // drops the bottom 86 px → KlingAI mark gone
+    cropWatermark: 0, // clean delivery, full frame (the Kling clip needed 0.08)
     scrubVideo: true,
   },
 ]

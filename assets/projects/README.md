@@ -112,6 +112,14 @@ portfolio field is missing.
   2000×2000 cube faces (`…#front.jpg` … `#bottom.jpg`) — those are the
   auto-generated "detail renders" the client said to ignore; only the
   `spherical.jpg` is the equirect. One viewpoint was kept per space (the
-  rejects and why are in `source-manifest.json`). The other 2026-09 client
-  projects still have no `panoramas/`; `materials/` (mood boards) and
-  `_source/` (the raw decks, gitignored) are not published.
+  rejects and why are in `source-manifest.json`). `materials/` (mood boards)
+  and `_source/` (the raw decks, gitignored) are not published.
+- `hillside/panoramas/living.jpg` (2026-10-08): the same kind of Homestyler
+  export (email "Hillside", three "Living Room-9/10/11" ZIPs) — one of the
+  three kept, 8000×4000. The same email re-rendered the living room after a
+  redesign: `hillside/gallery/03–08` are the new 4000×3000 renders and the
+  old living-room pages of the deck were dropped (see `source-manifest.json`).
+- `house-troyan/gallery/` was re-curated 2026-10-08 from 32 to 15 using the
+  client's 16:9 "for site" re-crops of the same renders (ZIP
+  "2026-10-06- for site.zip", email "Троян"); all 28 raw files are in
+  `_source/2026-10-06-for-site/` (gitignored).

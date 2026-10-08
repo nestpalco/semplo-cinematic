@@ -106,14 +106,18 @@ a real clip, drop it at the exact name below and run `npm run optimize:videos`
 | Къща Троян | `assets/videos/featured-house-troyan.mp4` |
 
 If a delivered clip carries a corner watermark, set that slot's
-`cropWatermark` (0.08 trims the Kling mark; 0 for a clean file). If its first
-frames are unusable (the HILL SIDE clip slides in from off-frame black), set
-`trimStart` (seconds) to drop that head — frame 0 is the poster and the frame
-a scrubbed section rests on. The manifest records both (`placeholder`,
-`trimStart`) so you can see at a glance what was encoded.
+`cropWatermark` (0.08 trims the Kling / HOMESTYLER mark; 0 for a clean
+file). If its first frames are unusable (the first HILL SIDE clip slid in from
+off-frame black), set `trimStart` (seconds) to drop that head — frame 0 is
+the poster and the frame a scrubbed section rests on. The manifest records
+both (`placeholder`, `trimStart`) so you can see at a glance what was encoded.
+A native 9:16 render of the same move goes next to the master as
+`portraitSrc` (phones then get it instead of the centre crop).
 
-Delivered so far: **HILL SIDE** (2026-09-16), **Villa Grivitsa** and
-**Troyan House** (both 2026-09-23) — no placeholders remain.
+Delivered so far: **Villa Grivitsa** (2026-09-23, native portrait 2026-10-01),
+**HILL SIDE** (re-rendered living room + native portrait, 2026-10-08) and
+**Troyan House** (real 4K render 2026-10-08, replacing the Kling clip; its
+native portrait is promised) — no placeholders remain.
 
 ### Video tiers (desktop and mobile)
 
