@@ -776,6 +776,19 @@ export const ui = {
     // fills them in, nothing to keep by hand.
     sub: ['{n} избрани · всички {total} в портфолиото', '{n} selected · all {total} in the portfolio'],
   },
+  // ── /404.html — the branded not-found page (scripts/build-pages.mjs) ──
+  // Vercel serves dist/404.html with a real 404 status for every unmatched
+  // route; the cPanel fallback does the same via ErrorDocument in .htaccess.
+  notFound: {
+    eyebrow: ['Грешка 404', 'Error 404'],
+    title: ['Страницата не е намерена', 'Page not found'],
+    text: [
+      'Адресът е грешен или страницата е преместена — но проектите са на мястото си.',
+      'The address is wrong or the page has moved — the projects are right where they were.',
+    ],
+    home: ['Към началото', 'Back to the homepage'],
+    all: ['Всички проекти', 'All projects'],
+  },
   pano: {
     badge: ['360°', '360°'],
     hint: ['Влачете, за да разгледате', 'Drag to look around'],

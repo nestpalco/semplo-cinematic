@@ -41,6 +41,7 @@ assets/projects/*/_source/
 
 # ── generated portfolio pages (scripts/build-pages.mjs, rebuilt by the Vite plugin on every build) ──
 /portfolio/
+/404.html
 
 # Session reports written by Claude (local notes, never deployed)
 reports/

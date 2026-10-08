@@ -119,6 +119,20 @@ Delivered so far: **Villa Grivitsa** (2026-09-23, native portrait 2026-10-01),
 **Troyan House** (real 4K render 2026-10-08, replacing the Kling clip; its
 native portrait is promised) — no placeholders remain.
 
+### The 404 page
+
+`scripts/build-pages.mjs` also writes `404.html` at the web root (gitignored,
+regenerated on every build like the portfolio pages): the same header, footer,
+language and theme toggles as the portfolio pages, one short bilingual block
+("Страницата не е намерена / Page not found"), two links (home, all projects),
+`noindex`, no canonical, no media, not in the sitemap. It loads only
+`src/notfound.js` (the chrome: toggles, burger, contact links) — never the
+motion chunk. Vercel serves `dist/404.html` with a real 404 status for every
+unmatched route by convention (no `vercel.json` rule needed); the cPanel
+fallback has `ErrorDocument 404 /404.html` in `public/.htaccess`; `vite
+preview` mirrors it through a middleware in `vite.config.js`, so the e2e suite
+asserts the 404 status and the page content end to end.
+
 ### Video tiers (desktop and mobile)
 
 The hero and the three featured clips are full-bleed, so they are encoded in
